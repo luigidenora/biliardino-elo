@@ -26,7 +26,7 @@ export class PlayersView {
    * Populate player selects with all players from {@link PlayerService}.
    */
   private static populateSelects(): void {
-    const selects = PlayersView.getSelects();
+    const selects = PlayersView.getPlayerSelects();
 
     for (const player of PlayerService.getAllPlayers()) {
       for (const select of selects) {
@@ -44,7 +44,7 @@ export class PlayersView {
    * When a selection changes, the stats view will update.
    */
   private static bindSelectEvents(): void {
-    const selects = PlayersView.getSelects();
+    const selects = PlayersView.getPlayerSelects();
 
     for (const select of selects) {
       select.addEventListener('change', PlayersView.handleSelectionChange);
@@ -96,12 +96,13 @@ export class PlayersView {
   }
 
   /**
-   * Get the select elements from the DOM by configured ids.
+   * Resolve all player selects from the DOM.
    *
-   * @returns The list of resolved `<select>` elements.
+   * @returns The list of `<select>` elements in the order:
+   *          [player1, player2]
    * @throws If any of the expected select elements is not found.
    */
-  private static getSelects(): HTMLSelectElement[] {
+  private static getPlayerSelects(): HTMLSelectElement[] {
     return PLAYER_SELECT_IDS.map((id) => {
       const select = document.getElementById(id) as HTMLSelectElement | null;
       if (!select) {

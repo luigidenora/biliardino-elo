@@ -164,10 +164,10 @@ export class RankingView {
    * @throws If the table element cannot be found.
    */
   private static getTable(): HTMLTableElement {
-    const table = document.getElementById('ranking');
+    const table = document.getElementById('ranking') as HTMLTableElement | null;
     if (!table) {
       throw new Error('Wrong ranking table id');
     }
-    return table as HTMLTableElement;
+    return table;
   }
 }

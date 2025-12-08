@@ -27,9 +27,11 @@ export class MatchService {
    * @param teamB - Second team participating in the match.
    * @param score - Final score represented as [scoreA, scoreB].
    */
-  public static addMatch(teamA: ITeam, teamB: ITeam, score: [number, number]): void {
+  public static addMatch(teamA: ITeam, teamB: ITeam, score: [number, number]): IMatch {
     const id = Guid.create().toString();
-    MatchService._matches.set(id, { id, teamA, teamB, score });
+    const newMatch = { id, teamA, teamB, score };
+    MatchService._matches.set(id, newMatch);
+    return newMatch;
   }
 
   /**

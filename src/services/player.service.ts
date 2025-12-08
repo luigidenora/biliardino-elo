@@ -3,6 +3,7 @@ import { getDisplayElo } from '@/utils/get-display-elo.util';
 
 /**
  * Service handling storage and management of player records.
+ * todo: get player sorted alphabetically for selects
  */
 export class PlayerService {
   /**

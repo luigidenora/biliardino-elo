@@ -1,0 +1,146 @@
+:root {
+  --color-bg: #f5f5f5;
+  --color-card: white;
+  --color-border: #ddd;
+  --color-primary: #0077cc;
+  --color-primary-dark: #005fa3;
+  --radius: 6px;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--color-bg);
+  margin: 0;
+  padding: 2rem;
+  color: #222;
+  line-height: 1.4;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+form {
+  max-width: 460px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+  background: #fff;
+}
+
+legend {
+  padding: 0 .5rem;
+  font-weight: 600;
+}
+
+label {
+  display: block;
+  margin-bottom: .6rem;
+}
+
+select,
+input[type="number"] {
+  width: 100%;
+  padding: .45rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+button[type="submit"] {
+  margin-top: .8rem;
+  padding: .55rem 1.2rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button[type="submit"]:hover {
+  background: var(--color-primary-dark);
+}
+
+#message {
+  display: block;
+  margin-top: .5rem;
+  font-weight: 600;
+}
+
+/* table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+th, td {
+  padding: .6rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+thead {
+  background: #eee;
+  font-weight: 600;
+}
+
+tr.editing {
+  background-color: #fff3cd;
+}
+
+button.edit-match {
+  padding: .35rem .7rem;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+button.edit-match:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+/* left (form) */
+#add-match-form {
+  flex: 0 0 400px;
+}
+
+/* right side */
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+/* table grows */
+#added-matches {
+  width: 100%;
+  max-width: 700px;
+}
