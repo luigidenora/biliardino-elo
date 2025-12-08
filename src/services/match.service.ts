@@ -45,7 +45,7 @@ export class MatchService {
    */
   public static loadMatches(matches: IMatch[]): void {
     MatchService.clearMatches();
-    for (const match of matches) {
+    for (const match of matches.toSorted((a, b) => b.createdAt - a.createdAt)) {
       MatchService._matches.set(match.id, match);
     }
   }

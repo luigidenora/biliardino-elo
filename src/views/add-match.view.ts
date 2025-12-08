@@ -175,7 +175,7 @@ export class AddMatchView {
     const tbody = table.querySelector('tbody') ?? table.createTBody();
     tbody.innerHTML = '';
 
-    const matches = MatchService.getAllMatches().toSorted((a, b) => b.createdAt - a.createdAt);
+    const matches = MatchService.getAllMatches();
 
     for (const match of matches) {
       const row = AddMatchView.createMatchRow(match);
