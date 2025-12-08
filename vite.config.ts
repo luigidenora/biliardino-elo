@@ -12,10 +12,9 @@ export default defineConfig(config => ({
   build: {
     rollupOptions: {
       input: {
-        // main page
         main: path.resolve(__dirname, 'index.html'),
-        // extra page
-        players: path.resolve(__dirname, 'players.html')
+        players: path.resolve(__dirname, 'players.html'),
+        addMatch: path.resolve(__dirname, 'add-match.html')
       }
     }
   }
