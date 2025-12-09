@@ -90,7 +90,10 @@ export class StatsService {
 
     for (const match of matches) {
       const team = getTeam(player, match);
-      if (team === -1) continue;
+      if (team === -1) {
+        EloService.getDelta(match); // update elo for other players only
+        continue;
+      }
 
       const role = getRole(player, team, match);
       const matchResult = updateElo(team, match);
@@ -120,7 +123,7 @@ export class StatsService {
 
     function updateElo(team: number, match: IMatch): MatchResult {
       const matchResult = EloService.getDelta(match);
-      const delta = team ? matchResult!.deltaA : matchResult!.deltaB;
+      const delta = team === 0 ? matchResult!.deltaA : matchResult!.deltaB;
 
       result.elo += delta;
 

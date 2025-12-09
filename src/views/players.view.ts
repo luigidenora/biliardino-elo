@@ -1,4 +1,6 @@
 import { IPlayer } from '@/models/player.interface';
+import { MatchService } from '@/services/match.service';
+import { StatsService } from '@/services/stats.service';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { PlayerService } from '../services/player.service';
 
@@ -84,6 +86,8 @@ export class PlayersView {
       container.innerHTML = '';
       return;
     }
+
+    const stats = StatsService.getPlayerStats(player.id, MatchService.getAllMatches());
 
     container.innerHTML = `
       <ul>

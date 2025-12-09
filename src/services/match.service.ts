@@ -17,7 +17,7 @@ export class MatchService {
    * @returns All registered matches as an array.
    */
   public static getAllMatches(): IMatch[] {
-    return Array.from(MatchService._matches.values());
+    return Array.from(MatchService._matches.values()).toReversed();
   }
 
   /**
