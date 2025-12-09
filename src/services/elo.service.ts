@@ -40,7 +40,7 @@ export class EloService {
   }
 
   private static getPlayerK(matches: number): number {
-    return matches < 10 ? 40 : 20;
+    return matches < 10 ? 30 : 15;
   }
 
   private static getTeamK(p1: IPlayer, p2: IPlayer): number {
@@ -53,7 +53,6 @@ export class EloService {
 
   private static marginMultiplier(goalsFor: number, goalsAgainst: number): number {
     const diff = goalsFor - goalsAgainst;
-
-    return Math.log(diff + 1) / Math.log(2); // log base 2
+    return Math.log(diff + 1);
   }
 }
