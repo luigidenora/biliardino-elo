@@ -1,7 +1,6 @@
 import { IPlayer } from '@/models/player.interface';
 import { MatchService } from '@/services/match.service';
 import { StatsService } from '@/services/stats.service';
-import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { PlayerService } from '../services/player.service';
 
 /**
@@ -89,12 +88,37 @@ export class PlayersView {
 
     const stats = StatsService.getPlayerStats(player.id, MatchService.getAllMatches());
 
+    console.log('Best victory by elo: ', stats?.bestVictoryByElo);
+    console.log('Best victory by score: ', stats?.bestVictoryByScore);
+    console.log('Worst victory by elo: ', stats?.worstDefeatByElo);
+    console.log('Worst victory by score: ', stats?.worstDefeatByScore);
+
     container.innerHTML = `
       <ul>
-        <li><strong>Name:</strong> ${player.name}</li>
-        <li><strong>Rank:</strong> ${PlayerService.getRank(player.id)}</li>
-        <li><strong>ELO:</strong> ${getDisplayElo(player)}</li>
-        <li><strong>Matches played:</strong> ${player.matches}</li>
+        <li><strong>Best Elo:</strong> ${stats?.bestElo}</li>
+        <li><strong>Best opponent:</strong> ${stats?.bestOpponent}</li>
+        <li><strong>Best teammate:</strong> ${stats?.bestTeammate}</li>
+        <li><strong>Best victory by elo:</strong> ${stats?.bestVictoryByElo}</li>
+        <li><strong>Best victory by score:</strong> ${stats?.bestVictoryByScore}</li>
+        <li><strong>Best win streak:</strong> ${stats?.bestWinStreak}</li>
+        <li><strong>Elo:</strong> ${stats?.elo}</li>
+        <li><strong>Losses:</strong> ${stats?.losses}</li>
+        <li><strong>Losses as attack:</strong> ${stats?.lossesAsAttack}</li>
+        <li><strong>Losses as defence:</strong> ${stats?.lossesAsDefence}</li>
+        <li><strong>Matches:</strong> ${stats?.matches}</li>        
+        <li><strong>Matches as attack:</strong> ${stats?.matchesAsAttack}</li>        
+        <li><strong>Matches as defence:</strong> ${stats?.matchesAsDefence}</li>
+        <li><strong>Total goals against:</strong> ${stats?.totalGoalsAgainst}</li>        
+        <li><strong>Total goals for:</strong> ${stats?.totalGoalsFor}</li>        
+        <li><strong>Wins:</strong> ${stats?.wins}</li>        
+        <li><strong>Wins as attack:</strong> ${stats?.winsAsAttack}</li>        
+        <li><strong>Wins as defence:</strong> ${stats?.winsAsDefence}</li>        
+        <li><strong>Worst defeat by elo:</strong> ${stats?.worstDefeatByElo}</li>        
+        <li><strong>Worst defeat by score:</strong> ${stats?.worstDefeatByScore}</li>        
+        <li><strong>Worst elo:</strong> ${stats?.worstElo}</li>        
+        <li><strong>Worst loss streak:</strong> ${stats?.worstLossStreak}</li>        
+        <li><strong>Worst opponent:</strong> ${stats?.worstOpponent}</li>        
+        <li><strong>Worst teammate:</strong> ${stats?.worstTeammate}</li>        
       </ul>
     `;
   }
