@@ -98,12 +98,13 @@ export class StatsService {
     for (const match of matches) {
       const team = getTeam(player, match);
       if (team === -1) {
-        updateElo(match, false); // update elo for other players only
+        updateElo(match, false); // update elo for other players
         continue;
       }
 
       const role = getRole(player, team, match);
       const matchResult = updateEloResult(team, match);
+      updateElo(match, false); // update elo for other players
       result.history.push(matchResult);
 
       updateMatchCount(role, matchResult);
