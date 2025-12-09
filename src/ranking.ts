@@ -7,6 +7,6 @@ import { RankingView } from './views/ranking.view';
 MatchService.loadMatches(await RepositoryService.loadMatches());
 PlayerService.loadPlayers(await RepositoryService.loadPlayers());
 
-MatchService.getAllMatches().forEach(m => updateElo(m));
+MatchService.getAllMatches().toReversed().forEach(m => updateElo(m));
 
 RankingView.init();
