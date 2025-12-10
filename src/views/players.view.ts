@@ -188,28 +188,16 @@ export class PlayersView {
         <h3>🏆 Vittorie e Sconfitte</h3>
         <div class="stats-grid">
           <div class="stat-item">
-            <span class="stat-label">Vittorie</span>
-            <span class="stat-value positive">${stats.wins} <span class="percentage">(${winPercentage}%)</span></span>
+            <span class="stat-label">Record</span>
+            <span class="stat-value">${stats.wins}V - ${stats.losses}S <span class="percentage">(${winPercentage}%)</span></span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Vittorie Attacco</span>
-            <span class="stat-value">${stats.winsAsAttack} <span class="percentage">(${winPercentageAttack}%)</span></span>
+            <span class="stat-label">Record Attacco</span>
+            <span class="stat-value">${stats.winsAsAttack}V - ${stats.lossesAsAttack}S <span class="percentage">(${winPercentageAttack}%)</span></span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Vittorie Difesa</span>
-            <span class="stat-value">${stats.winsAsDefence} <span class="percentage">(${winPercentageDefence}%)</span></span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Sconfitte</span>
-            <span class="stat-value negative">${stats.losses}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Sconfitte Attacco</span>
-            <span class="stat-value">${stats.lossesAsAttack}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Sconfitte Difesa</span>
-            <span class="stat-value">${stats.lossesAsDefence}</span>
+            <span class="stat-label">Record Difesa</span>
+            <span class="stat-value">${stats.winsAsDefence}V - ${stats.lossesAsDefence}S <span class="percentage">(${winPercentageDefence}%)</span></span>
           </div>
         </div>
       </div>
