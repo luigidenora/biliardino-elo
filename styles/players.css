@@ -272,3 +272,126 @@ a.nav-link:hover {
   line-height: 1.2;
   font-weight: bold;
 }
+
+/* Responsive Design */
+@media (max-width: 1400px) {
+  .players-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .player-card:nth-child(7) {
+    grid-column: span 3;
+  }
+
+  .player-card.history-card {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 1024px) {
+  body {
+    padding: 1.5rem;
+  }
+
+  .players-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .player-card:nth-child(7) {
+    grid-column: span 2;
+  }
+
+  .player-card.history-card {
+    grid-column: span 2;
+  }
+
+  .best-worst-item {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    text-align: center;
+  }
+
+  .best-worst-item .stat-label,
+  .best-worst-item .stat-details {
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 1rem;
+  }
+
+  .players-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .player-card:nth-child(7),
+  .player-card.history-card {
+    grid-column: span 1;
+  }
+
+  .player-card {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  .match-history {
+    overflow-x: auto;
+  }
+
+  .match-history-table {
+    min-width: 600px;
+  }
+
+  /* Nascondi alcune colonne su schermi piccoli */
+  .match-history-table thead tr th:nth-child(2),
+  /* Ruolo */
+  .match-history-table tbody tr td:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 0.5rem;
+  }
+
+  .player-card {
+    padding: 0.75rem;
+  }
+
+  .stats-grid {
+    gap: 0.5rem;
+  }
+
+  .stat-item {
+    padding: 0.4rem 0;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+
+  .stat-value {
+    font-size: 0.9rem;
+  }
+
+  .match-history-table {
+    font-size: 0.75rem;
+  }
+
+  .match-history-table th,
+  .match-history-table td {
+    padding: 0.5rem;
+  }
+}

@@ -142,7 +142,7 @@ export class RankingView {
         window.location.href = `./players.html?id=${player.id}`;
       });
       tr.innerHTML = `
-        <td>${rankDisplay}° ${emoji}</td>
+        <td><strong>${rankDisplay}° ${emoji}</strong></td>
         <td>${player.name}</td>
         <td><strong>${elo}</strong></td>
         <td>${role}</td>
