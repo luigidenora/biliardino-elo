@@ -218,30 +218,51 @@ export class RankingView {
       const teamBAttack = PlayerService.getPlayerById(match.teamB.attack);
       const teamBDefence = PlayerService.getPlayerById(match.teamB.defence);
 
-      const teamA = `${teamADefence?.name || '?'} & ${teamAAttack?.name || '?'}`;
-      const teamB = `${teamBDefence?.name || '?'} & ${teamBAttack?.name || '?'}`;
-      const score = `${match.score[0]} - ${match.score[1]}`;
+      let teamA = `${teamADefence?.name || '?'} & ${teamAAttack?.name || '?'}`;
+      let teamB = `${teamBDefence?.name || '?'} & ${teamBAttack?.name || '?'}`;
+
+      // Determina la squadra vincitrice
+      const teamAWon = match.score[0] > match.score[1];
 
       // Elo prima arrotondato
-      const eloA = Math.round(match.teamELO![0]);
-      const eloB = Math.round(match.teamELO![1]);
+      let eloA = Math.round(match.teamELO![0]);
+      let eloB = Math.round(match.teamELO![1]);
 
       // Delta arrotondato e formattato con colori
-      const deltaA = Math.round(match.deltaELO![0]);
-      const deltaB = Math.round(match.deltaELO![1]);
+      let deltaA = Math.round(match.deltaELO![0]);
+      let deltaB = Math.round(match.deltaELO![1]);
+
+      // Percentuali di vittoria attesa (expA, expB)
+      let expA = match.expectedScore![0];
+      let expB = match.expectedScore![1];
+
+      let scoreA = match.score[0];
+      let scoreB = match.score[1];
+
+      // Se la squadra B ha vinto, inverti tutto per mostrare prima il vincitore
+      if (!teamAWon) {
+        [teamA, teamB] = [teamB, teamA];
+        [eloA, eloB] = [eloB, eloA];
+        [deltaA, deltaB] = [deltaB, deltaA];
+        [expA, expB] = [expB, expA];
+        [scoreA, scoreB] = [scoreB, scoreA];
+      }
+
       const deltaA_color = deltaA >= 0 ? 'green' : 'red';
       const deltaB_color = deltaB >= 0 ? 'green' : 'red';
       const deltaA_formatted = `<span style="font-size:0.85em;color:${deltaA_color};">(${deltaA >= 0 ? '+' : ''}${deltaA})</span>`;
       const deltaB_formatted = `<span style="font-size:0.85em;color:${deltaB_color};">(${deltaB >= 0 ? '+' : ''}${deltaB})</span>`;
 
-      // Percentuali di vittoria attesa (expA, expB)
-      const expA = match.expectedScore![0];
-      const expB = match.expectedScore![1];
       const expA_percent = typeof expA === 'number' ? Math.round(expA * 100) : '?';
       const expB_percent = typeof expB === 'number' ? Math.round(expB * 100) : '?';
 
+      // Colora le percentuali in base al valore
+      const colorA = expA_percent !== '?' ? (expA_percent > 50 ? 'green' : expA_percent < 50 ? 'red' : 'inherit') : 'inherit';
+      const colorB = expB_percent !== '?' ? (expB_percent > 50 ? 'green' : expB_percent < 50 ? 'red' : 'inherit') : 'inherit';
+
       // Risultato con percentuali integrate
-      const resultWithPercentages = `<span style="font-size:0.85em;">(${expA_percent}%)</span> <strong>${score}</strong> <span style="font-size:0.85em;">(${expB_percent}%)</span>`;
+      const score = `${scoreA} - ${scoreB}`;
+      const resultWithPercentages = `<span style="font-size:0.85em;color:${colorA};">(${expA_percent}%)</span> <strong>${score}</strong> <span style="font-size:0.85em;color:${colorB};">(${expB_percent}%)</span>`;
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
