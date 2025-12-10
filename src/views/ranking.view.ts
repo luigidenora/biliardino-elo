@@ -43,51 +43,6 @@ export class RankingView {
     let rank = 1;
     let previousElo: number | null = null;
     const fragment = document.createDocumentFragment();
-    const allMatches = MatchService.getAllMatches();
-
-    // Precalcola i dati per ogni giocatore se non sono disponibili
-    const playerStats = new Map<string, { attackCount: number; defenceCount: number; wins: number }>();
-    for (const player of players) {
-      let attackCount = 0;
-      let defenceCount = 0;
-      let wins = 0;
-
-      for (const match of allMatches) {
-        let isInMatch = false;
-        let isTeamA = false;
-        let isAttack = false;
-
-        if (match.teamA.attack === player.id) {
-          isInMatch = true;
-          isTeamA = true;
-          isAttack = true;
-          attackCount++;
-        } else if (match.teamA.defence === player.id) {
-          isInMatch = true;
-          isTeamA = true;
-          isAttack = false;
-          defenceCount++;
-        } else if (match.teamB.attack === player.id) {
-          isInMatch = true;
-          isTeamA = false;
-          isAttack = true;
-          attackCount++;
-        } else if (match.teamB.defence === player.id) {
-          isInMatch = true;
-          isTeamA = false;
-          isAttack = false;
-          defenceCount++;
-        }
-
-        if (isInMatch) {
-          const myScore = isTeamA ? match.score[0] : match.score[1];
-          const oppScore = isTeamA ? match.score[1] : match.score[0];
-          if (myScore > oppScore) wins++;
-        }
-      }
-
-      playerStats.set(player.id, { attackCount, defenceCount, wins });
-    }
 
     for (let i = 0; i < players.length; i++) {
       const player = players[i];
@@ -137,10 +92,11 @@ export class RankingView {
       const isLast = i === players.length - 1;
       const emoji = isFirst ? ' 🏆' : (isLast ? ' 💩' : '');
 
-      // Usa dati calcolati per il ruolo
-      const stats = playerStats.get(player.id)!;
-      const attackPercentage = player.matches > 0 ? stats.attackCount / player.matches : 0;
-      const defencePercentage = player.matches > 0 ? stats.defenceCount / player.matches : 0;
+      // Usa dati precalcolati per il ruolo
+      const attackCount = player.matchesAsAttacker || 0;
+      const defenceCount = player.matchesAsDefender || 0;
+      const attackPercentage = player.matches > 0 ? attackCount / player.matches : 0;
+      const defencePercentage = player.matches > 0 ? defenceCount / player.matches : 0;
       let role = '<span style="font-size:0.8em;color:#666;">DIF, ATT</span>';
       if (attackPercentage >= 0.67) role = '<span style="font-size:0.8em;color:#dc3545;">ATT</span>';
       else if (defencePercentage >= 0.67) role = '<span style="font-size:0.8em;color:#0077cc;">DIF</span>';
@@ -162,21 +118,38 @@ export class RankingView {
         ? `<span style="font-size:0.85em;color:green;">(+${Math.round(eloGainedLast5)})</span>`
         : `<span style="font-size:0.85em;color:red;">(${Math.round(eloGainedLast5)})</span>`;
 
-      // Usa dati calcolati per win rate e vittorie/sconfitte
-      const wins = stats.wins;
+      // Usa dati precalcolati per win rate e vittorie/sconfitte
+      const wins = player.wins || 0;
       const losses = player.matches - wins;
       const winRate = player.matches > 0 ? Math.round((wins / player.matches) * 100) : 0;
       const record = `${wins}V - ${losses}S`;
 
+      // Usa dati precalcolati per rapporto goal fatti/subiti
+      const goalsScored = player.goalsFor || 0;
+      const goalsConceded = player.goalsAgainst || 0;
+      const goalRatio = goalsConceded > 0 ? goalsScored / goalsConceded : (goalsScored > 0 ? Infinity : 0);
+      let goalDiff = '-';
+      if (goalRatio === Infinity) {
+        goalDiff = '<span style="color:green;">∞</span>';
+      } else if (goalRatio > 0) {
+        const color = goalRatio < 0.8 ? 'red' : goalRatio > 1.2 ? 'green' : 'inherit';
+        goalDiff = `<span style="color:${color};">${goalRatio.toFixed(2)}</span>`;
+      }
+
       const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => {
+        window.location.href = `./players.html?id=${player.id}`;
+      });
       tr.innerHTML = `
-        <td>${rankDisplay}${emoji}</td>
-        <td><a href="./players.html?id=${player.id}" style="text-decoration:none;color:inherit;">${player.name}</a></td>
+        <td><strong>${rankDisplay}° ${emoji}</strong></td>
+        <td>${player.name}</td>
         <td><strong>${elo}</strong></td>
         <td>${role}</td>
         <td>${player.matches}</td>
         <td>${record}</td>
         <td>${winRate}%</td>
+        <td>${goalDiff}</td>
         <td>${last5Results || '-'} ${last5Results ? eloGainedFormatted : ''}</td>
       `;
       fragment.appendChild(tr);
@@ -245,30 +218,51 @@ export class RankingView {
       const teamBAttack = PlayerService.getPlayerById(match.teamB.attack);
       const teamBDefence = PlayerService.getPlayerById(match.teamB.defence);
 
-      const teamA = `${teamADefence?.name || '?'} & ${teamAAttack?.name || '?'}`;
-      const teamB = `${teamBDefence?.name || '?'} & ${teamBAttack?.name || '?'}`;
-      const score = `${match.score[0]} - ${match.score[1]}`;
+      let teamA = `${teamADefence?.name || '?'} & ${teamAAttack?.name || '?'}`;
+      let teamB = `${teamBDefence?.name || '?'} & ${teamBAttack?.name || '?'}`;
+
+      // Determina la squadra vincitrice
+      const teamAWon = match.score[0] > match.score[1];
 
       // Elo prima arrotondato
-      const eloA = Math.round(match.teamELO![0]);
-      const eloB = Math.round(match.teamELO![1]);
+      let eloA = Math.round(match.teamELO![0]);
+      let eloB = Math.round(match.teamELO![1]);
 
       // Delta arrotondato e formattato con colori
-      const deltaA = Math.round(match.deltaELO![0]);
-      const deltaB = Math.round(match.deltaELO![1]);
+      let deltaA = Math.round(match.deltaELO![0]);
+      let deltaB = Math.round(match.deltaELO![1]);
+
+      // Percentuali di vittoria attesa (expA, expB)
+      let expA = match.expectedScore![0];
+      let expB = match.expectedScore![1];
+
+      let scoreA = match.score[0];
+      let scoreB = match.score[1];
+
+      // Se la squadra B ha vinto, inverti tutto per mostrare prima il vincitore
+      if (!teamAWon) {
+        [teamA, teamB] = [teamB, teamA];
+        [eloA, eloB] = [eloB, eloA];
+        [deltaA, deltaB] = [deltaB, deltaA];
+        [expA, expB] = [expB, expA];
+        [scoreA, scoreB] = [scoreB, scoreA];
+      }
+
       const deltaA_color = deltaA >= 0 ? 'green' : 'red';
       const deltaB_color = deltaB >= 0 ? 'green' : 'red';
       const deltaA_formatted = `<span style="font-size:0.85em;color:${deltaA_color};">(${deltaA >= 0 ? '+' : ''}${deltaA})</span>`;
       const deltaB_formatted = `<span style="font-size:0.85em;color:${deltaB_color};">(${deltaB >= 0 ? '+' : ''}${deltaB})</span>`;
 
-      // Percentuali di vittoria attesa (expA, expB)
-      const expA = match.expectedScore![0];
-      const expB = match.expectedScore![1];
       const expA_percent = typeof expA === 'number' ? Math.round(expA * 100) : '?';
       const expB_percent = typeof expB === 'number' ? Math.round(expB * 100) : '?';
 
+      // Colora le percentuali in base al valore
+      const colorA = expA_percent !== '?' ? (expA_percent > 50 ? 'green' : expA_percent < 50 ? 'red' : 'inherit') : 'inherit';
+      const colorB = expB_percent !== '?' ? (expB_percent > 50 ? 'green' : expB_percent < 50 ? 'red' : 'inherit') : 'inherit';
+
       // Risultato con percentuali integrate
-      const resultWithPercentages = `<span style="font-size:0.85em;">(${expA_percent}%)</span> <strong>${score}</strong> <span style="font-size:0.85em;">(${expB_percent}%)</span>`;
+      const score = `${scoreA} - ${scoreB}`;
+      const resultWithPercentages = `<span style="font-size:0.85em;color:${colorA};">(${expA_percent}%)</span> <strong>${score}</strong> <span style="font-size:0.85em;color:${colorB};">(${expB_percent}%)</span>`;
 
       const tr = document.createElement('tr');
       tr.innerHTML = `

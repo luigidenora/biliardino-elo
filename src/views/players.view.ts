@@ -3,7 +3,6 @@ import { IPlayer } from '@/models/player.interface';
 import { MatchService } from '@/services/match.service';
 import { MatchResult, PlayerStats, StatsService } from '@/services/stats.service';
 import { PlayerService } from '../services/player.service';
-import { formatDate } from '../utils/format-date.util';
 
 /**
  * Handles UI display for player details.
@@ -137,18 +136,44 @@ export class PlayersView {
       const oppScore = isTeamA ? match.score[1] : match.score[0];
       const isWin = myScore > oppScore;
 
-      const myRole = myTeam.attack === player.id ? 'Attacco' : 'Difesa';
+      const isAttack = myTeam.attack === player.id;
+      const myRole = isAttack
+        ? '<span style="font-size:0.8em;color:#dc3545;">ATT</span>'
+        : '<span style="font-size:0.8em;color:#0077cc;">DIF</span>';
+      const teammateNames = `${teammate?.name || '?'}`;
       const opponentsNames = `${oppDefence?.name || '?'} & ${oppAttack?.name || '?'}`;
+
+      // Elo delle squadre prima della partita
+      const myTeamElo = isTeamA ? Math.round(match.teamELO![0]) : Math.round(match.teamELO![1]);
+      const oppTeamElo = isTeamA ? Math.round(match.teamELO![1]) : Math.round(match.teamELO![0]);
+
+      // Delta ELO
+      const myDelta = isTeamA ? Math.round(match.deltaELO![0]) : Math.round(match.deltaELO![1]);
+      const oppDelta = isTeamA ? Math.round(match.deltaELO![1]) : Math.round(match.deltaELO![0]);
+      const deltaColor = myDelta >= 0 ? 'green' : 'red';
+      const oppDeltaColor = oppDelta >= 0 ? 'green' : 'red';
+      const deltaFormatted = `<span style="color:${deltaColor};">(${myDelta >= 0 ? '+' : ''}${myDelta})</span>`;
+      const oppDeltaFormatted = `<span style="color:${oppDeltaColor};">(${oppDelta >= 0 ? '+' : ''}${oppDelta})</span>`;
+
+      // Percentuali di vittoria attesa
+      const myExpected = isTeamA ? match.expectedScore![0] : match.expectedScore![1];
+      const oppExpected = isTeamA ? match.expectedScore![1] : match.expectedScore![0];
+      const myExpectedPercent = typeof myExpected === 'number' ? Math.round(myExpected * 100) : '?';
+      const oppExpectedPercent = typeof oppExpected === 'number' ? Math.round(oppExpected * 100) : '?';
+
+      // Colora le percentuali
+      const myExpColor = myExpectedPercent !== '?' ? (myExpectedPercent > 50 ? 'green' : myExpectedPercent < 50 ? 'red' : 'inherit') : 'inherit';
+      const oppExpColor = oppExpectedPercent !== '?' ? (oppExpectedPercent > 50 ? 'green' : oppExpectedPercent < 50 ? 'red' : 'inherit') : 'inherit';
 
       return `
         <tr class="${isWin ? 'match-win' : 'match-loss'}">
-          <td>${formatDate(match.createdAt)}</td>
-          <td><span class="match-result ${isWin ? 'win' : 'loss'}">${isWin ? 'V' : 'S'}</span></td>
-          <td><strong>${myScore}-${oppScore}</strong></td>
+          <td><strong>${myTeamElo}</strong> ${deltaFormatted}</td>
           <td>${myRole}</td>
-          <td>${teammate?.name || '?'}</td>
+          <td>${teammateNames}</td>
+          <td><span style="color:${myExpColor};font-size:0.85em;">(${myExpectedPercent}%)</span> <strong>${myScore}-${oppScore}</strong> <span style="color:${oppExpColor};font-size:0.85em;">(${oppExpectedPercent}%)</span></td>
           <td>${opponentsNames}</td>
-          <td><span class="${matchResult.delta > 0 ? 'positive' : 'negative'}">${matchResult.delta > 0 ? '+' : ''}${matchResult.delta.toFixed(0)}</span></td>
+          <td><strong>${oppTeamElo}</strong> ${oppDeltaFormatted}</td>
+          <td><span class="match-result ${isWin ? 'win' : 'loss'}">${isWin ? 'V' : 'S'}</span></td>
         </tr>
       `;
     };
@@ -309,13 +334,13 @@ export class PlayersView {
             <table class="match-history-table">
               <thead>
                 <tr>
-                  <th>Data</th>
-                  <th>Esito</th>
-                  <th>Punteggio</th>
+                  <th>Elo Squadra</th>
                   <th>Ruolo</th>
                   <th>Compagno</th>
+                  <th>Risultato</th>
                   <th>Avversari</th>
-                  <th>ELO</th>
+                  <th>Elo Avversari</th>
+                  <th>Esito</th>
                 </tr>
               </thead>
               <tbody>

@@ -25,4 +25,6 @@ export interface IPlayer {
   matchesAsAttacker?: number;
   wins?: number;
   matchesDelta?: number[];
+  goalsFor?: number;
+  goalsAgainst?: number;
 }

@@ -17,10 +17,10 @@ export function updateElo(match: IMatch, log = true): void {
   match.teamELO = [eloA!, eloB!];
   match.expectedScore = [expA!, expB!];
 
-  PlayerService.updateAfterMatch(match.teamA.defence, deltaA, true);
-  PlayerService.updateAfterMatch(match.teamA.attack, deltaA, false);
-  PlayerService.updateAfterMatch(match.teamB.defence, deltaB, true);
-  PlayerService.updateAfterMatch(match.teamB.attack, deltaB, false);
+  PlayerService.updateAfterMatch(match.teamA.defence, deltaA, true, match.score[0], match.score[1]);
+  PlayerService.updateAfterMatch(match.teamA.attack, deltaA, false, match.score[0], match.score[1]);
+  PlayerService.updateAfterMatch(match.teamB.defence, deltaB, true, match.score[1], match.score[0]);
+  PlayerService.updateAfterMatch(match.teamB.attack, deltaB, false, match.score[1], match.score[0]);
 
   if (log) {
     const tap1 = PlayerService.getPlayerById(match.teamA.defence);

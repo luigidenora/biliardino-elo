@@ -77,7 +77,7 @@ export class PlayerService {
    * @param id - Player id.
    * @param delta - Elo delta (positive or negative).
    */
-  public static updateAfterMatch(id: string, delta: number, isDefender: boolean): void {
+  public static updateAfterMatch(id: string, delta: number, isDefender: boolean, goalsFor: number, goalsAgainst: number): void {
     const player = PlayerService.getPlayerById(id);
     if (!player) {
       return;
@@ -90,9 +90,11 @@ export class PlayerService {
       ...player,
       elo: player.elo + delta,
       matches: player.matches + 1,
-      wins: player.wins! + (delta > 0 ? 1 : 0),
-      matchesAsDefender: player.matchesAsDefender! + (isDefender ? 1 : 0),
-      matchesAsAttacker: player.matchesAsAttacker! + (isDefender ? 0 : 1),
+      wins: (player.wins ?? 0) + (delta > 0 ? 1 : 0),
+      goalsFor: (player.goalsFor ?? 0) + goalsFor,
+      goalsAgainst: (player.goalsAgainst ?? 0) + goalsAgainst,
+      matchesAsDefender: (player.matchesAsDefender ?? 0) + (isDefender ? 1 : 0),
+      matchesAsAttacker: (player.matchesAsAttacker ?? 0) + (isDefender ? 0 : 1),
       matchesDelta
     });
 
