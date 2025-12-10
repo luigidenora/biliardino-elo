@@ -50,17 +50,19 @@ export class PlayersView {
       throw new Error('Player stats container not found');
     }
 
-    // Update page title with player name
-    const titleElement = document.getElementById('player-name');
-    if (titleElement) {
-      titleElement.textContent = `Statistiche di ${player.name}`;
-    }
-
     const stats = StatsService.getPlayerStats(player.id, MatchService.getAllMatches());
 
     if (!stats) {
       container.innerHTML = '<div class="empty-state">Nessuna statistica disponibile</div>';
       return;
+    }
+
+    // Update page title with player name and rank (after stats are calculated)
+    const titleElement = document.getElementById('player-name');
+    if (titleElement) {
+      const rank = PlayerService.getRank(player.id);
+      const rankText = rank !== undefined ? ` (${rank}°)` : '';
+      titleElement.textContent = `Statistiche di ${player.name}${rankText}`;
     }
 
     const winPercentage = stats.matches > 0 ? ((stats.wins / stats.matches) * 100).toFixed(1) : '0.0';

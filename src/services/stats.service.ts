@@ -139,10 +139,10 @@ export class StatsService {
 
       result.elo += delta;
 
-      // if (result.matches >= 9) { // non ancora 10 perchè viene aggiornato dopo
-      if (result.elo > result.bestElo) result.bestElo = result.elo;
-      if (result.elo < result.worstElo) result.worstElo = result.elo;
-      // }
+      if (result.matches >= 9) { // non ancora 10 perchè viene aggiornato dopo
+        if (result.elo > result.bestElo) result.bestElo = result.elo;
+        if (result.elo < result.worstElo) result.worstElo = result.elo;
+      }
 
       return { match, delta };
     }
