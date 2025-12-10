@@ -1,7 +1,7 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { MatchService } from '@/services/match.service';
-import { StatsService } from '@/services/stats.service';
+import { MatchResult, PlayerStats, StatsService } from '@/services/stats.service';
 import { PlayerService } from '../services/player.service';
 import { formatDate } from '../utils/format-date.util';
 
@@ -325,6 +325,124 @@ export class PlayersView {
           `}
         </div>
       </div>
+
+      <div class="player-card chart-card">
+        <h2>📈 Andamento ELO</h2>
+        <div class="chart-wrapper" id="elo-chart"></div>
+      </div>
     `;
+
+    PlayersView.renderEloChart(stats);
+  }
+
+  /**
+   * Render the Elo progression chart at the bottom of the page.
+   */
+  private static renderEloChart(stats: PlayerStats): void {
+    const chartContainer = document.getElementById('elo-chart');
+    if (!chartContainer) {
+      return;
+    }
+
+    const progression = PlayersView.buildEloProgression(stats.history);
+
+    if (progression.length === 0) {
+      chartContainer.innerHTML = '<p class="empty-state">Nessuna partita per calcolare l\'andamento ELO.</p>';
+      return;
+    }
+
+    const values = progression.map(p => p.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const yStep = PlayersView.getYStep(max - min);
+    const tickMin = Math.floor(min / yStep) * yStep;
+    const tickMax = Math.ceil(max / yStep) * yStep;
+    const range = Math.max(tickMax - tickMin, 1);
+    const width = Math.min(Math.max(progression.length * 55, 600), 1200);
+    const height = 260;
+    const padding = 40;
+
+    const points = progression.map((point, index) => {
+      const x = padding + (index / Math.max(progression.length - 1, 1)) * (width - padding * 2);
+      const y = height - padding - ((point.value - tickMin) / range) * (height - padding * 2);
+      return { ...point, x, y };
+    });
+
+    const path = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+    const areaPath = `${path} L ${points.at(-1)?.x ?? padding} ${height - padding} L ${points[0]?.x ?? padding} ${height - padding} Z`;
+
+    const labelStep = Math.max(1, Math.ceil(progression.length / 8));
+    const labels = points.map((p, idx) => {
+      if (idx % labelStep !== 0 && idx !== points.length - 1) return '';
+      return `<text x="${p.x}" y="${height - padding + 18}" class="chart-label" text-anchor="middle">${p.label}</text>`;
+    }).join('');
+
+    const circles = points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" class="chart-point" />`).join('');
+
+    chartContainer.innerHTML = `
+      <div class="chart-meta">
+        <span>Min: ${Math.round(min)}</span>
+        <span>Max: ${Math.round(max)}</span>
+        <span>Ultimo: ${Math.round(values[values.length - 1])}</span>
+      </div>
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Andamento ELO nel tempo" style="min-width:${width}px">
+        <defs>
+          <linearGradient id="eloGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0077cc" stop-opacity="0.15" />
+            <stop offset="100%" stop-color="#0077cc" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="${width}" height="${height}" fill="white" rx="8" />
+        ${PlayersView.renderYTicks(tickMin, tickMax, yStep, height, padding, width)}
+        <path d="${areaPath}" class="chart-area" />
+        <path d="${path}" class="chart-line" />
+        ${circles}
+        ${labels}
+        <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis" />
+        <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" class="chart-axis" />
+      </svg>
+    `;
+  }
+
+  private static renderYTicks(min: number, max: number, step: number, height: number, padding: number, width: number): string {
+    const ticks: string[] = [];
+    for (let value = max; value >= min; value -= step) {
+      const ratio = (value - min) / Math.max(max - min, 1);
+      const y = padding + (1 - ratio) * (height - padding * 2);
+      ticks.push(`
+        <line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" class="chart-grid" />
+        <text x="${padding - 10}" y="${y + 4}" text-anchor="end" class="chart-tick">${value}</text>
+      `);
+    }
+    return ticks.join('');
+  }
+
+  private static getYStep(range: number): number {
+    if (range <= 150) return 25;
+    if (range <= 300) return 50;
+    if (range <= 600) return 100;
+    if (range <= 1000) return 150;
+    return 200;
+  }
+
+  private static buildEloProgression(history: MatchResult[]): { value: number; label: string }[] {
+    if (history.length === 0) return [];
+
+    const progression: { value: number; label: string }[] = [{
+      value: 1400,
+      label: '0'
+    }];
+
+    let currentElo = 1400;
+    for (let i = 0; i < history.length; i++) {
+      const match = history[i];
+      currentElo += match.delta;
+      progression.push({
+        value: Math.round(currentElo),
+        label: `${i + 1}`
+      });
+    }
+
+    return progression;
   }
 }
