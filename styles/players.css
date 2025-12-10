@@ -96,11 +96,11 @@ a.nav-link:hover {
   grid-column: span 2;
 }
 
-.player-card.history-card {
+.player-card.chart-card {
   grid-column: span 4;
 }
 
-.player-card.chart-card {
+.player-card.history-card {
   grid-column: span 4;
 }
 
@@ -473,6 +473,7 @@ a.nav-link:hover {
     grid-column: span 3;
   }
 
+  .player-card.chart-card,
   .player-card.history-card {
     grid-column: span 3;
   }
@@ -494,6 +495,7 @@ a.nav-link:hover {
     grid-column: span 2;
   }
 
+  .player-card.chart-card,
   .player-card.history-card {
     grid-column: span 2;
   }
@@ -528,6 +530,7 @@ a.nav-link:hover {
   }
 
   .player-card:nth-child(7),
+  .player-card.chart-card,
   .player-card.history-card {
     grid-column: span 1;
   }

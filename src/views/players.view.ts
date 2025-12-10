@@ -325,6 +325,11 @@ export class PlayersView {
         </div>
       </div>
 
+      <div class="player-card chart-card">
+        <h2>📈 Andamento ELO</h2>
+        <div class="chart-wrapper" id="elo-chart"></div>
+      </div>
+
       <div class="player-card history-card">
         <h2>📜 Storico Partite</h2>
         <div class="match-history">
@@ -349,11 +354,6 @@ export class PlayersView {
             </table>
           `}
         </div>
-      </div>
-
-      <div class="player-card chart-card">
-        <h2>📈 Andamento ELO</h2>
-        <div class="chart-wrapper" id="elo-chart"></div>
       </div>
     `;
 
