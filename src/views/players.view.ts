@@ -250,11 +250,11 @@ export class PlayersView {
             <span class="stat-value negative">${formatPlayerResult(stats.worstTeammate)}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Miglior Avversario</span>
+            <span class="stat-label">Avversario Più Forte</span>
             <span class="stat-value positive">${formatPlayerResult(stats.bestOpponent)}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Peggior Avversario</span>
+            <span class="stat-label">Avversario Più Scarso</span>
             <span class="stat-value negative">${formatPlayerResult(stats.worstOpponent)}</span>
           </div>
         </div>
