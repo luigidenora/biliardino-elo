@@ -224,3 +224,51 @@ a.nav-link:hover {
   background: #dc3545;
   color: white;
 }
+
+/* Best/Worst Matches Grid */
+.best-worst-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+
+.best-worst-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.best-worst-item .stat-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  text-align: left;
+  font-weight: normal;
+}
+
+.best-worst-item .stat-score {
+  font-weight: normal;
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.best-worst-item .stat-score.positive {
+  color: #28a745;
+}
+
+.best-worst-item .stat-score.negative {
+  color: #dc3545;
+}
+
+
+.best-worst-item .stat-details {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  text-align: right;
+  line-height: 1.2;
+  font-weight: bold;
+}

@@ -5,14 +5,6 @@ import { updateElo } from '@/utils/update-elo.util';
 import { EloService } from './elo.service';
 import { PlayerService } from './player.service';
 
-// record elo
-// record vittorie di fila
-// resoconto generale
-// miglior compagno
-// miglior avversario
-// miglior vittoria
-// goal medi a partita
-
 // più avanti questi:
 // andamento settimanale
 // andamento mensile
@@ -43,6 +35,7 @@ export interface PlayerStats {
   bestWinStreak: number;
   worstLossStreak: number;
 
+  bestTeammateCount: PlayerResult | null; // by matches
   bestTeammate: PlayerResult | null; // by Elo gain
   worstTeammate: PlayerResult | null; // by Elo loss
   bestOpponent: PlayerResult | null; // by Elo gain
@@ -75,6 +68,7 @@ export class StatsService {
       lossesAsDefence: 0,
       bestWinStreak: 0,
       worstLossStreak: 0,
+      bestTeammateCount: null,
       bestTeammate: null,
       worstTeammate: null,
       bestOpponent: null,
@@ -87,7 +81,7 @@ export class StatsService {
       totalGoalsAgainst: 0
     };
 
-    const teammateList: Record<string, number> = {};
+    const teammateList: Record<string, [number, number]> = {};
     const opponentList: Record<string, number> = {};
     let currentStreak = 0;
     let bestVictoryElo = -Infinity;
@@ -183,8 +177,9 @@ export class StatsService {
       const teammate = getTeammate(team, role, matchResult.match);
       const { attack: opponentA, defence: opponentB } = getOpponentTeam(team, matchResult.match);
 
-      teammateList[teammate] ??= 0;
-      teammateList[teammate] += delta;
+      teammateList[teammate] ??= [0, 0];
+      teammateList[teammate][0]++;
+      teammateList[teammate][1] += delta;
       opponentList[opponentA] ??= 0;
       opponentList[opponentA] += delta;
       opponentList[opponentB] ??= 0;
@@ -226,25 +221,33 @@ export class StatsService {
     }
 
     function finalizeOtherPlayers(): void {
-      let bestTeammateId = '';
+      let bestTeammateScoreId = '';
       let bestTeammateScore = -Infinity;
-      let worstTeammateId = '';
+      let worstTeammateScoreId = '';
       let worstTeammateScore = Infinity;
+      let bestTeammateCountId = '';
+      let bestTeammateCount = 0;
 
       for (const teammate in teammateList) {
-        if (teammateList[teammate] > bestTeammateScore) {
-          bestTeammateScore = teammateList[teammate];
-          bestTeammateId = teammate;
+        if (teammateList[teammate][1] > bestTeammateScore) {
+          bestTeammateScore = teammateList[teammate][1];
+          bestTeammateScoreId = teammate;
         }
 
-        if (teammateList[teammate] < worstTeammateScore) {
-          worstTeammateScore = teammateList[teammate];
-          worstTeammateId = teammate;
+        if (teammateList[teammate][1] < worstTeammateScore) {
+          worstTeammateScore = teammateList[teammate][1];
+          worstTeammateScoreId = teammate;
+        }
+
+        if (teammateList[teammate][0] > bestTeammateCount) {
+          bestTeammateCount = teammateList[teammate][0];
+          bestTeammateCountId = teammate;
         }
       }
 
-      result.bestTeammate = { score: bestTeammateScore, player: PlayerService.getPlayerById(bestTeammateId)! };
-      result.worstTeammate = { score: worstTeammateScore, player: PlayerService.getPlayerById(worstTeammateId)! };
+      result.bestTeammateCount = { score: bestTeammateCount, player: PlayerService.getPlayerById(bestTeammateCountId)! };
+      result.bestTeammate = { score: bestTeammateScore, player: PlayerService.getPlayerById(bestTeammateScoreId)! };
+      result.worstTeammate = { score: worstTeammateScore, player: PlayerService.getPlayerById(worstTeammateScoreId)! };
 
       let bestOpponentId = '';
       let bestOpponentScore = Infinity;

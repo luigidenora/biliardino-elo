@@ -68,18 +68,18 @@ export class PlayersView {
     const winPercentageAttack = stats.matchesAsAttack > 0 ? ((stats.winsAsAttack / stats.matchesAsAttack) * 100).toFixed(1) : '0.0';
     const winPercentageDefence = stats.matchesAsDefence > 0 ? ((stats.winsAsDefence / stats.matchesAsDefence) * 100).toFixed(1) : '0.0';
 
-    const formatElo = (value: number) => {
+    const formatElo = (value: number): number | string => {
       if (!isFinite(value)) return 'N/A';
       return Math.round(value);
     };
 
-    const formatPlayerResult = (result: { player: { name: string }; score: number } | null) => {
+    const formatPlayerResult = (result: { player: { name: string }; score: number } | null): string => {
       if (!result) return 'N/A';
       return `${result.player.name} (${result.score > 0 ? '+' : ''}${result.score.toFixed(0)})`;
     };
 
-    const formatMatchResult = (result: { match: IMatch; delta: number } | null, playerId: string) => {
-      if (!result) return 'N/A';
+    const formatMatchResult = (result: { match: IMatch; delta: number } | null, playerId: string): { score: string; details: string } => {
+      if (!result) return { score: 'N/A', details: '' };
       const m = result.match;
       const isTeamA = m.teamA.attack === playerId || m.teamA.defence === playerId;
       const score = isTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
@@ -94,11 +94,14 @@ export class PlayersView {
       const teammateName = teammate?.name || '?';
       const opponentsNames = `${opp1?.name || '?'} & ${opp2?.name || '?'}`;
 
-      return `<strong>${score}</strong><br><small>vs ${opponentsNames}</small><br><small>con ${teammateName} (${result.delta > 0 ? '+' : ''}${result.delta.toFixed(0)} ELO)</small>`;
+      return {
+        score,
+        details: `<small>vs ${opponentsNames}</small><br><small>con ${teammateName} (${result.delta > 0 ? '+' : ''}${result.delta.toFixed(0)} ELO)</small>`
+      };
     };
 
-    const formatMatchByScore = (match: IMatch | null, playerId: string) => {
-      if (!match) return 'N/A';
+    const formatMatchByScore = (match: IMatch | null, playerId: string): { score: string; details: string } => {
+      if (!match) return { score: 'N/A', details: '' };
       const isTeamA = match.teamA.attack === playerId || match.teamA.defence === playerId;
       const scoreFor = isTeamA ? match.score[0] : match.score[1];
       const scoreAgainst = isTeamA ? match.score[1] : match.score[0];
@@ -114,10 +117,13 @@ export class PlayersView {
       const teammateName = teammate?.name || '?';
       const opponentsNames = `${opp1?.name || '?'} & ${opp2?.name || '?'}`;
 
-      return `<strong>${scoreFor}-${scoreAgainst}</strong><br><small>vs ${opponentsNames}</small><br><small>con ${teammateName} (${diff > 0 ? '+' : ''}${diff})</small>`;
+      return {
+        score: `${scoreFor}-${scoreAgainst}`,
+        details: `<small>vs ${opponentsNames}</small><br><small>con ${teammateName} (${diff > 0 ? '+' : ''}${diff})</small>`
+      };
     };
 
-    const formatMatchHistory = (matchResult: { match: IMatch; delta: number }) => {
+    const formatMatchHistory = (matchResult: { match: IMatch; delta: number }): string => {
       const match = matchResult.match;
       const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
       const myTeam = isTeamA ? match.teamA : match.teamB;
@@ -228,6 +234,10 @@ export class PlayersView {
             <span class="stat-value negative">${stats.totalGoalsAgainst}</span>
           </div>
           <div class="stat-item">
+            <span class="stat-label">Rapporto Goal Fatti/Subiti</span>
+            <span class="stat-value">${stats.totalGoalsAgainst === 0 ? '∞' : (stats.totalGoalsFor / stats.totalGoalsAgainst).toFixed(2)}</span>
+          </div>
+          <div class="stat-item">
             <span class="stat-label">Media Goal Fatti</span>
             <span class="stat-value">${(stats.totalGoalsFor / stats.matches).toFixed(2)}</span>
           </div>
@@ -241,43 +251,51 @@ export class PlayersView {
       <div class="player-card">
         <h2>👥 Compagni e Avversari</h2>
         <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Miglior Compagno</span>
-            <span class="stat-value positive">${formatPlayerResult(stats.bestTeammate)}</span>
-          </div>
+            <div class="stat-item">
+              <span class="stat-label">Compagno Frequente</span>
+              <span class="stat-value">${stats.bestTeammateCount ? `${stats.bestTeammateCount.player.name} (${stats.bestTeammateCount.score})` : 'N/A'}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Miglior Compagno</span>
+              <span class="stat-value positive">${formatPlayerResult(stats.bestTeammate)}</span>
+            </div>
           <div class="stat-item">
             <span class="stat-label">Peggior Compagno</span>
             <span class="stat-value negative">${formatPlayerResult(stats.worstTeammate)}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Avversario Più Forte</span>
-            <span class="stat-value positive">${formatPlayerResult(stats.bestOpponent)}</span>
+            <span class="stat-value negative">${formatPlayerResult(stats.bestOpponent)}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Avversario Più Scarso</span>
-            <span class="stat-value negative">${formatPlayerResult(stats.worstOpponent)}</span>
+            <span class="stat-value positive">${formatPlayerResult(stats.worstOpponent)}</span>
           </div>
         </div>
       </div>
 
       <div class="player-card best-worst-card">
         <h2>🏅 Migliori e Peggiori Partite</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
+        <div class="best-worst-grid">
+          <div class="best-worst-item">
             <span class="stat-label">Migliore Vittoria (ELO)</span>
-            <span class="stat-value positive">${formatMatchResult(stats.bestVictoryByElo, player.id)}</span>
+            <span class="stat-score positive">${(() => { const result = formatMatchResult(stats.bestVictoryByElo, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-details">${formatMatchResult(stats.bestVictoryByElo, player.id).details}</span>
           </div>
-          <div class="stat-item">
+          <div class="best-worst-item">
             <span class="stat-label">Peggiore Sconfitta (ELO)</span>
-            <span class="stat-value negative">${formatMatchResult(stats.worstDefeatByElo, player.id)}</span>
+            <span class="stat-score negative">${(() => { const result = formatMatchResult(stats.worstDefeatByElo, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-details">${formatMatchResult(stats.worstDefeatByElo, player.id).details}</span>
           </div>
-          <div class="stat-item">
+          <div class="best-worst-item">
             <span class="stat-label">Migliore Vittoria (Punteggio)</span>
-            <span class="stat-value positive">${formatMatchByScore(stats.bestVictoryByScore, player.id)}</span>
+            <span class="stat-score positive">${(() => { const result = formatMatchByScore(stats.bestVictoryByScore, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-details">${formatMatchByScore(stats.bestVictoryByScore, player.id).details}</span>
           </div>
-          <div class="stat-item">
+          <div class="best-worst-item">
             <span class="stat-label">Peggiore Sconfitta (Punteggio)</span>
-            <span class="stat-value negative">${formatMatchByScore(stats.worstDefeatByScore, player.id)}</span>
+            <span class="stat-score negative">${(() => { const result = formatMatchByScore(stats.worstDefeatByScore, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-details">${formatMatchByScore(stats.worstDefeatByScore, player.id).details}</span>
           </div>
         </div>
       </div>
