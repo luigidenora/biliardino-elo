@@ -3,6 +3,7 @@ import { IPlayer } from '@/models/player.interface';
 import { MatchService } from '@/services/match.service';
 import { StatsService } from '@/services/stats.service';
 import { PlayerService } from '../services/player.service';
+import { formatDate } from '../utils/format-date.util';
 
 /**
  * Handles UI display for player details.
@@ -116,6 +117,36 @@ export class PlayersView {
       return `<strong>${scoreFor}-${scoreAgainst}</strong><br><small>vs ${opponentsNames}</small><br><small>con ${teammateName} (${diff > 0 ? '+' : ''}${diff})</small>`;
     };
 
+    const formatMatchHistory = (matchResult: { match: IMatch; delta: number }) => {
+      const match = matchResult.match;
+      const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
+      const myTeam = isTeamA ? match.teamA : match.teamB;
+      const opponentTeam = isTeamA ? match.teamB : match.teamA;
+
+      const teammate = PlayerService.getPlayerById(myTeam.attack === player.id ? myTeam.defence : myTeam.attack);
+      const oppDefence = PlayerService.getPlayerById(opponentTeam.defence);
+      const oppAttack = PlayerService.getPlayerById(opponentTeam.attack);
+
+      const myScore = isTeamA ? match.score[0] : match.score[1];
+      const oppScore = isTeamA ? match.score[1] : match.score[0];
+      const isWin = myScore > oppScore;
+
+      const myRole = myTeam.attack === player.id ? 'Attacco' : 'Difesa';
+      const opponentsNames = `${oppDefence?.name || '?'} & ${oppAttack?.name || '?'}`;
+
+      return `
+        <tr class="${isWin ? 'match-win' : 'match-loss'}">
+          <td>${formatDate(match.createdAt)}</td>
+          <td><span class="match-result ${isWin ? 'win' : 'loss'}">${isWin ? 'V' : 'S'}</span></td>
+          <td><strong>${myScore}-${oppScore}</strong></td>
+          <td>${myRole}</td>
+          <td>${teammate?.name || '?'}</td>
+          <td>${opponentsNames}</td>
+          <td><span class="${matchResult.delta > 0 ? 'positive' : 'negative'}">${matchResult.delta > 0 ? '+' : ''}${matchResult.delta.toFixed(0)}</span></td>
+        </tr>
+      `;
+    };
+
     container.innerHTML = `
       <div class="player-card">
         <h2>📊 Generale</h2>
@@ -131,72 +162,6 @@ export class PlayersView {
           <div class="stat-item">
             <span class="stat-label">Peggior ELO</span>
             <span class="stat-value negative">${formatElo(stats.worstElo)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="player-card">
-        <h2>⚽ Goal</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Goal Totali Fatti</span>
-            <span class="stat-value positive">${stats.totalGoalsFor}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Goal Totali Subiti</span>
-            <span class="stat-value negative">${stats.totalGoalsAgainst}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Media Goal Fatti</span>
-            <span class="stat-value">${(stats.totalGoalsFor / stats.matches).toFixed(2)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Media Goal Subiti</span>
-            <span class="stat-value">${(stats.totalGoalsAgainst / stats.matches).toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="player-card">
-        <h2>👥 Compagni e Avversari</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Miglior Compagno</span>
-            <span class="stat-value positive">${formatPlayerResult(stats.bestTeammate)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Peggior Compagno</span>
-            <span class="stat-value negative">${formatPlayerResult(stats.worstTeammate)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Miglior Avversario</span>
-            <span class="stat-value positive">${formatPlayerResult(stats.bestOpponent)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Peggior Avversario</span>
-            <span class="stat-value negative">${formatPlayerResult(stats.worstOpponent)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="player-card">
-        <h2>🏅 Migliori e Peggiori Partite</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Migliore Vittoria (ELO)</span>
-            <span class="stat-value positive">${formatMatchResult(stats.bestVictoryByElo, player.id)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Peggiore Sconfitta (ELO)</span>
-            <span class="stat-value negative">${formatMatchResult(stats.worstDefeatByElo, player.id)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Migliore Vittoria (Punteggio)</span>
-            <span class="stat-value positive">${formatMatchByScore(stats.bestVictoryByScore, player.id)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Peggiore Sconfitta (Punteggio)</span>
-            <span class="stat-value negative">${formatMatchByScore(stats.worstDefeatByScore, player.id)}</span>
           </div>
         </div>
       </div>
@@ -248,6 +213,98 @@ export class PlayersView {
             <span class="stat-label">Peggiore Striscia Sconfitte</span>
             <span class="stat-value negative">${stats.worstLossStreak}</span>
           </div>
+        </div>
+      </div>
+
+      <div class="player-card">
+        <h2>⚽ Goal</h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Goal Totali Fatti</span>
+            <span class="stat-value positive">${stats.totalGoalsFor}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Goal Totali Subiti</span>
+            <span class="stat-value negative">${stats.totalGoalsAgainst}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Media Goal Fatti</span>
+            <span class="stat-value">${(stats.totalGoalsFor / stats.matches).toFixed(2)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Media Goal Subiti</span>
+            <span class="stat-value">${(stats.totalGoalsAgainst / stats.matches).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="player-card">
+        <h2>👥 Compagni e Avversari</h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Miglior Compagno</span>
+            <span class="stat-value positive">${formatPlayerResult(stats.bestTeammate)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggior Compagno</span>
+            <span class="stat-value negative">${formatPlayerResult(stats.worstTeammate)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Miglior Avversario</span>
+            <span class="stat-value positive">${formatPlayerResult(stats.bestOpponent)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggior Avversario</span>
+            <span class="stat-value negative">${formatPlayerResult(stats.worstOpponent)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="player-card best-worst-card">
+        <h2>🏅 Migliori e Peggiori Partite</h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Migliore Vittoria (ELO)</span>
+            <span class="stat-value positive">${formatMatchResult(stats.bestVictoryByElo, player.id)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggiore Sconfitta (ELO)</span>
+            <span class="stat-value negative">${formatMatchResult(stats.worstDefeatByElo, player.id)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Migliore Vittoria (Punteggio)</span>
+            <span class="stat-value positive">${formatMatchByScore(stats.bestVictoryByScore, player.id)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggiore Sconfitta (Punteggio)</span>
+            <span class="stat-value negative">${formatMatchByScore(stats.worstDefeatByScore, player.id)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="player-card history-card">
+        <h2>📜 Storico Partite</h2>
+        <div class="match-history">
+          ${stats.history.length === 0
+            ? '<p class="empty-state">Nessuna partita giocata</p>'
+            : `
+            <table class="match-history-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Esito</th>
+                  <th>Punteggio</th>
+                  <th>Ruolo</th>
+                  <th>Compagno</th>
+                  <th>Avversari</th>
+                  <th>ELO</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stats.history.slice().reverse().map(formatMatchHistory).join('')}
+              </tbody>
+            </table>
+          `}
         </div>
       </div>
     `;

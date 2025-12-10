@@ -60,8 +60,12 @@ a.nav-link:hover {
   box-shadow: var(--shadow);
 }
 
-.player-card:nth-child(4) {
-  grid-row: span 2;
+.player-card:nth-child(7) {
+  grid-column: span 2;
+}
+
+.player-card.history-card {
+  grid-column: span 4;
 }
 
 .player-card h2 {
@@ -161,4 +165,62 @@ a.nav-link:hover {
   font-size: 0.85rem;
   color: var(--color-text-muted);
   margin-left: 0.25rem;
+}
+
+/* Match History Styles */
+.match-history {
+  overflow-x: auto;
+}
+
+.match-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.match-history-table thead {
+  background: var(--color-bg);
+  font-weight: 600;
+}
+
+.match-history-table th,
+.match-history-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.match-history-table th {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.match-history-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.match-win {
+  background: #f0fff4;
+}
+
+.match-loss {
+  background: #fff5f5;
+}
+
+.match-result {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.match-result.win {
+  background: #28a745;
+  color: white;
+}
+
+.match-result.loss {
+  background: #dc3545;
+  color: white;
 }
