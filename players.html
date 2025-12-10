@@ -1,38 +1,45 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Biliardino Elo</title>
-    <link rel="stylesheet" href="" />
-  </head>
-  <body>
-    <h1>Players [WIP]</h1>
+<html lang="it">
 
-    <p><a href="./index.html">Ranking</a></p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Statistiche Giocatori - Biliardino Elo</title>
+  <link rel="stylesheet" href="./styles/players.css" />
+</head>
 
-    <section>
-      <h2>Select players</h2>
-      <div style="display: flex; gap: 1rem; flex-wrap: wrap">
-        <div>
-          <label for="player1">Player 1</label><br />
+<body>
+  <h1>Statistiche Giocatori</h1>
+
+  <p><a class="nav-link" href="./index.html">← Classifica</a></p>
+
+  <section>
+    <h2>Confronta Giocatori</h2>
+    <div class="players-container">
+      <div class="player-card">
+        <div class="player-select-wrapper">
+          <label for="player1">Giocatore 1</label>
           <select id="player1">
-            <option value="">-- choose a player --</option>
+            <option value="">-- seleziona giocatore --</option>
           </select>
-          <div id="player1-stats"></div>
         </div>
-
-        <div>
-          <label for="player2">Player 2</label><br />
-          <select id="player2">
-            <option value="">-- choose a player --</option>
-          </select>
-          <div id="player2-stats"></div>
-        </div>
+        <div id="player1-stats"></div>
       </div>
-    </section>
 
-    <!-- IMPORTANT: compiled JS entry for this page -->
-    <script type="module" src="./src/players.ts"></script>
-  </body>
+      <div class="player-card">
+        <div class="player-select-wrapper">
+          <label for="player2">Giocatore 2</label>
+          <select id="player2">
+            <option value="">-- seleziona giocatore --</option>
+          </select>
+        </div>
+        <div id="player2-stats"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPORTANT: compiled JS entry for this page -->
+  <script type="module" src="./src/players.ts"></script>
+</body>
+
 </html>

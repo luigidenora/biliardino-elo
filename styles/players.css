@@ -1,0 +1,153 @@
+:root {
+  --color-bg: #f5f5f5;
+  --color-card: white;
+  --color-border: #ddd;
+  --color-primary: #0077cc;
+  --color-primary-dark: #005fa3;
+  --color-text-muted: #666;
+  --radius: 6px;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--color-bg);
+  margin: 0;
+  padding: 2rem;
+  color: #222;
+  line-height: 1.6;
+}
+
+h1 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+a.nav-link {
+  color: var(--color-primary);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-primary);
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+a.nav-link:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.players-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+}
+
+.player-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.player-select-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.player-select-wrapper label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.player-select-wrapper select {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.player-select-wrapper select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.stats-section {
+  margin-top: 1.5rem;
+}
+
+.stats-section h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #222;
+  font-size: 1rem;
+}
+
+.stat-value.highlight {
+  color: var(--color-primary);
+  font-size: 1.1rem;
+}
+
+.stat-value.positive {
+  color: #28a745;
+}
+
+.stat-value.negative {
+  color: #dc3545;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.percentage {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-left: 0.25rem;
+}

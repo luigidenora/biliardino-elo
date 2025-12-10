@@ -16,7 +16,7 @@ const PLAYER_SELECT_IDS = ['player1', 'player2'] as const;
  */
 export class PlayersView {
   /**
-   * Initialize the view by populating selections nd attaching event handlers.
+   * Initialize the view by populating selections and attaching event handlers.
    */
   public static init(): void {
     PlayersView.populateSelects();
@@ -82,54 +82,156 @@ export class PlayersView {
     }
 
     if (!player) {
-      container.innerHTML = '';
+      container.innerHTML = '<div class="empty-state">Seleziona un giocatore per visualizzare le statistiche</div>';
       return;
     }
 
     const stats = StatsService.getPlayerStats(player.id, MatchService.getAllMatches());
 
-    console.log('Best victory by elo: ', stats?.bestVictoryByElo);
-    console.log('Best victory by score: ', stats?.bestVictoryByScore);
-    console.log('Worst defeat by elo: ', stats?.worstDefeatByElo);
-    console.log('Worst defeat by score: ', stats?.worstDefeatByScore);
+    if (!stats) {
+      container.innerHTML = '<div class="empty-state">Nessuna statistica disponibile</div>';
+      return;
+    }
 
-    console.log('Best teammate: ', stats?.bestTeammate);
-    console.log('Worst teammate: ', stats?.worstTeammate);
-    console.log('Best opponent: ', stats?.bestOpponent);
-    console.log('Worst opponent: ', stats?.worstOpponent);
+    const winPercentage = stats.matches > 0 ? ((stats.wins / stats.matches) * 100).toFixed(1) : '0.0';
+    const winPercentageAttack = stats.matchesAsAttack > 0 ? ((stats.winsAsAttack / stats.matchesAsAttack) * 100).toFixed(1) : '0.0';
+    const winPercentageDefence = stats.matchesAsDefence > 0 ? ((stats.winsAsDefence / stats.matchesAsDefence) * 100).toFixed(1) : '0.0';
+
+    const formatElo = (value: number) => {
+      if (!isFinite(value)) return 'N/A';
+      return Math.round(value);
+    };
+
+    const getPlayerName = (id: string) => {
+      if (!id) return 'N/A';
+      const p = PlayerService.getPlayerById(id);
+      return p ? p.name : 'N/A';
+    };
 
     container.innerHTML = `
-      <ul>
-        <li><strong>Elo:</strong> ${stats?.elo}</li>
-        <li><strong>Best elo:</strong> ${stats?.bestElo}</li>
-        <li><strong>Worst elo:</strong> ${stats?.worstElo}</li>        
-        <li><strong>Best win streak:</strong> ${stats?.bestWinStreak}</li>
-        <li><strong>Worst loss streak:</strong> ${stats?.worstLossStreak}</li>        
-        <li><strong>Matches:</strong> ${stats?.matches}</li>        
-        <li><strong>Matches as attack:</strong> ${stats?.matchesAsAttack}</li>        
-        <li><strong>Matches as defence:</strong> ${stats?.matchesAsDefence}</li>
-        <li><strong>Wins percentage:</strong> ${stats?.wins / stats?.matches * 100}%</li>        
-        <li><strong>Wins percentage as attack:</strong> ${stats?.winsAsAttack / stats?.matchesAsAttack * 100}%</li>        
-        <li><strong>Wins percentage as defence:</strong> ${stats?.winsAsDefence / stats?.matchesAsDefence * 100}%</li> 
-        <li><strong>Wins:</strong> ${stats?.wins}</li>        
-        <li><strong>Wins as attack:</strong> ${stats?.winsAsAttack}</li>        
-        <li><strong>Wins as defence:</strong> ${stats?.winsAsDefence}</li>      
-        <li><strong>Losses:</strong> ${stats?.losses}</li>
-        <li><strong>Losses as attack:</strong> ${stats?.lossesAsAttack}</li>
-        <li><strong>Losses as defence:</strong> ${stats?.lossesAsDefence}</li>
-        <li><strong>Total goals for:</strong> ${stats?.totalGoalsFor}</li>    
-        <li><strong>Total goals against:</strong> ${stats?.totalGoalsAgainst}</li>        
-        <li><strong>Average goals for:</strong> ${stats?.totalGoalsFor / stats?.matches}</li>      
-        <li><strong>Average goals against:</strong> ${stats?.totalGoalsAgainst / stats?.matches}</li>        
-        <li><strong>Worst defeat by elo:</strong> ${stats?.worstDefeatByElo}</li>        
-        <li><strong>Worst defeat by score:</strong> ${stats?.worstDefeatByScore}</li>        
-        <li><strong>Worst opponent:</strong> ${stats?.worstOpponent}</li>        
-        <li><strong>Worst teammate:</strong> ${stats?.worstTeammate}</li> 
-        <li><strong>Best opponent:</strong> ${stats?.bestOpponent}</li>
-        <li><strong>Best teammate:</strong> ${stats?.bestTeammate}</li>
-        <li><strong>Best victory by elo:</strong> ${stats?.bestVictoryByElo}</li>
-        <li><strong>Best victory by score:</strong> ${stats?.bestVictoryByScore}</li>       
-      </ul>
+      <div class="stats-section">
+        <h3>📊 Generale</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">ELO Attuale</span>
+            <span class="stat-value highlight">${formatElo(stats.elo)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Miglior ELO</span>
+            <span class="stat-value positive">${formatElo(stats.bestElo)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggior ELO</span>
+            <span class="stat-value negative">${formatElo(stats.worstElo)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <h3>🎮 Partite</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Partite Totali</span>
+            <span class="stat-value">${stats.matches}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Come Attaccante</span>
+            <span class="stat-value">${stats.matchesAsAttack}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Come Difensore</span>
+            <span class="stat-value">${stats.matchesAsDefence}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <h3>🏆 Vittorie e Sconfitte</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Vittorie</span>
+            <span class="stat-value positive">${stats.wins} <span class="percentage">(${winPercentage}%)</span></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Vittorie Attacco</span>
+            <span class="stat-value">${stats.winsAsAttack} <span class="percentage">(${winPercentageAttack}%)</span></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Vittorie Difesa</span>
+            <span class="stat-value">${stats.winsAsDefence} <span class="percentage">(${winPercentageDefence}%)</span></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Sconfitte</span>
+            <span class="stat-value negative">${stats.losses}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Sconfitte Attacco</span>
+            <span class="stat-value">${stats.lossesAsAttack}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Sconfitte Difesa</span>
+            <span class="stat-value">${stats.lossesAsDefence}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <h3>🔥 Streak</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Migliore Striscia Vittorie</span>
+            <span class="stat-value positive">${stats.bestWinStreak}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggiore Striscia Sconfitte</span>
+            <span class="stat-value negative">${stats.worstLossStreak}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <h3>⚽ Goal</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Goal Totali Fatti</span>
+            <span class="stat-value positive">${stats.totalGoalsFor}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Goal Totali Subiti</span>
+            <span class="stat-value negative">${stats.totalGoalsAgainst}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Media Goal Fatti</span>
+            <span class="stat-value">${(stats.totalGoalsFor / stats.matches).toFixed(2)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Media Goal Subiti</span>
+            <span class="stat-value">${(stats.totalGoalsAgainst / stats.matches).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <h3>👥 Compagni e Avversari</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Miglior Compagno</span>
+            <span class="stat-value positive">${getPlayerName(stats.bestTeammate)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggior Compagno</span>
+            <span class="stat-value negative">${getPlayerName(stats.worstTeammate)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Miglior Avversario</span>
+            <span class="stat-value positive">${getPlayerName(stats.bestOpponent)}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Peggior Avversario</span>
+            <span class="stat-value negative">${getPlayerName(stats.worstOpponent)}</span>
+          </div>
+        </div>
+      </div>
     `;
   }
 
