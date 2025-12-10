@@ -402,7 +402,12 @@ export class PlayersView {
       return `<text x="${p.x}" y="${height - padding + 18}" class="chart-label" text-anchor="middle">${p.label}</text>`;
     }).join('');
 
-    const circles = points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" class="chart-point" />`).join('');
+    const circles = points.map((p, idx) => {
+      const eloValue = Math.round(p.value);
+      return `<circle cx="${p.x}" cy="${p.y}" r="3" class="chart-point" data-elo="${eloValue}">
+        <title>ELO: ${eloValue}</title>
+      </circle>`;
+    }).join('');
 
     chartContainer.innerHTML = `
       <div class="chart-meta">
@@ -413,11 +418,14 @@ export class PlayersView {
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Andamento ELO nel tempo" style="min-width:${width}px">
         <defs>
           <linearGradient id="eloGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#0077cc" stop-opacity="0.15" />
-            <stop offset="100%" stop-color="#0077cc" stop-opacity="0" />
+            <stop offset="0%" stop-color="#667eea" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#764ba2" stop-opacity="0.05" />
+          </linearGradient>
+          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#667eea" />
+            <stop offset="100%" stop-color="#764ba2" />
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width="${width}" height="${height}" fill="white" rx="8" />
         ${PlayersView.renderYTicks(tickMin, tickMax, yStep, height, padding, width)}
         <path d="${areaPath}" class="chart-area" />
         <path d="${path}" class="chart-line" />
