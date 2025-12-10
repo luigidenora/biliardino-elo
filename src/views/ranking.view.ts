@@ -62,7 +62,9 @@ export class RankingView {
    * Sorts the players, sets indicators, and populates table rows.
    */
   private static render(): void {
-    const players = RankingView.toSort(PlayerService.getAllPlayers());
+    const allPlayers = PlayerService.getAllPlayers();
+    const playersWithMatches = allPlayers.filter(player => player.matches > 0);
+    const players = RankingView.toSort(playersWithMatches);
     RankingView.renderSortIndicators();
     RankingView.renderrRows(players);
   }
@@ -82,17 +84,22 @@ export class RankingView {
     let previousElo: number | null = null;
     const fragment = document.createDocumentFragment();
 
-    for (const player of players) {
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i];
       const elo = getDisplayElo(player);
       // Same elo = same rank
       if (previousElo !== null && elo !== previousElo) {
         rank++;
       }
 
+      const isFirst = rank === 1;
+      const isLast = i === players.length - 1;
+      const emoji = isFirst ? ' 🏆' : (isLast ? ' 💩' : '');
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <tr>
-        <td>${rank}</td>
+        <td>${rank}${emoji}</td>
         <td><a href="./players.html?id=${player.id}">${player.name}</a></td>
         <td>${elo}</td>
         <td>${player.matches}</td>
