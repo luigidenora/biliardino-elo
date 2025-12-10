@@ -17,11 +17,15 @@ h1 {
   margin-bottom: 1rem;
 }
 
-table {
+.tables-container {
   width: 80%;
+  margin: 0 auto;
+}
+
+table {
+  width: 100%;
   border-collapse: collapse;
   background: white;
-  margin: 0 auto;
 }
 
 th,
@@ -59,4 +63,3 @@ a.nav-link:hover {
   background: var(--color-primary);
   color: white;
 }
-

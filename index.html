@@ -1,21 +1,22 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Biliardino Elo</title>
-    <link rel="stylesheet" href="./styles/ranking.css" />
-  </head>
-  <body>
-    <div
-      style="
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Biliardino Elo</title>
+  <link rel="stylesheet" href="./styles/ranking.css" />
+</head>
+
+<body>
+  <div style="
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 1rem;
-      "
-    ></div>
+      "></div>
 
+  <div class="tables-container">
     <table id="ranking">
       <thead>
         <tr>
@@ -36,7 +37,9 @@
       </thead>
       <tbody></tbody>
     </table>
+  </div>
 
-    <script type="module" src="./src/ranking.ts"></script>
-  </body>
+  <script type="module" src="./src/ranking.ts"></script>
+</body>
+
 </html>

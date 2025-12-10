@@ -1,6 +1,8 @@
 import { IPlayer } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { MatchService } from '../services/match.service';
 import { PlayerService } from '../services/player.service';
+import { formatDate } from '../utils/format-date.util';
 
 /**
  * Columns available for sorting in the ranking view.
@@ -67,6 +69,7 @@ export class RankingView {
     const players = RankingView.toSort(playersWithMatches);
     RankingView.renderSortIndicators();
     RankingView.renderrRows(players);
+    RankingView.renderRecentMatches();
   }
 
   /**
@@ -176,5 +179,64 @@ export class RankingView {
       throw new Error('Wrong ranking table id');
     }
     return table;
+  }
+
+  /**
+   * Render recent matches table below the ranking.
+   */
+  private static renderRecentMatches(): void {
+    const allMatches = MatchService.getAllMatches();
+    const matches = allMatches
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 20);
+    if (!matches.length) return;
+
+    const container = document.querySelector('.tables-container');
+    if (!container) return;
+
+    // Remove old table if exists
+    const oldTable = document.getElementById('recent-matches-table');
+    if (oldTable) oldTable.remove();
+
+    // Create new table
+    const table = document.createElement('table');
+    table.id = 'recent-matches-table';
+    table.style.marginTop = '2.5rem';
+    table.innerHTML = `
+      <caption style="caption-side:top;font-weight:700;font-size:1.2rem;margin-bottom:0.5rem;text-align:left;color:#0077cc;">Ultime 20 partite giocate</caption>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Squadra A</th>
+          <th>Squadra B</th>
+          <th>Punteggio</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody')!;
+    for (const match of matches) {
+      const date = formatDate(match.createdAt);
+      const teamAAttack = PlayerService.getPlayerById(match.teamA.attack);
+      const teamADefence = PlayerService.getPlayerById(match.teamA.defence);
+      const teamBAttack = PlayerService.getPlayerById(match.teamB.attack);
+      const teamBDefence = PlayerService.getPlayerById(match.teamB.defence);
+
+      const teamA = `${teamADefence?.name || '?'} & ${teamAAttack?.name || '?'}`;
+      const teamB = `${teamBDefence?.name || '?'} & ${teamBAttack?.name || '?'}`;
+      const score = `${match.score[0]} - ${match.score[1]}`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${date}</td>
+        <td>${teamA}</td>
+        <td>${teamB}</td>
+        <td><strong>${score}</strong></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    container.appendChild(table);
   }
 }
