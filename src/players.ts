@@ -6,6 +6,4 @@ import { PlayersView } from './views/players.view';
 MatchService.loadMatches(await RepositoryService.loadMatches());
 PlayerService.loadPlayers(await RepositoryService.loadPlayers());
 
-// MatchService.getAllMatches().forEach(m => updateElo(m));
-
 PlayersView.init();

@@ -77,26 +77,27 @@ export class PlayerService {
    * @param id - Player id.
    * @param delta - Elo delta (positive or negative).
    */
-  public static updateAfterMatch(id: string, delta: number, isDefender: boolean, goalsFor: number, goalsAgainst: number): void {
+  public static updateAfterMatch(id: string, idMate: string, delta: number, isDefender: boolean, goalsFor: number, goalsAgainst: number): void {
     const player = PlayerService.getPlayerById(id);
     if (!player) {
       return;
     }
 
-    const matchesDelta = player.matchesDelta ?? [];
-    matchesDelta.push(delta);
+    player.matchesDelta ??= [];
+    player.matchesDelta.push(delta);
 
-    PlayerService._players.set(id, { // TODO avoid to recreate a new object, reuse the same
-      ...player,
-      elo: player.elo + delta,
-      matches: player.matches + 1,
-      wins: (player.wins ?? 0) + (delta > 0 ? 1 : 0),
-      goalsFor: (player.goalsFor ?? 0) + goalsFor,
-      goalsAgainst: (player.goalsAgainst ?? 0) + goalsAgainst,
-      matchesAsDefender: (player.matchesAsDefender ?? 0) + (isDefender ? 1 : 0),
-      matchesAsAttacker: (player.matchesAsAttacker ?? 0) + (isDefender ? 0 : 1),
-      matchesDelta
-    });
+    player.elo += delta;
+    player.matches++;
+    player.wins = (player.wins ?? 0) + (delta > 0 ? 1 : 0);
+    player.goalsFor = (player.goalsFor ?? 0) + goalsFor;
+    player.goalsAgainst = (player.goalsAgainst ?? 0) + goalsAgainst;
+    player.matchesAsDefender = (player.matchesAsDefender ?? 0) + (isDefender ? 1 : 0);
+    player.matchesAsAttacker = (player.matchesAsAttacker ?? 0) + (isDefender ? 0 : 1);
+
+    if (id > idMate) { // to avoid to calculate twice the same teammate delta
+      player.teammatesDelta ??= new Map<string, number>();
+      player.teammatesDelta.set(idMate, (player.teammatesDelta.get(idMate) ?? 0) + delta);
+    }
 
     PlayerService.invalidateRankMemo();
   }
