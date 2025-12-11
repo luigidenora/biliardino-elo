@@ -92,9 +92,9 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: linear-gradient(90deg, #f7fafc 0%, #edf2f7 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(45, 55, 72, 0.1);
+  filter: brightness(0.97);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(45, 55, 72, 0.15);
 }
 
 tbody tr:last-child td {

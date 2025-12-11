@@ -89,8 +89,10 @@ export class RankingView {
       }
 
       const isFirst = rank === 1;
+      const isSecond = rank === 2;
+      const isThird = rank === 3;
       const isLast = i === players.length - 1;
-      const emoji = isFirst ? ' 🏆' : (isLast ? ' 💩' : '');
+      const emoji = isFirst ? ' 🏆' : (isSecond ? ' 🥈' : (isThird ? ' 🥉' : (isLast ? ' 💩' : '')));
 
       // Usa dati precalcolati per il ruolo
       const attackCount = player.matchesAsAttacker || 0;
@@ -143,6 +145,16 @@ export class RankingView {
 
       const tr = document.createElement('tr');
       tr.style.cursor = 'pointer';
+
+      // Colora le prime 3 posizioni (podio)
+      if (rank === 1) {
+        tr.style.backgroundColor = 'rgba(255, 215, 0, 0.15)'; // oro leggero
+      } else if (rank === 2) {
+        tr.style.backgroundColor = 'rgba(192, 192, 192, 0.15)'; // argento leggero
+      } else if (rank === 3) {
+        tr.style.backgroundColor = 'rgba(205, 127, 50, 0.15)'; // bronzo leggero
+      }
+
       tr.addEventListener('click', () => {
         window.location.href = `./players.html?id=${player.id}`;
       });
