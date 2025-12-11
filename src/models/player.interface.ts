@@ -28,4 +28,5 @@ export interface IPlayer {
   goalsFor?: number;
   goalsAgainst?: number;
   teammatesDelta?: Map<string, number>;
+  bestElo?: number;
 }

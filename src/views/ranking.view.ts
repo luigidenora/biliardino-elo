@@ -189,39 +189,85 @@ export class RankingView {
   private static renderMatchStats(): void {
     const allMatches = MatchService.getAllMatches();
     const totalMatches = allMatches.length;
+    const allPlayers = PlayerService.getAllPlayers();
 
     // Calcola goal totali
     const totalGoals = allMatches.reduce((sum, match) => sum + match.score[0] + match.score[1], 0);
 
-    const statsContainer = document.createElement('div');
+    // Trova il giocatore con il massimo ELO raggiunto
+    let maxEloPlayer: IPlayer | null = null;
+    let maxElo = 0;
+    for (const player of allPlayers) {
+      const bestElo = player.bestElo!;
+      if (bestElo > maxElo) {
+        maxElo = bestElo;
+        maxEloPlayer = player;
+      }
+    }
+    const maxEloText = maxEloPlayer ? `${maxEloPlayer.name}<br><span class="delta-badge primary">${Math.round(maxElo)}</span>` : '-';
+
+    // Trova la migliore coppia (delta più alto)
+    let bestPair = { player1: '', player2: '', delta: -Infinity };
+    for (const player of allPlayers) {
+      if (!player.teammatesDelta) continue;
+      for (const [teammateId, delta] of player.teammatesDelta) {
+        if (delta > bestPair.delta) {
+          const teammate = PlayerService.getPlayerById(teammateId);
+          if (teammate) {
+            bestPair = { player1: player.name, player2: teammate.name, delta };
+          }
+        }
+      }
+    }
+    const bestPairText = bestPair.delta !== -Infinity
+      ? `${bestPair.player1}<br>${bestPair.player2}<br><span class="delta-badge positive">+${Math.round(bestPair.delta)}</span>`
+      : '-';
+
+    // Trova la peggior coppia (delta più basso)
+    let worstPair = { player1: '', player2: '', delta: Infinity };
+    for (const player of allPlayers) {
+      if (!player.teammatesDelta) continue;
+      for (const [teammateId, delta] of player.teammatesDelta) {
+        if (delta < worstPair.delta) {
+          const teammate = PlayerService.getPlayerById(teammateId);
+          if (teammate) {
+            worstPair = { player1: player.name, player2: teammate.name, delta };
+          }
+        }
+      }
+    }
+    const worstPairText = worstPair.delta !== Infinity
+      ? `${worstPair.player1}<br>${worstPair.player2}<br><span class="delta-badge negative">${Math.round(worstPair.delta)}</span>`
+      : '-'; const statsContainer = document.createElement('div');
     statsContainer.className = 'match-stats-dashboard';
     statsContainer.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-icon">🎮</div>
-        <div class="stat-content">
-          <div class="stat-label">Partite Totali</div>
-          <div class="stat-value">${totalMatches}</div>
-        </div>
-      </div>
-      <div class="stat-card">
+      <div class="stat-card card-primary">
         <div class="stat-icon">⚽</div>
         <div class="stat-content">
-          <div class="stat-label">Goal Segnati</div>
-          <div class="stat-value">${totalGoals}</div>
+          <div class="stat-label">Partite & Goal</div>
+          <div style="font-size:1rem;font-weight:600;color:#2d3748;margin:0.2rem 0;">${totalMatches} <span style="font-size:0.85em;color:#666;">partite</span></div>
+          <div style="font-size:1rem;font-weight:600;color:#2d3748;margin:0.2rem 0;">${totalGoals} <span style="font-size:0.85em;color:#666;">goal</span></div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-warning">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-content">
+          <div class="stat-label">Max ELO Raggiunto</div>
+          <div class="stat-value-small">${maxEloText}</div>
+        </div>
+      </div>
+      <div class="stat-card card-gold">
         <div class="stat-icon">🏆</div>
         <div class="stat-content">
           <div class="stat-label">Miglior Coppia</div>
-          <div class="stat-value">-</div>
+          <div class="stat-value-small">${bestPairText}</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-danger">
         <div class="stat-icon">📉</div>
         <div class="stat-content">
           <div class="stat-label">Peggior Coppia</div>
-          <div class="stat-value">-</div>
+          <div class="stat-value-small">${worstPairText}</div>
         </div>
       </div>
     `;

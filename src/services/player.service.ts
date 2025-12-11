@@ -87,6 +87,7 @@ export class PlayerService {
     player.matchesDelta.push(delta);
 
     player.elo += delta;
+    player.bestElo = Math.max(player.bestElo ?? player.elo, player.elo);
     player.matches++;
     player.wins = (player.wins ?? 0) + (delta > 0 ? 1 : 0);
     player.goalsFor = (player.goalsFor ?? 0) + goalsFor;
