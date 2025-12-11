@@ -3,7 +3,7 @@ import { EloService } from '@/services/elo.service';
 import { PlayerService } from '@/services/player.service';
 
 export function updateElo(match: IMatch, log = false): void {
-  const { deltaA, deltaB, eloA, eloB, expA, expB } = EloService.calculateEloChange(match) ?? {};
+  const { deltaA, deltaB, eloA, eloB, expA, expB, kA, kB } = EloService.calculateEloChange(match) ?? {};
 
   if (deltaA == null || deltaB == null) {
     return;
@@ -13,6 +13,7 @@ export function updateElo(match: IMatch, log = false): void {
     console.log(Math.round(deltaA), Math.round(deltaB));
   }
 
+  match.kFactor = [kA!, kB!];
   match.deltaELO = [deltaA!, deltaB!];
   match.teamELO = [eloA!, eloB!];
   match.expectedScore = [expA!, expB!];

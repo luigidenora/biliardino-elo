@@ -237,6 +237,10 @@ export class RankingView {
       let deltaA = Math.round(match.deltaELO![0]);
       let deltaB = Math.round(match.deltaELO![1]);
 
+      // K Factor
+      let kFactorA = match.kFactor![0];
+      let kFactorB = match.kFactor![1];
+
       // Percentuali di vittoria attesa (expA, expB)
       let expA = match.expectedScore![0];
       let expB = match.expectedScore![1];
@@ -249,6 +253,7 @@ export class RankingView {
         [teamA, teamB] = [teamB, teamA];
         [eloA, eloB] = [eloB, eloA];
         [deltaA, deltaB] = [deltaB, deltaA];
+        [kFactorA, kFactorB] = [kFactorB, kFactorA];
         [expA, expB] = [expB, expA];
         [scoreA, scoreB] = [scoreB, scoreA];
       }
@@ -271,11 +276,11 @@ export class RankingView {
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${eloA}</strong> ${deltaA_formatted}</td>
+        <td><strong>${eloA}</strong> ${deltaA_formatted} <span style="font-size:0.75em;color:#666;">(K: ${kFactorA})</span></td>
         <td>${teamA}</td>
         <td>${resultWithPercentages}</td>
         <td>${teamB}</td>
-        <td><strong>${eloB}</strong> ${deltaB_formatted}</td>
+        <td><strong>${eloB}</strong> ${deltaB_formatted} <span style="font-size:0.75em;color:#666;">(K: ${kFactorB})</span></td>
       `;
       tbody.appendChild(tr);
     }

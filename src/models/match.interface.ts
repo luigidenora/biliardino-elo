@@ -33,4 +33,5 @@ export interface IMatch {
   expectedScore?: [number, number];
   teamELO?: [number, number];
   deltaELO?: [number, number];
+  kFactor?: [number, number];
 }
