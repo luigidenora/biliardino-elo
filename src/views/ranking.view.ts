@@ -26,6 +26,7 @@ export class RankingView {
     const playersWithMatches = allPlayers.filter(player => player.matches > 0);
     const players = playersWithMatches.sort((a, b) => b.elo - a.elo);
     RankingView.renderrRows(players);
+    RankingView.renderMatchStats();
     RankingView.renderRecentMatches();
   }
 
@@ -180,6 +181,93 @@ export class RankingView {
 
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
+  }
+
+  /**
+   * Render match statistics dashboard.
+   */
+  private static renderMatchStats(): void {
+    const allMatches = MatchService.getAllMatches();
+    const totalMatches = allMatches.length;
+
+    // Calcola goal totali
+    const totalGoals = allMatches.reduce((sum, match) => sum + match.score[0] + match.score[1], 0);
+
+    // Trova miglior partita (ELO medio più alto)
+    let bestMatch = null;
+    let bestAvgElo = 0;
+    for (const match of allMatches) {
+      const eloA = match.teamELO ? match.teamELO[0] : 0;
+      const eloB = match.teamELO ? match.teamELO[1] : 0;
+      const avgElo = (eloA + eloB) / 2;
+      if (avgElo > bestAvgElo) {
+        bestAvgElo = avgElo;
+        bestMatch = match;
+      }
+    }
+
+    // Trova peggior partita (ELO medio più basso)
+    let worstMatch = null;
+    let worstAvgElo = Infinity;
+    for (const match of allMatches) {
+      const eloA = match.teamELO ? match.teamELO[0] : 0;
+      const eloB = match.teamELO ? match.teamELO[1] : 0;
+      const avgElo = (eloA + eloB) / 2;
+      if (avgElo < worstAvgElo) {
+        worstAvgElo = avgElo;
+        worstMatch = match;
+      }
+    }
+
+    // Formatta miglior partita
+    const bestMatchText = bestMatch ? Math.round(bestAvgElo).toString() : 'N/A';
+
+    // Formatta peggior partita
+    const worstMatchText = worstMatch ? Math.round(worstAvgElo).toString() : 'N/A';
+
+    const statsContainer = document.createElement('div');
+    statsContainer.className = 'match-stats-dashboard';
+    statsContainer.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon">🎮</div>
+        <div class="stat-content">
+          <div class="stat-label">Partite Totali</div>
+          <div class="stat-value">${totalMatches}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚽</div>
+        <div class="stat-content">
+          <div class="stat-label">Goal Segnati</div>
+          <div class="stat-value">${totalGoals}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-content">
+          <div class="stat-label">Miglior Partita</div>
+          <div class="stat-value">${bestMatchText}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📉</div>
+        <div class="stat-content">
+          <div class="stat-label">Peggior Partita</div>
+          <div class="stat-value">${worstMatchText}</div>
+        </div>
+      </div>
+    `;
+
+    const container = document.querySelector('.tables-container');
+    if (container) {
+      const existingStats = document.querySelector('.match-stats-dashboard');
+      if (existingStats) {
+        existingStats.replaceWith(statsContainer);
+      } else {
+        const table = RankingView.getTable();
+        table.parentElement?.insertAdjacentElement('afterend', statsContainer);
+      }
+    }
   }
 
   /**
