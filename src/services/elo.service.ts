@@ -3,7 +3,11 @@ import { IPlayer } from '@/models/player.interface';
 import { PlayerService } from './player.service';
 
 export class EloService {
-  public static calculateEloChange(match: IMatch): { deltaA: number; deltaB: number; eloA: number; eloB: number; expA: number; expB: number } | null {
+  public static readonly StartK = 16;
+  public static readonly FinalK = 8;
+  public static readonly MatchesK = 16;
+
+  public static calculateEloChange(match: IMatch): { deltaA: number; deltaB: number; eloA: number; eloB: number; expA: number; expB: number; kA: number; kB: number } | null {
     const teamAP1 = PlayerService.getPlayerById(match.teamA.defence);
     const teamAP2 = PlayerService.getPlayerById(match.teamA.attack);
 
@@ -36,11 +40,12 @@ export class EloService {
 
     const deltaB = kB * margin * (scoreB - expB);
 
-    return { deltaA, deltaB, eloA, eloB, expA, expB };
+    return { deltaA, deltaB, eloA, eloB, expA, expB, kA, kB };
   }
 
   private static getPlayerK(matches: number): number {
-    return matches < 10 ? 16 : 8;
+    const firstMatchMultiplier = Math.max(0, (1 - (matches / EloService.MatchesK)) * (EloService.StartK - EloService.FinalK));
+    return EloService.FinalK + firstMatchMultiplier;
   }
 
   private static getTeamK(p1: IPlayer, p2: IPlayer): number {
