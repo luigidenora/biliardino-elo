@@ -173,7 +173,7 @@ export class PlayersView {
 
       return `
         <tr class="${isWin ? 'match-win' : 'match-loss'}">
-          <td><strong>${Math.round(playerElo)}</strong> <span style="color:${deltaColor};">(${matchResult.delta >= 0 ? '+' : ''}${Math.round(matchResult.delta)})</span></td>
+          <td style="font-size:1.15em;font-style:italic;"><strong>${Math.round(playerElo)}</strong> <span style="color:${deltaColor};">(${matchResult.delta >= 0 ? '+' : ''}${Math.round(matchResult.delta)})</span></td>
           <td><strong>${myTeamElo}</strong> <span style="font-size:0.75em;color:#666;">(K: ${myKFactor.toFixed(2)})</span></td>
           <td>${myRole}</td>
           <td>${teammateNames}</td>
