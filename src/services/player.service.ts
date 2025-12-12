@@ -93,8 +93,13 @@ export class PlayerService {
     player.matchesAsAttacker += isDefender ? 0 : 1;
 
     if (id > idMate) { // to avoid to calculate twice the same teammate delta
-      player.teammatesDelta ??= new Map<string, number>();
+      if (!player.teammatesDelta) {
+        player.teammatesDelta = new Map<string, number>();
+        player.teammatesMatchCount = new Map<string, number>();
+      }
+
       player.teammatesDelta.set(idMate, (player.teammatesDelta.get(idMate) ?? 0) + delta);
+      player.teammatesMatchCount!.set(idMate, (player.teammatesMatchCount!.get(idMate) ?? 0) + 1);
     }
 
     player.matchesDelta.push(delta);
