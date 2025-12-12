@@ -47,12 +47,14 @@ export class AddMatchView {
    */
   private static populateSelects(): void {
     const players = PlayerService.getAllPlayers();
+    // Sort players alphabetically by name
+    const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
     const selects = AddMatchView.getAllTeamSelects();
 
     for (const select of selects) {
       select.innerHTML = '<option value="">-- select player --</option>';
 
-      for (const player of players) {
+      for (const player of sortedPlayers) {
         const option = document.createElement('option');
         option.value = player.id;
         option.textContent = player.name;
