@@ -87,7 +87,6 @@ export class MatchmakingService {
             const p3 = players[k];
             const p4 = players[l];
 
-            // console.log(PlayerService.getPlayerById(p1.id)!.name + ' ' + PlayerService.getPlayerById(p2.id)!.name + ' vs ' + PlayerService.getPlayerById(p3.id)!.name + ' ' + PlayerService.getPlayerById(p4.id)!.name);
             proposals.push(this.createProposal(p1, p2, p3, p4, maxEloDiff, maxMatches, maxDiversity));
           }
         }
