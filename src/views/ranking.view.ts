@@ -1,4 +1,5 @@
 import { IPlayer } from '@/models/player.interface';
+import { EloService } from '@/services/elo.service';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { MatchService } from '../services/match.service';
 import { PlayerService } from '../services/player.service';
@@ -397,9 +398,9 @@ export class RankingView {
       let deltaA = Math.round(match.deltaELO![0]);
       let deltaB = Math.round(match.deltaELO![1]);
 
-      // K Factor (normalizzato: diviso per 8 per portarlo in scala 1-2)
-      let kFactorA = match.kFactor![0] / 8;
-      let kFactorB = match.kFactor![1] / 8;
+      // K Factor (normalizzato: diviso per 20 per portarlo in scala 1-3)
+      let kFactorA = match.kFactor![0] / EloService.FinalK;
+      let kFactorB = match.kFactor![1] / EloService.FinalK;
 
       // Percentuali di vittoria attesa (expA, expB)
       let expA = match.expectedScore![0];
@@ -443,13 +444,13 @@ export class RankingView {
       // Calcola rating medio della partita per colorare la riga
       const avgRating = (eloA + eloB) / 2;
       let rowBackgroundColor = '';
-      if (avgRating >= 1080) {
+      if (avgRating >= 1200) {
         rowBackgroundColor = 'background-color: rgba(0, 0, 255, 0.25);'; // blu leggero
-      } else if (avgRating >= 1040) {
+      } else if (avgRating >= 1100) {
         rowBackgroundColor = 'background-color: rgba(0, 127, 255, 0.1);'; // azzurro chiaro
-      } else if (avgRating <= 920) {
+      } else if (avgRating <= 800) {
         rowBackgroundColor = 'background-color: rgba(255, 0, 0, 0.2);'; // rosso leggero
-      } else if (avgRating <= 960) {
+      } else if (avgRating <= 900) {
         rowBackgroundColor = 'background-color: rgba(255, 127, 0, 0.1);'; // arancione leggero
       }
 

@@ -3,8 +3,8 @@ import { IPlayer } from '@/models/player.interface';
 import { PlayerService } from './player.service';
 
 export class EloService {
-  public static readonly StartK = 16;
-  public static readonly FinalK = 8;
+  public static readonly StartK = 60;
+  public static readonly FinalK = 20;
   public static readonly MatchesK = 16; // 1 partita a settimana
 
   public static calculateEloChange(match: IMatch): { deltaA: number; deltaB: number; eloA: number; eloB: number; expA: number; expB: number; kA: number; kB: number } | null {
@@ -52,13 +52,14 @@ export class EloService {
     return (EloService.getPlayerK(p1.matches) + EloService.getPlayerK(p2.matches)) / 2;
   }
 
-  private static expectedScore(eloA: number, eloB: number): number {
+  public static expectedScore(eloA: number, eloB: number): number {
     return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
   }
 
   private static marginMultiplier(goalsFor: number, goalsAgainst: number): number {
     const diff = goalsFor - goalsAgainst;
-    return Math.sqrt(diff / 2 + 1) * (1 + diff / 11);
-    // return Math.log(3) + (Math.log(13) - Math.log(13 - diff)) * 3;
+    return Math.sqrt(diff / 2 + 1) * (1 + diff / 8) / 1.3778379803155376;
+    // return Math.sqrt(diff / 2 + 1) * (1 + diff / 11) / (Math.sqrt(1.5) * (1 + 1 / 11)); // se si vince a 11
+    // return Math.log(3) + (Math.log(13) - Math.log(13 - diff)) * 3; // se si vince a 11
   }
 }

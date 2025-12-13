@@ -1,5 +1,6 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
+import { EloService } from '@/services/elo.service';
 import { MatchService } from '@/services/match.service';
 import { MatchResult, PlayerStats, StatsService } from '@/services/stats.service';
 import { PlayerService } from '../services/player.service';
@@ -160,9 +161,9 @@ export class PlayersView {
       const deltaFormatted = `<span style="color:${deltaColor};">(${myDelta >= 0 ? '+' : ''}${myDelta})</span>`;
       const oppDeltaFormatted = `<span style="color:${oppDeltaColor};">(${oppDelta >= 0 ? '+' : ''}${oppDelta})</span>`;
 
-      // K Factor (normalizzato: diviso per 8 per portarlo in scala 1-2)
-      const myKFactor = (isTeamA ? match.kFactor![0] : match.kFactor![1]) / 8;
-      const oppKFactor = (isTeamA ? match.kFactor![1] : match.kFactor![0]) / 8;
+      // K Factor (normalizzato: diviso per 20 per portarlo in scala 1-3)
+      const myKFactor = (isTeamA ? match.kFactor![0] : match.kFactor![1]) / EloService.FinalK;
+      const oppKFactor = (isTeamA ? match.kFactor![1] : match.kFactor![0]) / EloService.FinalK;
 
       // Percentuali di vittoria attesa
       const myExpected = isTeamA ? match.expectedScore![0] : match.expectedScore![1];

@@ -9,12 +9,12 @@ export interface IMatchmakingConfig {
   balanceWeight: number;
   /**
    * Weight for player priority (0-1). Higher values prioritize players with fewer matches.
-   * Default: 0.3
+   * Default: 0.4
    */
   priorityWeight: number;
   /**
    * Weight for diversity (0-1). Higher values prioritize new player combinations.
-   * Default: 0.3
+   * Default: 0.2
    */
   diversityWeight: number;
   /**
@@ -29,6 +29,8 @@ export interface IMatchProposal {
   score: number;
   /** Absolute ELO difference between teams */
   eloScore: number;
+  /** Absolute ELO difference value */
+  eloDifference: number;
   /** Priority score (0-1). Higher when players have fewer matches */
   priorityScore: number;
   /** Diversity score (0-1). Higher when these player combinations are new */
@@ -41,8 +43,8 @@ export interface IMatchProposal {
 export class MatchmakingService {
   private static readonly defaultConfig: IMatchmakingConfig = {
     balanceWeight: 0.4,
-    priorityWeight: 0.3,
-    diversityWeight: 0.3,
+    priorityWeight: 0.4,
+    diversityWeight: 0.2,
     randomness: 0.1
   };
 
@@ -118,6 +120,7 @@ export class MatchmakingService {
     return {
       teamA: { defence: defA, attack: attA },
       teamB: { defence: defB, attack: attB },
+      eloDifference: eloDiff,
       eloScore,
       priorityScore,
       diversityScore,
