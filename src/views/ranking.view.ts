@@ -164,9 +164,13 @@ export class RankingView {
       tr.addEventListener('click', () => {
         window.location.href = `./players.html?id=${player.id}`;
       });
+      const playerNameDisplay = (isFirst || isSecond || isThird) 
+        ? `<span style="font-weight: 700;">${player.name}</span>`
+        : player.name;
+
       tr.innerHTML = `
         <td title="Posizione in classifica"><strong>${rankDisplay}° ${emoji}</strong></td>
-        <td title="Nome giocatore">${player.name}</td>
+        <td title="Nome giocatore">${playerNameDisplay}</td>
         <td title="ELO rating attuale"><strong>${elo}</strong></td>
         <td title="Ruolo preferito e percentuale">${role}</td>
         <td title="Partite giocate">${player.matches}</td>
