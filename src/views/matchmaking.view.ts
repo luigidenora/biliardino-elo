@@ -226,12 +226,60 @@ export class MatchmakingView {
     const match = MatchmakingService.findBestMatch(selectedPlayerIds, priorityPlayerIds);
 
     if (match) {
-      MatchmakingView.currentMatch = match;
+      // Auto-assegna i ruoli mettendo in difesa chi gioca più spesso in difesa
+      const autoAssigned = MatchmakingView.assignPreferredRoles(match);
+      MatchmakingView.currentMatch = autoAssigned;
       MatchmakingView.renderMatches([match]);
       MatchmakingView.updateUI();
     } else {
       alert('Impossibile generare partite con i giocatori selezionati.');
     }
+  }
+
+  /**
+   * Ensure defenders are the players with higher defence percentage on each team.
+   */
+  private static assignPreferredRoles(match: IMatchProposal): IMatchProposal {
+    const calcDefencePct = (p: IPlayer): number => {
+      const matches = (p as any).matches || 0;
+      const def = (p as any).matchesAsDefender || 0;
+      // Percentuale difesa: def/matches; se nessuna partita, 0.
+      return matches > 0 ? def / matches : 0;
+    };
+
+    // Calcola percentuali difesa per tutti i giocatori
+    const teamA_p1_defPct = calcDefencePct(match.teamA.defence);
+    const teamA_p2_defPct = calcDefencePct(match.teamA.attack);
+    const teamB_p1_defPct = calcDefencePct(match.teamB.defence);
+    const teamB_p2_defPct = calcDefencePct(match.teamB.attack);
+
+    const adjusted: IMatchProposal = {
+      ...match,
+      teamA: { ...match.teamA },
+      teamB: { ...match.teamB }
+    };
+
+    // Team A: metti in difesa il giocatore con percentuale difesa più alta
+    if (teamA_p2_defPct > teamA_p1_defPct) {
+      const tmp = adjusted.teamA.defence;
+      adjusted.teamA.defence = adjusted.teamA.attack;
+      adjusted.teamA.attack = tmp;
+      MatchmakingView.rolesSwapped.teamA = true;
+    } else {
+      MatchmakingView.rolesSwapped.teamA = false;
+    }
+
+    // Team B: stessa logica
+    if (teamB_p2_defPct > teamB_p1_defPct) {
+      const tmp = adjusted.teamB.defence;
+      adjusted.teamB.defence = adjusted.teamB.attack;
+      adjusted.teamB.attack = tmp;
+      MatchmakingView.rolesSwapped.teamB = true;
+    } else {
+      MatchmakingView.rolesSwapped.teamB = false;
+    }
+
+    return adjusted;
   }
 
   /**
@@ -358,6 +406,15 @@ export class MatchmakingView {
     teamCard.className = 'team-card';
     teamCard.dataset.team = teamName;
 
+    const calcPerc = (count: number | undefined, total: number | undefined): number => {
+      const t = total || 0;
+      const c = count || 0;
+      return t > 0 ? Math.round((c / t) * 100) : 0;
+    };
+
+    const defPercP1 = calcPerc((player1 as any).matchesAsDefender, (player1 as any).matches);
+    const attPercP2 = calcPerc((player2 as any).matchesAsAttacker, (player2 as any).matches);
+
     teamCard.innerHTML = `
       <div class="team-title">
         <span class="team-name">Team ${teamName}</span>
@@ -365,11 +422,11 @@ export class MatchmakingView {
       </div>
       <div class="team-players">
         <div class="player-item">
-          <span class="player-name">🛡️ ${player1.name}</span>
+          <span class="player-name">🛡️ ${player1.name} <span class="role-badge badge-def" title="Percentuale partite in difesa">DIF ${defPercP1}%</span></span>
           <span class="player-elo">${getDisplayElo(player1)}</span>
         </div>
         <div class="player-item">
-          <span class="player-name">⚔️ ${player2.name}</span>
+          <span class="player-name">⚔️ ${player2.name} <span class="role-badge badge-att" title="Percentuale partite in attacco">ATT ${attPercP2}%</span></span>
           <span class="player-elo">${getDisplayElo(player2)}</span>
         </div>
       </div>
