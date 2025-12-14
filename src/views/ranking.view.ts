@@ -168,9 +168,21 @@ export class RankingView {
         ? `<span style="font-weight: 700;">${player.name}</span>`
         : player.name;
 
+      const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
+      const avatarHTML = `
+        <div class="player-avatar">
+          <img 
+            src="./public/avatars/${player.id}.png" 
+            alt="${player.name}"
+            class="avatar-img"
+            onerror="this.src='${fallbackAvatar}'"
+          />
+        </div>
+      `;
+
       tr.innerHTML = `
         <td title="Posizione in classifica"><strong>${rankDisplay}° ${emoji}</strong></td>
-        <td title="Nome giocatore">${playerNameDisplay}</td>
+        <td title="Nome giocatore"><div class="player-info">${avatarHTML}<span>${playerNameDisplay}</span></div></td>
         <td title="ELO rating attuale"><strong>${elo}</strong></td>
         <td title="Ruolo preferito e percentuale">${role}</td>
         <td title="Partite giocate">${player.matches}</td>
