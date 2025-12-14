@@ -23,7 +23,6 @@ export const availabilityList = {
     'Andrea Greco',
     'Andrea Fraccalvieri',
     'Alfredo Sette',
-    'Dario Spinosa',
     'Filippo Addabbo',
     'Giuseppe Latrofa',
     'Loris Bevilacqua',
@@ -44,6 +43,7 @@ export const availabilityList = {
     'Nicola Sergio',
     'Matteo Attanasio',
     'Gianluca De Vincenzo',
+    'Dario Spinosa',
     'Andrea Difonzo'
   ],
   thursday: [
@@ -59,7 +59,6 @@ export const availabilityList = {
     'Alfredo Sette',
     'Andrea Gargaro',
     'Amedeo D\'Amelio',
-    'Dario Spinosa',
     'Filippo Addabbo',
     'Giuseppe Latrofa',
     'Loris Bevilacqua',
