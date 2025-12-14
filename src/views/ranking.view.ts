@@ -164,7 +164,7 @@ export class RankingView {
       tr.addEventListener('click', () => {
         window.location.href = `./players.html?id=${player.id}`;
       });
-      const playerNameDisplay = (isFirst || isSecond || isThird) 
+      const playerNameDisplay = (isFirst || isSecond || isThird)
         ? `<span style="font-weight: 700;">${player.name}</span>`
         : player.name;
 
@@ -172,7 +172,7 @@ export class RankingView {
       const avatarHTML = `
         <div class="player-avatar">
           <img 
-            src="./public/avatars/${player.id}.png" 
+            src="/biliardino-elo/avatars/${player.id}.png" 
             alt="${player.name}"
             class="avatar-img"
             onerror="this.src='${fallbackAvatar}'"
