@@ -262,7 +262,7 @@ export class MatchmakingView {
       // Auto-assegna i ruoli mettendo in difesa chi gioca più spesso in difesa
       const autoAssigned = MatchmakingView.assignPreferredRoles(match);
       MatchmakingView.currentMatch = autoAssigned;
-      MatchmakingView.renderMatches([match]);
+      MatchmakingView.renderMatches([autoAssigned]);
       MatchmakingView.updateUI();
     } else {
       alert('Impossibile generare partite con i giocatori selezionati.');
@@ -271,7 +271,7 @@ export class MatchmakingView {
 
   /**
    * Auto-assegna i ruoli usando la somma delle percentuali dei ruoli assegnati.
-   * Se la somma (DIF del difensore + ATT dell'attaccante) è < 100, inverti i ruoli.
+   * Calcola se invertire ma NON scambia i giocatori, solo setta il flag rolesSwapped.
    */
   private static assignPreferredRoles(match: IMatchProposal): IMatchProposal {
     const calcRolePct = (p: IPlayer, role: 'defence' | 'attack'): number => {
@@ -282,37 +282,25 @@ export class MatchmakingView {
       return matches > 0 ? (count / matches) * 100 : 0;
     };
 
-    const adjusted: IMatchProposal = {
-      ...match,
-      teamA: { ...match.teamA },
-      teamB: { ...match.teamB }
-    };
-
     // Team A: confronta somma attuale vs somma con ruoli invertiti, scegli la maggiore
-    const teamA_sum_current = calcRolePct(adjusted.teamA.defence, 'defence') + calcRolePct(adjusted.teamA.attack, 'attack');
-    const teamA_sum_swapped = calcRolePct(adjusted.teamA.attack, 'defence') + calcRolePct(adjusted.teamA.defence, 'attack');
+    const teamA_sum_current = calcRolePct(match.teamA.defence, 'defence') + calcRolePct(match.teamA.attack, 'attack');
+    const teamA_sum_swapped = calcRolePct(match.teamA.attack, 'defence') + calcRolePct(match.teamA.defence, 'attack');
     if (teamA_sum_swapped > teamA_sum_current || (teamA_sum_swapped === teamA_sum_current && Math.random() < 0.5)) {
-      const tmp = adjusted.teamA.defence;
-      adjusted.teamA.defence = adjusted.teamA.attack;
-      adjusted.teamA.attack = tmp;
       MatchmakingView.rolesSwapped.teamA = true;
     } else {
       MatchmakingView.rolesSwapped.teamA = false;
     }
 
     // Team B: confronta somma attuale vs somma con ruoli invertiti, scegli la maggiore
-    const teamB_sum_current = calcRolePct(adjusted.teamB.defence, 'defence') + calcRolePct(adjusted.teamB.attack, 'attack');
-    const teamB_sum_swapped = calcRolePct(adjusted.teamB.attack, 'defence') + calcRolePct(adjusted.teamB.defence, 'attack');
+    const teamB_sum_current = calcRolePct(match.teamB.defence, 'defence') + calcRolePct(match.teamB.attack, 'attack');
+    const teamB_sum_swapped = calcRolePct(match.teamB.attack, 'defence') + calcRolePct(match.teamB.defence, 'attack');
     if (teamB_sum_swapped > teamB_sum_current || (teamB_sum_swapped === teamB_sum_current && Math.random() < 0.5)) {
-      const tmp = adjusted.teamB.defence;
-      adjusted.teamB.defence = adjusted.teamB.attack;
-      adjusted.teamB.attack = tmp;
       MatchmakingView.rolesSwapped.teamB = true;
     } else {
       MatchmakingView.rolesSwapped.teamB = false;
     }
 
-    return adjusted;
+    return match;
   }
 
   /**
@@ -377,7 +365,7 @@ export class MatchmakingView {
     const teamBAttack = MatchmakingView.rolesSwapped.teamB ? match.teamB.defence : match.teamB.attack;
 
     // Team A
-    const teamACard = MatchmakingView.createTeamCard('A', teamADefence, teamAAttack, avgEloTeamA, winProbA);
+    const teamACard = MatchmakingView.createTeamCard('A', teamADefence, 'defence', teamAAttack, 'attack', avgEloTeamA, winProbA);
     teamsContainer.appendChild(teamACard);
 
     // Centro con VS e form punteggio
@@ -421,7 +409,7 @@ export class MatchmakingView {
     teamsContainer.appendChild(centerSection);
 
     // Team B
-    const teamBCard = MatchmakingView.createTeamCard('B', teamBDefence, teamBAttack, avgEloTeamB, winProbB);
+    const teamBCard = MatchmakingView.createTeamCard('B', teamBDefence, 'defence', teamBAttack, 'attack', avgEloTeamB, winProbB);
     teamsContainer.appendChild(teamBCard);
 
     matchContent.appendChild(teamsContainer);
@@ -442,9 +430,9 @@ export class MatchmakingView {
   }
 
   /**
-   * Create a team card element.
+   * Create a team card element with specific roles for each player.
    */
-  private static createTeamCard(teamName: string, player1: IPlayer, player2: IPlayer, avgElo: number, winProb: number): HTMLElement {
+  private static createTeamCard(teamName: string, player1: IPlayer, role1: 'defence' | 'attack', player2: IPlayer, role2: 'defence' | 'attack', avgElo: number, winProb: number): HTMLElement {
     const teamCard = document.createElement('div');
     teamCard.className = 'team-card';
     teamCard.dataset.team = teamName;
@@ -455,10 +443,18 @@ export class MatchmakingView {
       return t > 0 ? Math.round((c / t) * 100) : 0;
     };
 
-    const defPercP1 = calcPerc((player1 as any).matchesAsDefender, (player1 as any).matches);
-    const attPercP2 = calcPerc((player2 as any).matchesAsAttacker, (player2 as any).matches);
+    const defPercP1 = role1 === 'defence' ? calcPerc((player1 as any).matchesAsDefender, (player1 as any).matches) : calcPerc((player1 as any).matchesAsAttacker, (player1 as any).matches);
+    const attPercP2 = role2 === 'attack' ? calcPerc((player2 as any).matchesAsAttacker, (player2 as any).matches) : calcPerc((player2 as any).matchesAsDefender, (player2 as any).matches);
 
     const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
+
+    const roleIcon1 = role1 === 'defence' ? '🛡️' : '⚔️';
+    const roleBadgeClass1 = role1 === 'defence' ? 'badge-def' : 'badge-att';
+    const roleLabel1 = role1 === 'defence' ? `DIF ${defPercP1}%` : `ATT ${defPercP1}%`;
+
+    const roleIcon2 = role2 === 'attack' ? '⚔️' : '🛡️';
+    const roleBadgeClass2 = role2 === 'attack' ? 'badge-att' : 'badge-def';
+    const roleLabel2 = role2 === 'attack' ? `ATT ${attPercP2}%` : `DIF ${attPercP2}%`;
 
     teamCard.innerHTML = `
       <div class="team-title">
@@ -476,9 +472,9 @@ export class MatchmakingView {
                 onerror="this.src='${fallbackAvatar}'"
               />
             </div>
-            <div class="match-player-name"><span class="player-name">🛡️ ${player1.name}</span></div>
+            <div class="match-player-name"><span class="player-name">${roleIcon1} ${player1.name}</span></div>
             <div class="match-player-meta">
-              <span class="role-badge badge-def" title="Percentuale partite in difesa">DIF ${defPercP1}%</span>
+              <span class="role-badge ${roleBadgeClass1}" title="Percentuale partite nel ruolo assegnato">${roleLabel1}</span>
               <span class="player-elo">${getDisplayElo(player1)}</span>
             </div>
           </div>
@@ -493,9 +489,9 @@ export class MatchmakingView {
                 onerror="this.src='${fallbackAvatar}'"
               />
             </div>
-            <div class="match-player-name"><span class="player-name">⚔️ ${player2.name}</span></div>
+            <div class="match-player-name"><span class="player-name">${roleIcon2} ${player2.name}</span></div>
             <div class="match-player-meta">
-              <span class="role-badge badge-att" title="Percentuale partite in attacco">ATT ${attPercP2}%</span>
+              <span class="role-badge ${roleBadgeClass2}" title="Percentuale partite nel ruolo assegnato">${roleLabel2}</span>
               <span class="player-elo">${getDisplayElo(player2)}</span>
             </div>
           </div>
