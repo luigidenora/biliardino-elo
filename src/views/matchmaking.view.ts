@@ -123,7 +123,7 @@ export class MatchmakingView {
       <div class="disclaimer-icon">⚠️</div>
       <div class="disclaimer-content">
         <strong>Promemoria importante</strong>
-        <p>Le partite vanno giocate esclusivamente durante la pausa, senza mai allungarla. Il gioco non deve influire sul rendimento lavorativo.</p>
+        <p>Il biliardino non è scontato: solo in pausa e con rispetto, per evitare sanzioni.</p>
       </div>
     `;
     matchesContainer.insertBefore(disclaimer, matchesContainer.firstChild);

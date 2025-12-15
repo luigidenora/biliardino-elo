@@ -38,6 +38,7 @@ export const availabilityList = {
     'Michele Sette',
     'Michele Porcu',
     'Davide Silletti',
+    'Leonardo Galluzzi',
     'Filippo Addabbo',
     'Marco De Luca',
     'Nicola Sergio',
@@ -79,7 +80,7 @@ export const availabilityList = {
     'Marco De Luca',
     'Salvatore Defino', // finire
     'Nicola Sergio',
-    'Leonardo Galluzzi', // finire
+    'Leonardo Galluzzi',
     'Gianluca De Vincenzo',
     'Andrea Difonzo'
   ]
