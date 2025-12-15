@@ -220,13 +220,6 @@ button.edit-match:hover {
 }
 
 /* Dev-mode visibility: hide form and edit buttons by default */
-body:not(.dev-mode) #add-match-form {
-  display: none !important;
-}
-
-body:not(.dev-mode) button.edit-match {
-  display: none !important;
-}
 
 /* When dev-mode is active, show them normally */
 body.dev-mode #add-match-form {

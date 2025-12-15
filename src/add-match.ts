@@ -11,10 +11,3 @@ MatchService.getAllMatches().forEach(m => updateElo(m));
 
 AddMatchView.init();
 
-// Toggle developer mode (show form + edit buttons) with Ctrl+Shift+D
-window.addEventListener('keydown', (e) => {
-  const key = e.key.toLowerCase();
-  if (e.ctrlKey && e.altKey && key === 'd') {
-    document.body.classList.toggle('dev-mode');
-  }
-});
