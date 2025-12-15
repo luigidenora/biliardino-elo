@@ -392,8 +392,8 @@ export class MatchmakingView {
       input.addEventListener('blur', (e) => {
         const target = e.target as HTMLInputElement;
         const value = parseInt(target.value);
-        if (value > 10) {
-          target.value = '10';
+        if (value > 8) {
+          target.value = '8';
         }
       });
     });
@@ -540,9 +540,9 @@ export class MatchmakingView {
     scoresContainer.className = 'scores-container';
 
     scoresContainer.innerHTML = `
-      <input type="number" name="scoreTeamA" min="0" max="10" required placeholder="0" class="score-input" />
+      <input type="number" name="scoreTeamA" min="0" max="8" required placeholder="0" class="score-input" />
       <span class="score-separator">-</span>
-      <input type="number" name="scoreTeamB" min="0" max="10" required placeholder="0" class="score-input" />
+      <input type="number" name="scoreTeamB" min="0" max="8" required placeholder="0" class="score-input" />
     `;
 
     return scoresContainer;
@@ -575,7 +575,7 @@ export class MatchmakingView {
     teamAInput.id = 'score-team-a';
     teamAInput.name = 'scoreTeamA';
     teamAInput.min = '0';
-    teamAInput.max = '10';
+    teamAInput.max = '8';
     teamAInput.required = true;
 
     teamAScoreGroup.appendChild(teamALabel);
@@ -594,7 +594,7 @@ export class MatchmakingView {
     teamBInput.id = 'score-team-b';
     teamBInput.name = 'scoreTeamB';
     teamBInput.min = '0';
-    teamBInput.max = '10';
+    teamBInput.max = '8';
     teamBInput.required = true;
 
     teamBScoreGroup.appendChild(teamBLabel);
@@ -634,8 +634,8 @@ export class MatchmakingView {
       return;
     }
 
-    if (scoreTeamA < 0 || scoreTeamB < 0 || scoreTeamA > 10 || scoreTeamB > 10) {
-      alert('I punteggi devono essere compresi tra 0 e 10.');
+    if (scoreTeamA < 0 || scoreTeamB < 0 || scoreTeamA > 8 || scoreTeamB > 8) {
+      alert('I punteggi devono essere compresi tra 0 e 8.');
       return;
     }
 
