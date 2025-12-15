@@ -502,19 +502,18 @@ h2 {
 
 .vs-text {
   position: relative;
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: 6px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #1d1d1f 0%, #515154 50%, #1d1d1f 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.1);
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
   cursor: default;
-  filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.1));
+  transition: all 0.3s ease;
 }
 
 .scores-container {
@@ -669,7 +668,7 @@ h2 {
   }
 
   .vs-text {
-    font-size: 1.9rem;
+    font-size: 1.2rem;
   }
 
   .score-input {
