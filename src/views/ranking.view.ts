@@ -92,8 +92,6 @@ export class RankingView {
       const isFirst = rank === 1;
       const isSecond = rank === 2;
       const isThird = rank === 3;
-      const isLast = i === players.length - 1;
-      const emoji = isFirst ? ' 🏆' : (isSecond ? ' 🥈' : (isThird ? ' 🥉' : (isLast ? ' 💩' : '')));
 
       // Usa dati precalcolati per il ruolo
       const attackCount = player.matchesAsAttacker || 0;
@@ -180,7 +178,7 @@ export class RankingView {
       `;
 
       tr.innerHTML = `
-        <td title="Posizione in classifica"><strong>${rankDisplay}° ${emoji}</strong></td>
+        <td title="Posizione in classifica"><strong>${rankDisplay}°</strong></td>
         <td title="Nome giocatore"><div class="player-info">${avatarHTML}<span>${playerNameDisplay}</span></div></td>
         <td title="ELO rating attuale"><strong>${elo}</strong></td>
         <td title="Ruolo preferito e percentuale">${role}</td>
@@ -287,7 +285,7 @@ export class RankingView {
         </div>
       </div>
       <div class="stat-card card-gold">
-        <div class="stat-icon">🏆</div>
+        <div class="stat-icon"></div>
         <div class="stat-content">
           <div class="stat-label">Miglior Coppia</div>
           <div class="stat-value-group">

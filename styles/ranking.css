@@ -269,8 +269,8 @@ tbody tr:hover {
 }
 
 .player-avatar {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
