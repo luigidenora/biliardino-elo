@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 /**
@@ -26,6 +27,11 @@ const app = initializeApp(firebaseConfig);
  * Used by the repository code to read and write collections.
  */
 export const db = getFirestore(app);
+/**
+ * Firebase Authentication instance for the current app.
+ * Used to authenticate predefined users via email (username) and password.
+ */
+export const AUTH = getAuth(app);
 
 /**
  * Firestore collection name used to persist and retrieve match documents.
@@ -36,3 +42,15 @@ export const MATCHES_COLLECTION = 'matches';
  * Firestore collection name used to persist and retrieve player documents.
  */
 export const PLAYERS_COLLECTION = 'players';
+
+/**
+ * Signs in a predefined user using email and password authentication.
+ *
+ * @param email - The user's email address.
+ * @param password - The user's password.
+ * @returns A Promise that resolves with the authenticated Firebase user credentials.
+ * @throws FirebaseError if authentication fails (invalid credentials, user not found, etc.).
+ */
+export async function login(email: string, password: string): Promise<any> {
+  return signInWithEmailAndPassword(AUTH, email, password);
+}
