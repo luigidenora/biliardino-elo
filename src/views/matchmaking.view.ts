@@ -246,7 +246,7 @@ export class MatchmakingView {
     }
 
     // Enable generate button only if at least 4 players and no match exists
-    const shouldEnable = totalSelected >= 4 && MatchmakingView.currentMatch === null;
+    const shouldEnable = totalSelected >= 4;
     generateButton.disabled = !shouldEnable;
   }
 
