@@ -4,23 +4,23 @@ import { PlayerService } from './player.service';
 export interface IMatchmakingConfig {
   /**
    * Weight for ELO balance (0-1). Higher values prioritize balanced matches.
-   * Default: 0.4
    */
-  balanceWeight: number;
+  matchBalanceWeight: number;
   /**
    * Weight for player priority (0-1). Higher values prioritize players with fewer matches.
-   * Default: 0.4
    */
   priorityWeight: number;
   /**
    * Weight for diversity (0-1). Higher values prioritize new player combinations.
-   * Default: 0.2
    */
   diversityWeight: number;
   /**
+   * Weight for diversity (0-1). Higher values prioritize new player combinations.
+   */
+  teamBalanceWeight: number;
+  /**
    * Randomness factor (0-1). Adds variation to avoid always selecting the same match.
    * The final score is multiplied by random(1 - randomness, 1 + randomness).
-   * Default: 0.1 (10% variation)
    */
   randomness: number;
 }
@@ -40,10 +40,11 @@ export interface IMatchProposal {
 
 export class MatchmakingService {
   private static readonly defaultConfig: IMatchmakingConfig = {
-    balanceWeight: 0.4,
-    priorityWeight: 0.4,
-    diversityWeight: 0.2,
-    randomness: 0.1
+    matchBalanceWeight: 0.35,
+    teamBalanceWeight: 0.25,
+    priorityWeight: 0.25,
+    diversityWeight: 0.15,
+    randomness: 0.05
   };
 
   private static config: IMatchmakingConfig;
@@ -159,12 +160,19 @@ export class MatchmakingService {
   }
 
   private static createProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlayer, maxEloDiff: number, maxMatches: number, maxDiversity: number): IMatchProposal {
-    // ELO DIFFERENCE SCORE
+    // MATCH ELO DIFFERENCE SCORE
     const teamAElo = (defA.elo + attA.elo) / 2; // il / 2 può essere tolgo se usiamo la somma
     const teamBElo = (defB.elo + attB.elo) / 2;
-    const eloDiff = Math.abs(teamAElo - teamBElo);
-    const eloDiffNormalized = 1 - (eloDiff / maxEloDiff);
-    const eloScore = eloDiffNormalized * this.config.balanceWeight;
+    const matchEloDiff = Math.abs(teamAElo - teamBElo);
+    const matchEloDiffNormalized = 1 - (matchEloDiff / maxEloDiff);
+    const matchBalanceScore = matchEloDiffNormalized * this.config.matchBalanceWeight;
+
+    // TEAM ELO DIFFERENCE SCORE
+    const diffTeamAElo = Math.abs(defA.elo - attA.elo);
+    const diffTeamBElo = Math.abs(defB.elo - attB.elo);
+    const teamEloDiff = Math.max(diffTeamAElo, diffTeamBElo);
+    const teamEloDiffNormalized = 1 - Math.min(1, teamEloDiff / maxEloDiff);
+    const teamBalanceScore = teamEloDiffNormalized * this.config.teamBalanceWeight; // stiamo usando la differenza tra i primi 2 player e gli ultimi 2, ma va bene comunque
 
     // AVERAGE MATCHES PLAYED
     const teamsMatches = defA.matches + attA.matches + defB.matches + attB.matches;
@@ -182,7 +190,7 @@ export class MatchmakingService {
     return {
       teamA: { defence: defA, attack: attA },
       teamB: { defence: defB, attack: attB },
-      score: this.calculateMatchScore(diversityScore, eloScore, priorityScore)
+      score: this.calculateMatchScore(diversityScore, matchBalanceScore, priorityScore, teamBalanceScore)
     };
   }
 
@@ -276,9 +284,9 @@ export class MatchmakingService {
     return A1 + A2 + B1 + B2; // TODO fix normalizzazione qui e anche sui match (bisogna sottrarre il minimo)
   }
 
-  private static calculateMatchScore(diversityScore: number, eloDifference: number, priorityScore: number): number {
+  private static calculateMatchScore(diversityScore: number, matchBalanceScore: number, priorityScore: number, teamBalanceScore: number): number {
     const randomness = (Math.random() * 2 - 1) * this.config.randomness;
-    const baseScore = diversityScore + eloDifference + priorityScore;
+    const baseScore = diversityScore + matchBalanceScore + priorityScore + teamBalanceScore;
     return baseScore * (1 - randomness);
   }
 }
