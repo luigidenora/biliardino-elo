@@ -6,7 +6,16 @@ import { PlayerService } from '../services/player.service';
 /**
  * Renders and handles UI interactions for the ranking table.
  */
+type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate' | 'goaldiff' | 'form';
+
 export class RankingView {
+  private static sortKey: SortKey = 'elo';
+  private static sortAsc: boolean = false;
+  // Indici colonne: 0=#, 1=Nome, 2=Elo, 3=Ruolo, 4=Match, 5=V/S, 6=%Win, 7=Goal F/S, 8=Forma
+  private static sortKeys: (SortKey | null)[] = [
+    null, 'name', 'elo', null, 'matches', null, 'winrate', 'goaldiff', 'form'
+  ];
+
   /**
    * Initialize the ranking UI.
    *
@@ -14,6 +23,7 @@ export class RankingView {
    */
   public static init(): void {
     RankingView.render();
+    RankingView.makeHeadersSortable();
   }
 
   /**
@@ -24,10 +34,94 @@ export class RankingView {
   private static render(): void {
     const allPlayers = PlayerService.getAllPlayers();
     const playersWithMatches = allPlayers.filter(player => player.matches > 0);
-    const players = playersWithMatches.sort((a, b) => b.elo - a.elo);
+    const players = [...playersWithMatches];
+
+    // Sorting logic
+    const { sortKey, sortAsc } = RankingView;
+    players.sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case 'rank':
+          cmp = b.elo - a.elo;
+          break;
+        case 'name':
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case 'elo':
+          cmp = b.elo - a.elo;
+          break;
+        case 'matches':
+          cmp = b.matches - a.matches;
+          break;
+        case 'winrate': {
+          const aRate = a.matches > 0 ? (a.wins || 0) / a.matches : 0;
+          const bRate = b.matches > 0 ? (b.wins || 0) / b.matches : 0;
+          cmp = bRate - aRate;
+          break;
+        }
+        case 'goaldiff': {
+          const aRatio = (a.goalsAgainst || 0) > 0 ? (a.goalsFor || 0) / a.goalsAgainst : ((a.goalsFor || 0) > 0 ? Infinity : 0);
+          const bRatio = (b.goalsAgainst || 0) > 0 ? (b.goalsFor || 0) / b.goalsAgainst : ((b.goalsFor || 0) > 0 ? Infinity : 0);
+          cmp = bRatio - aRatio;
+          break;
+        }
+        case 'form': {
+          // Elo guadagnato nelle ultime 5 partite
+          const aDelta = (a.matchesDelta || []).slice(-5).reduce((sum, d) => sum + d, 0);
+          const bDelta = (b.matchesDelta || []).slice(-5).reduce((sum, d) => sum + d, 0);
+          cmp = bDelta - aDelta;
+          break;
+        }
+      }
+      return sortAsc ? -cmp : cmp;
+    });
+
     RankingView.renderrRows(players);
     RankingView.renderMatchStats();
     RankingView.renderRecentMatches();
+  }
+
+  /**
+   * Rende le intestazioni della tabella ordinabili.
+   */
+  private static makeHeadersSortable(): void {
+    const table = RankingView.getTable();
+    const thead = table.querySelector('thead');
+    if (!thead) return;
+    const headers = thead.querySelectorAll('th');
+    headers.forEach((th, idx) => {
+      if (!RankingView.sortKeys[idx]) return;
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        if (RankingView.sortKey === RankingView.sortKeys[idx]) {
+          RankingView.sortAsc = !RankingView.sortAsc;
+        } else {
+          RankingView.sortKey = RankingView.sortKeys[idx]!;
+          RankingView.sortAsc = false;
+        }
+        RankingView.render();
+        RankingView.updateSortIndicators();
+      });
+    });
+    RankingView.updateSortIndicators();
+  }
+
+  /**
+   * Aggiorna le frecce di ordinamento sulle intestazioni.
+   */
+  private static updateSortIndicators(): void {
+    const table = RankingView.getTable();
+    const thead = table.querySelector('thead');
+    if (!thead) return;
+    const headers = thead.querySelectorAll('th');
+    const arrows = RankingView.sortKeys.map(k =>
+      RankingView.sortKey === k ? (RankingView.sortAsc ? ' ↑' : ' ↓') : ''
+    );
+    headers.forEach((th, idx) => {
+      // Non mostrare freccia su colonne non ordinabili
+      if (!RankingView.sortKeys[idx]) return;
+      th.innerHTML = th.textContent!.replace(/[↑↓]/g, '').trim() + (arrows[idx] || '');
+    });
   }
 
   /**
@@ -40,24 +134,33 @@ export class RankingView {
   private static renderrRows(players: IPlayer[]): void {
     const table = RankingView.getTable();
     const tbody = table.querySelector('tbody')!;
-
-    let rank = 1;
-    let previousElo: number | null = null;
     const fragment = document.createDocumentFragment();
+
+    // Calcola il rank in base all'Elo decrescente, indipendentemente dall'ordinamento attivo
+    const playersByElo = [...players].sort((a, b) => getDisplayElo(b) - getDisplayElo(a));
+    const playerIdToRank = new Map<string, number>();
+    let currentRank = 1;
+    let prevElo: number | null = null;
+    for (let i = 0; i < playersByElo.length; i++) {
+      const p = playersByElo[i];
+      const elo = getDisplayElo(p);
+      if (prevElo !== null && elo === prevElo) {
+        // stesso rank
+      } else {
+        currentRank = i + 1;
+      }
+      playerIdToRank.set(p.id, currentRank);
+      prevElo = elo;
+    }
 
     for (let i = 0; i < players.length; i++) {
       const player = players[i];
-      const elo = getDisplayElo(player);
-
-      // Aggiorna il rank solo quando l'Elo cambia
-      if (i > 0 && previousElo !== null && elo !== previousElo) {
-        rank = i + 1;
-      }
+      const rank = playerIdToRank.get(player.id) ?? (i + 1);
 
       // Conta quanti giocatori hanno lo stesso Elo (guardando avanti e indietro)
+      const elo = getDisplayElo(player);
       let sameEloCount = 1;
       let rankStart = rank;
-
       // Conta quanti prima hanno lo stesso Elo (per trovare l'inizio del range)
       let backCount = 0;
       for (let j = i - 1; j >= 0; j--) {
@@ -67,12 +170,10 @@ export class RankingView {
           break;
         }
       }
-
       if (backCount > 0) {
         rankStart = rank;
         sameEloCount += backCount;
       }
-
       // Conta quanti dopo hanno lo stesso Elo
       for (let j = i + 1; j < players.length; j++) {
         if (getDisplayElo(players[j]) === elo) {
@@ -81,7 +182,6 @@ export class RankingView {
           break;
         }
       }
-
       let rankDisplay = '';
       if (sameEloCount > 1) {
         rankDisplay = `${rankStart}-${rankStart + sameEloCount - 1}`;
@@ -190,7 +290,7 @@ export class RankingView {
       `;
       fragment.appendChild(tr);
 
-      previousElo = elo;
+      // previousElo non serve più
     }
 
     tbody.innerHTML = '';
