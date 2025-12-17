@@ -378,6 +378,7 @@ export class RankingView {
       <caption style="caption-side:top;font-weight:700;font-size:1.2rem;margin-bottom:0.5rem;text-align:left;color:#2d3748;">Ultime 50 partite giocate</caption>
       <thead>
         <tr>
+          <th style="width:16px;"></th>
           <th>Rating</th>
           <th>Elo Squadra A</th>
           <th>Team A</th>
@@ -390,7 +391,16 @@ export class RankingView {
     `;
 
     const tbody = table.querySelector('tbody')!;
+    // Calcola la data di oggi (solo parte data, senza orario)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     for (const match of matches) {
+      // Determina se la partita è di oggi
+      const matchDate = new Date(match.createdAt);
+      matchDate.setHours(0, 0, 0, 0);
+      const isToday = matchDate.getTime() === today.getTime();
+
       // Team names
       const teamAAttack = PlayerService.getPlayerById(match.teamA.attack);
       const teamADefence = PlayerService.getPlayerById(match.teamA.defence);
@@ -463,7 +473,12 @@ export class RankingView {
       }
 
       const tr = document.createElement('tr');
+      // Pallino azzurro sfumato stile notifica se la partita è di oggi
+      const blueDot = isToday
+        ? `<span title="Partita di oggi" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 40% 40%, #4fc3f7 70%, #1976d2 100%);box-shadow:0 0 4px #1976d2aa;vertical-align:middle;margin:0 2px;"></span>`
+        : '';
       tr.innerHTML = `
+        <td style="${rowBackgroundColor}text-align:center;">${blueDot}</td>
         <td style="${rowBackgroundColor}font-size:1.15em;font-style:italic;"><strong>${Math.round(avgRating)}</strong></td>
         <td style="${rowBackgroundColor}"><strong>${eloA}</strong> ${deltaA_formatted}</td>
         <td style="${rowBackgroundColor}">${teamA}</td>
