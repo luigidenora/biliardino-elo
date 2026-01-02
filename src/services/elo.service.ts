@@ -1,68 +1,78 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { PlayerService } from './player.service';
+import { getPlayerById } from './player.service';
 
-export class EloService {
-  public static readonly StartK = 75 * 1.5;
-  public static readonly FinalK = 75;
-  public static readonly MatchesK = 16; // 1 partita a settimana
+export const StartK = 40 * 1.35;
+export const FinalK = 40;
+export const MatchesK = 10; // 1 partita a settimana
 
-  public static calculateEloChange(match: IMatch): { deltaA: number; deltaB: number; eloA: number; eloB: number; expA: number; expB: number; kA: number; kB: number } | null {
-    const teamAP1 = PlayerService.getPlayerById(match.teamA.defence);
-    const teamAP2 = PlayerService.getPlayerById(match.teamA.attack);
+export function updateMatch(match: IMatch): void {
+  const teamAP1 = getPlayerById(match.teamA.defence);
+  const teamAP2 = getPlayerById(match.teamA.attack);
 
-    const teamBP1 = PlayerService.getPlayerById(match.teamB.defence);
-    const teamBP2 = PlayerService.getPlayerById(match.teamB.attack);
+  const teamBP1 = getPlayerById(match.teamB.defence);
+  const teamBP2 = getPlayerById(match.teamB.attack);
 
-    if (!teamAP1 || !teamAP2 || !teamBP1 || !teamBP2) {
-      return null;
-    }
-
-    const goalsA = match.score[0];
-    const goalsB = match.score[1];
-
-    const eloA = (teamAP1.elo + teamAP2.elo) / 2;
-    const eloB = (teamBP1.elo + teamBP2.elo) / 2;
-
-    const expA = EloService.expectedScore(eloA, eloB);
-    const expB = 1 - expA;
-
-    const scoreA = goalsA > goalsB ? 1 : goalsA === goalsB ? 0.5 : 0;
-    const scoreB = 1 - scoreA;
-
-    const goalMultiplier = EloService.marginMultiplier(goalsA, goalsB);
-    const surpriseFactor = -Math.log2((goalsA > goalsB ? expA : expB) * (0.65 - 0.35) + 0.35);
-
-    const kA = EloService.getTeamK(teamAP1, teamAP2);
-    const kB = EloService.getTeamK(teamBP1, teamBP2);
-
-    const deltaA = kA * goalMultiplier * (scoreA - expA) * surpriseFactor;
-    const deltaB = kB * goalMultiplier * (scoreB - expB) * surpriseFactor;
-
-    return { deltaA, deltaB, eloA, eloB, expA, expB, kA, kB };
+  if (!teamAP1 || !teamAP2 || !teamBP1 || !teamBP2) {
+    throw new Error('One or more players not found for match Elo calculation.');
   }
 
-  private static getPlayerK(matches: number): number {
-    const firstMatchMultiplier = Math.max(0, (1 - (matches / EloService.MatchesK)) * (EloService.StartK - EloService.FinalK));
-    return EloService.FinalK + firstMatchMultiplier;
-  }
+  const [goalsA, goalsB] = match.score;
 
-  private static getTeamK(p1: IPlayer, p2: IPlayer): number {
-    return (EloService.getPlayerK(p1.matches) + EloService.getPlayerK(p2.matches)) / 2;
-  }
+  const eloA = (getPlayerElo(teamAP1, true) + getPlayerElo(teamAP2, false)) / 2;
+  const eloB = (getPlayerElo(teamBP1, true) + getPlayerElo(teamBP2, false)) / 2;
 
-  public static expectedScore(eloA: number, eloB: number): number {
-    return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
-  }
+  const expA = expectedScore(eloA, eloB);
+  const expB = 1 - expA;
 
-  private static marginMultiplier(goalsA: number, goalsB: number): number {
-    const maxGoal = Math.max(goalsA, goalsB); // remove in the new app
-    if (maxGoal >= 11) {
-      goalsA = goalsA * 8 / maxGoal;
-      goalsB = goalsB * 8 / maxGoal;
-    }
+  const goalMultiplier = marginMultiplier(goalsA, goalsB);
+  const winnerExp = goalsA > goalsB ? expA : expB;
+  const winnerSign = winnerExp > 0.5 ? -1 : 1;
+  const surpriseFactor = 1 + (3 * Math.pow(Math.abs(0.5 - winnerExp), 1.5)) * winnerSign;
 
-    const diff = Math.abs(goalsA - goalsB);
-    return Math.sqrt(diff / 2 + 1) * (1 + diff / 8) / 4.47213595499958; // normalized
-  }
+  const scoreA = goalsA > goalsB ? 1 : goalsA === goalsB ? 0.5 : 0;
+  const scoreB = 1 - scoreA;
+
+  const kA = getTeamK(teamAP1, teamAP2);
+  const kB = getTeamK(teamBP1, teamBP2);
+
+  const deltaA = kA * goalMultiplier * (scoreA - expA) * surpriseFactor;
+  const deltaB = kB * goalMultiplier * (scoreB - expB) * surpriseFactor;
+
+  match.expectedScore[0] = expA;
+  match.expectedScore[1] = expB;
+
+  match.deltaELO[0] = deltaA;
+  match.deltaELO[1] = deltaB;
+
+  match.teamELO[0] = eloA;
+  match.teamELO[1] = eloB;
+
+  match.teamAELO[0] = teamAP1.elo;
+  match.teamAELO[1] = teamAP2.elo;
+
+  match.teamBELO[0] = teamBP1.elo;
+  match.teamBELO[1] = teamBP2.elo;
+}
+
+export function getPlayerElo(player: IPlayer, isDef: boolean): number {
+  return player.elo - (isDef ? 1 - player.defence : player.defence) * 100;
+}
+
+function getPlayerK(matches: number): number {
+  const firstMatchMultiplier = Math.max(0, (1 - (matches / MatchesK)) * (StartK - FinalK));
+  return FinalK + firstMatchMultiplier;
+}
+
+function getTeamK(p1: IPlayer, p2: IPlayer): number {
+  return (getPlayerK(p1.matches) + getPlayerK(p2.matches)) / 2;
+}
+
+export function expectedScore(eloA: number, eloB: number): number {
+  return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+}
+
+function marginMultiplier(goalsA: number, goalsB: number): number {
+  const diff = Math.abs(goalsA - goalsB);
+  return 1 + (diff / 8 * 0.5); // pesato al 50%
 }

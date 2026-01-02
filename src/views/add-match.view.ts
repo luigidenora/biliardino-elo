@@ -1,9 +1,9 @@
-import { IMatch } from '@/models/match.interface';
+import { IMatch, IMatchDTO } from '@/models/match.interface';
 import { ITeam } from '@/models/team.interface';
-import { RepositoryService } from '@/services/repository.service';
+import { saveMatch } from '@/services/repository.service';
 import { formatDate } from '@/utils/format-date.util';
-import { MatchService } from '../services/match.service';
-import { PlayerService } from '../services/player.service';
+import { addMatch, editMatch, getAllMatches, MatchService } from '../services/match.service';
+import { getAllPlayers, getPlayerById, PlayerService } from '../services/player.service';
 
 /**
  * IDs of the `<select>` elements used for choosing players for teams.
@@ -28,7 +28,7 @@ export class AddMatchView {
   /**
    * Id of the match currently being edited, or `null` if creating a new one.
    */
-  private static _editingMatchId: string | null = null;
+  private static _editingMatchId: number | null = null;
 
   /**
    * Initialize the view: populate player selects, bind form events and render existing matches.
@@ -46,7 +46,7 @@ export class AddMatchView {
    * before inserting all players.
    */
   private static populateSelects(): void {
-    const players = PlayerService.getAllPlayers();
+    const players = getAllPlayers();
     // Sort players alphabetically by name
     const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
     const selects = AddMatchView.getAllTeamSelects();
@@ -120,34 +120,20 @@ export class AddMatchView {
         attack: teamBAtt
       };
 
-      const editingId = AddMatchView._editingMatchId;
-      let match: IMatch;
+      const editingId = AddMatchView._editingMatchId as unknown as number; // TODO
+      let match: IMatchDTO;
 
       if (editingId) {
         // ✏️ EDIT EXISTING MATCH
-        const matches = MatchService.getAllMatches();
-        const existing = matches.find(m => m.id === editingId);
+        const match = editMatch(editingId, teamA, teamB, [scoreA, scoreB]);
 
-        if (!existing) {
-          throw new Error('Match to edit not found.');
-        }
-
-        existing.teamA = teamA;
-        existing.teamB = teamB;
-        existing.score = [scoreA, scoreB];
-
-        match = existing;
-
-        // If you add a MatchService.updateMatch, call it here instead of mutating directly.
-        await RepositoryService.saveMatch(match);
-        // updateElo(match);
+        await saveMatch(match);
 
         messageEl.textContent = 'Match updated successfully.';
       } else {
         // ➕ CREATE NEW MATCH
-        match = MatchService.addMatch(teamA, teamB, [scoreA, scoreB]);
-        await RepositoryService.saveMatch(match);
-        // updateElo(match);
+        match = addMatch(teamA, teamB, [scoreA, scoreB]);
+        await saveMatch(match);
 
         messageEl.textContent = 'Match saved successfully.';
       }
@@ -177,7 +163,7 @@ export class AddMatchView {
     const tbody = table.querySelector('tbody') ?? table.createTBody();
     tbody.innerHTML = '';
 
-    const matches = MatchService.getAllMatches();
+    const matches = getAllMatches();
 
     for (const match of matches) {
       const row = AddMatchView.createMatchRow(match);
@@ -195,11 +181,11 @@ export class AddMatchView {
     const row = document.createElement('tr');
     row.dataset.matchId = match.id;
 
-    const teamAP1 = PlayerService.getPlayerById(match.teamA.defence)!.name;
-    const teamAP2 = PlayerService.getPlayerById(match.teamA.attack)!.name;
+    const teamAP1 = getPlayerById(match.teamA.defence)!.name;
+    const teamAP2 = getPlayerById(match.teamA.attack)!.name;
 
-    const teamBP1 = PlayerService.getPlayerById(match.teamB.defence)!.name;
-    const teamBP2 = PlayerService.getPlayerById(match.teamB.attack)!.name;
+    const teamBP1 = getPlayerById(match.teamB.defence)!.name;
+    const teamBP2 = getPlayerById(match.teamB.attack)!.name;
 
     row.innerHTML = `
       <td>${teamAP1} / ${teamAP2}</td>
@@ -227,8 +213,8 @@ export class AddMatchView {
    *
    * @param matchId - The id of the match to edit.
    */
-  private static startEditing(matchId: string): void {
-    const match = MatchService.getAllMatches().find(m => m.id === matchId);
+  private static startEditing(matchId: number): void {
+    const match = getAllMatches().find(m => m.id === matchId); // TODO ???
     if (!match) {
       console.error('Match to edit not found:', matchId);
       return;

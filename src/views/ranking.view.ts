@@ -1,7 +1,7 @@
 import { IPlayer } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { MatchService } from '../services/match.service';
-import { PlayerService } from '../services/player.service';
+import { getAllMatches } from '../services/match.service';
+import { getAllPlayers, getPlayerById } from '../services/player.service';
 
 /**
  * Renders and handles UI interactions for the ranking table.
@@ -32,7 +32,7 @@ export class RankingView {
    * Sorts the players by Elo and populates table rows.
    */
   private static render(): void {
-    const allPlayers = PlayerService.getAllPlayers();
+    const allPlayers = getAllPlayers();
     const playersWithMatches = allPlayers.filter(player => player.matches > 0);
     const players = [...playersWithMatches];
 
@@ -138,7 +138,7 @@ export class RankingView {
 
     // Calcola il rank in base all'Elo decrescente, indipendentemente dall'ordinamento attivo
     const playersByElo = [...players].sort((a, b) => getDisplayElo(b) - getDisplayElo(a));
-    const playerIdToRank = new Map<string, number>();
+    const playerIdToRank = new Map<number, number>();
     let currentRank = 1;
     let prevElo: number | null = null;
     for (let i = 0; i < playersByElo.length; i++) {
@@ -303,9 +303,9 @@ export class RankingView {
    * Render match statistics dashboard.
    */
   private static renderMatchStats(): void {
-    const allMatches = MatchService.getAllMatches();
+    const allMatches = getAllMatches();
     const totalMatches = allMatches.length;
-    const allPlayers = PlayerService.getAllPlayers();
+    const allPlayers = getAllPlayers();
 
     // Calcola goal totali
     const totalGoals = allMatches.reduce((sum, match) => sum + match.score[0] + match.score[1], 0);
@@ -328,7 +328,7 @@ export class RankingView {
       if (!player.teammatesDelta) continue;
       for (const [teammateId, delta] of player.teammatesDelta) {
         if (delta > bestPair.delta) {
-          const teammate = PlayerService.getPlayerById(teammateId);
+          const teammate = getPlayerById(teammateId);
           if (teammate) {
             bestPair = { player1: player.name, player2: teammate.name, delta };
           }
@@ -345,7 +345,7 @@ export class RankingView {
       if (!player.teammatesDelta) continue;
       for (const [teammateId, delta] of player.teammatesDelta) {
         if (delta < worstPair.delta) {
-          const teammate = PlayerService.getPlayerById(teammateId);
+          const teammate = getPlayerById(teammateId);
           if (teammate) {
             worstPair = { player1: player.name, player2: teammate.name, delta };
           }
@@ -454,7 +454,7 @@ export class RankingView {
    * Render recent matches table below the ranking.
    */
   private static renderRecentMatches(): void {
-    const allMatches = MatchService.getAllMatches();
+    const allMatches = getAllMatches();
     const matches = allMatches
       .sort((a, b) => b.createdAt - a.createdAt);
     if (!matches.length) return;
@@ -481,11 +481,11 @@ export class RankingView {
         <tr>
           <th style="width:16px;"></th>
           <th>Rating</th>
-          <th>Elo Squadra A</th>
+          <th></th>
           <th>Team A</th>
           <th>Risultato</th>
           <th>Team B</th>
-          <th>Elo Squadra B</th>
+          <th></th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -503,28 +503,41 @@ export class RankingView {
       const isToday = matchDate.getTime() === today.getTime();
 
       // Team names
-      const teamAAttack = PlayerService.getPlayerById(match.teamA.attack);
-      const teamADefence = PlayerService.getPlayerById(match.teamA.defence);
-      const teamBAttack = PlayerService.getPlayerById(match.teamB.attack);
-      const teamBDefence = PlayerService.getPlayerById(match.teamB.defence);
+      const teamAAttack = getPlayerById(match.teamA.attack);
+      const teamADefence = getPlayerById(match.teamA.defence);
+      const teamBAttack = getPlayerById(match.teamB.attack);
+      const teamBDefence = getPlayerById(match.teamB.defence);
 
-      let teamA = `${teamADefence?.name || '?'} & ${teamAAttack?.name || '?'}`;
-      let teamB = `${teamBDefence?.name || '?'} & ${teamBAttack?.name || '?'}`;
+      // Helper to format player name with Elo preso dal match
+      function playerWithElo(player: IPlayer | undefined, elo: number | undefined): string {
+        if (!player || elo === undefined) return '?';
+        return `${player.name} <strong>(${Math.round(elo)})</strong>`;
+      }
+
+      // ELO dei giocatori per questa partita
+      // teamAELO: [difensore, attaccante], teamBELO: [difensore, attaccante]
+      const teamAELO = match.teamAELO;
+      const teamBELO = match.teamBELO;
+
+      let teamA = `${playerWithElo(teamADefence, teamAELO[0])} & ${playerWithElo(teamAAttack, teamAELO[1])}`;
+      let teamB = `${playerWithElo(teamBDefence, teamBELO[0])} & ${playerWithElo(teamBAttack, teamBELO[1])}`;
+
+      // ...le stringhe teamA e teamB sono già definite sopra
 
       // Determina la squadra vincitrice
       const teamAWon = match.score[0] > match.score[1];
 
       // Elo prima arrotondato
-      let eloA = Math.round(match.teamELO![0]);
-      let eloB = Math.round(match.teamELO![1]);
+      let eloA = Math.round(match.teamELO[0]);
+      let eloB = Math.round(match.teamELO[1]);
 
       // Delta arrotondato e formattato con colori
-      let deltaA = Math.round(match.deltaELO![0]);
-      let deltaB = Math.round(match.deltaELO![1]);
+      let deltaA = Math.round(match.deltaELO[0]);
+      let deltaB = Math.round(match.deltaELO[1]);
 
       // Percentuali di vittoria attesa (expA, expB)
-      let expA = match.expectedScore![0];
-      let expB = match.expectedScore![1];
+      let expA = match.expectedScore[0];
+      let expB = match.expectedScore[1];
 
       let scoreA = match.score[0];
       let scoreB = match.score[1];

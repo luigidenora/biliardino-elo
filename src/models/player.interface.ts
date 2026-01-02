@@ -1,20 +1,21 @@
-export interface IPlayer {
-  id: string;
+export interface IPlayerDTO {
+  id: number;
   name: string;
   elo: number;
-  matches: number;
   defence: number;
+}
 
-  // CALCULATED AFTER
-
+export interface IPlayer extends IPlayerDTO {
+  matches: number;
   matchesAsDefender: number;
   matchesAsAttacker: number;
   wins: number;
   matchesDelta: number[];
   goalsFor: number;
   goalsAgainst: number;
-  teammatesDelta?: Map<string, number>;
-  bestElo?: number;
-  teammatesMatchCount?: Map<string, number>;
-  opponentsMatchCount?: Map<string, number>;
+  bestElo: number;
+  rank: number;
+  teammatesDelta?: Map<number, number>;
+  teammatesMatchCount?: Map<number, number>;
+  opponentsMatchCount?: Map<number, number>;
 }

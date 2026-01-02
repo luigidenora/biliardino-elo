@@ -1,7 +1,7 @@
 {
-  "name": "Biliardino ELO",
-  "short_name": "Biliardino ELO",
-  "description": "Classifica e matchmaking per il biliardino.",
+  "name": "CAlcio Balilla",
+  "short_name": "CAlcio Balilla",
+  "description": "CA Biliardino Championship",
   "lang": "it",
   "start_url": "./index.html",
   "scope": "./",
@@ -10,12 +10,12 @@
   "theme_color": "#062c7d",
   "icons": [
     {
-      "src": "./icons/icon-192.png",
+      "src": "./icons/icon-192.jpg",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "./icons/icon-512.png",
+      "src": "./icons/icon-512.jpg",
       "sizes": "512x512",
       "type": "image/png"
     },

@@ -1,17 +1,17 @@
-const CACHE_NAME = 'biliardino-elo-v1';
+const CACHE_NAME = 'CAlcio-Balilla-v1';
 const CORE_ASSETS = [
   './',
   './index.html',
   './players.html',
   './matchmaking.html',
-  './add.html',
+  // './add.html',
   './styles/ranking.css',
   './styles/players.css',
   './styles/matchmaking.css',
-  './styles/add-match.css',
+  // './styles/add-match.css',
   './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  './icons/icon-192.jpg',
+  './icons/icon-512.jpg',
   './icons/icon-192-maskable.png',
   './icons/icon-512-maskable.png'
 ];

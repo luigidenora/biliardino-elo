@@ -1,5 +1,105 @@
+/* Play card flex layout with shark season */
+.play-card-flex {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+.play-card-flex .shark-season-grid {
+  min-width: 180px;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.play-card-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1;
+  gap: 1.5rem;
+}
+
+.play-card-flex .play-btn {
+  align-self: center;
+  margin-bottom: 0;
+}
+
+/* Shark Season grid layout */
+.shark-season-grid {
+  display: grid;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  margin-bottom: 0;
+  min-height: 180px;
+}
+
+.shark-season-grid .shark-img {
+  grid-row: 1 / span 3;
+  grid-column: 1;
+  width: 160px;
+  height: auto;
+  justify-self: center;
+  align-self: center;
+}
+
+.shark-season-grid .shark-title {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #062c7d;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(6, 44, 125, 0.10);
+  justify-self: start;
+  align-self: end;
+}
+
+.shark-season-grid .season-end {
+  grid-row: 2;
+  grid-column: 2;
+
+  .shark-season-grid .play-btn {
+    grid-row: 3;
+    grid-column: 2;
+    justify-self: center;
+    align-self: center;
+    margin-top: 0.5rem;
+  }
+
+  .play-disclaimer-centered {
+    margin: 2rem auto 0 auto;
+    display: flex;
+    justify-content: center;
+    max-width: 600px;
+  }
+
+  font-size: 1rem;
+  color: var(--color-accent, #6e6e73);
+  font-weight: 500;
+  font-family: inherit !important;
+  justify-self: center;
+  align-self: center;
+  text-align: center;
+}
+
 :root {
   --color-bg: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+
+  .shark-info-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
   --color-card: rgba(255, 255, 255, 0.8);
   --color-border: rgba(0, 0, 0, 0.08);
   --color-primary: #1d1d1f;
@@ -44,28 +144,26 @@ h1 {
   text-align: center;
   color: #6e6e73;
   font-weight: 500;
-  margin-top: 0.25rem;
-  margin-bottom: 1rem;
+  margin-top: 0rem;
+  margin-bottom: 0.25rem;
   opacity: 0.95;
 }
 
 .play-card-container {
   max-width: 1400px;
   width: 100%;
-  margin: 0 auto 1.5rem;
+  margin: 0rem auto;
   padding: 0 1.5rem;
   box-sizing: border-box;
 }
 
 .play-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border-radius: 18px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  border: none;
+  transition: none;
   display: flex;
   align-items: center;
   gap: 2rem;

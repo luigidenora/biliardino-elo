@@ -1,8 +1,7 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { MatchService } from '@/services/match.service';
-import { MatchResult, PlayerStats, StatsService } from '@/services/stats.service';
-import { PlayerService } from '../services/player.service';
+import { getPlayerStats, MatchResult, PlayerStats } from '@/services/stats.service';
+import { getAllPlayers, getPlayerById } from '../services/player.service';
 
 /**
  * Handles UI display for player details.
@@ -13,14 +12,14 @@ export class PlayersView {
    */
   public static init(): void {
     const urlParams = new URLSearchParams(window.location.search);
-    const playerId = urlParams.get('id');
+    const playerId = Number.parseInt(urlParams.get('id')!);
 
     if (!playerId) {
       PlayersView.renderError('Nessun giocatore specificato. Aggiungi ?id=PLAYER_ID all\'URL.');
       return;
     }
 
-    const player = PlayerService.getPlayerById(playerId);
+    const player = getPlayerById(playerId);
     if (!player) {
       PlayersView.renderError('Giocatore non trovato.');
       return;
@@ -50,7 +49,7 @@ export class PlayersView {
       throw new Error('Player stats container not found');
     }
 
-    const stats = StatsService.getPlayerStats(player.id, MatchService.getAllMatches());
+    const stats = getPlayerStats(player.id);
 
     if (!stats) {
       container.innerHTML = '<div class="empty-state">Nessuna statistica disponibile</div>';
@@ -61,7 +60,7 @@ export class PlayersView {
     const titleElement = document.getElementById('player-name');
     if (titleElement) {
       // Calculate rank considering only players with at least 1 match
-      const allPlayers = PlayerService.getAllPlayers().filter(p => p.matches > 0);
+      const allPlayers = getAllPlayers().filter(p => p.matches > 0);
       const sortedPlayers = allPlayers.sort((a, b) => b.elo - a.elo);
       const rank = sortedPlayers.findIndex(p => p.id === player.id) + 1;
       const rankText = rank > 0 ? ` (${rank}°)` : '';
@@ -82,7 +81,7 @@ export class PlayersView {
       return `${result.player.name} (${result.score > 0 ? '+' : ''}${result.score.toFixed(0)})`;
     };
 
-    const formatMatchResult = (result: { match: IMatch; delta: number } | null, playerId: string): { score: string; details: string } => {
+    const formatMatchResult = (result: { match: IMatch; delta: number } | null, playerId: number): { score: string; details: string } => {
       if (!result) return { score: 'N/A', details: '' };
       const m = result.match;
       const isTeamA = m.teamA.attack === playerId || m.teamA.defence === playerId;
@@ -91,9 +90,9 @@ export class PlayersView {
       const myTeam = isTeamA ? m.teamA : m.teamB;
       const opponentTeam = isTeamA ? m.teamB : m.teamA;
 
-      const teammate = PlayerService.getPlayerById(myTeam.attack === playerId ? myTeam.defence : myTeam.attack);
-      const opp1 = PlayerService.getPlayerById(opponentTeam.attack);
-      const opp2 = PlayerService.getPlayerById(opponentTeam.defence);
+      const teammate = getPlayerById(myTeam.attack === playerId ? myTeam.defence : myTeam.attack);
+      const opp1 = getPlayerById(opponentTeam.attack);
+      const opp2 = getPlayerById(opponentTeam.defence);
 
       const teammateName = teammate?.name || '?';
       const opponentsNames = `${opp1?.name || '?'} & ${opp2?.name || '?'}`;
@@ -104,7 +103,7 @@ export class PlayersView {
       };
     };
 
-    const formatMatchByScore = (match: IMatch | null, playerId: string): { score: string; details: string } => {
+    const formatMatchByScore = (match: IMatch | null, playerId: number): { score: string; details: string } => {
       if (!match) return { score: 'N/A', details: '' };
       const isTeamA = match.teamA.attack === playerId || match.teamA.defence === playerId;
       const scoreFor = isTeamA ? match.score[0] : match.score[1];
@@ -114,9 +113,9 @@ export class PlayersView {
       const myTeam = isTeamA ? match.teamA : match.teamB;
       const opponentTeam = isTeamA ? match.teamB : match.teamA;
 
-      const teammate = PlayerService.getPlayerById(myTeam.attack === playerId ? myTeam.defence : myTeam.attack);
-      const opp1 = PlayerService.getPlayerById(opponentTeam.attack);
-      const opp2 = PlayerService.getPlayerById(opponentTeam.defence);
+      const teammate = getPlayerById(myTeam.attack === playerId ? myTeam.defence : myTeam.attack);
+      const opp1 = getPlayerById(opponentTeam.attack);
+      const opp2 = getPlayerById(opponentTeam.defence);
 
       const teammateName = teammate?.name || '?';
       const opponentsNames = `${opp1?.name || '?'} & ${opp2?.name || '?'}`;
@@ -133,9 +132,34 @@ export class PlayersView {
       const myTeam = isTeamA ? match.teamA : match.teamB;
       const opponentTeam = isTeamA ? match.teamB : match.teamA;
 
-      const teammate = PlayerService.getPlayerById(myTeam.attack === player.id ? myTeam.defence : myTeam.attack);
-      const oppDefence = PlayerService.getPlayerById(opponentTeam.defence);
-      const oppAttack = PlayerService.getPlayerById(opponentTeam.attack);
+      const teammate = getPlayerById(myTeam.attack === player.id ? myTeam.defence : myTeam.attack);
+      const oppDefence = getPlayerById(opponentTeam.defence);
+      const oppAttack = getPlayerById(opponentTeam.attack);
+
+      // Helper per nome + elo preso dal match
+      function playerWithElo(p: IPlayer | undefined, elo: number | undefined): string {
+        if (!p || elo === undefined) return '?';
+        return `${p.name} <strong>(${Math.round(elo)})</strong>`;
+      }
+
+      // ELO dei giocatori per questa partita
+      // teamAELO: [difensore, attaccante], teamBELO: [difensore, attaccante]
+      const teamAELO = match.teamAELO || [undefined, undefined];
+      const teamBELO = match.teamBELO || [undefined, undefined];
+
+      // Teammate ELO
+      let teammateElo: number | undefined = undefined;
+      if (isTeamA) {
+        teammateElo = myTeam.defence === player.id ? teamAELO[1] : teamAELO[0];
+      } else {
+        teammateElo = myTeam.defence === player.id ? teamBELO[1] : teamBELO[0];
+      }
+      const teammateNames = playerWithElo(teammate, teammateElo);
+
+      // Opponenti ELO
+      const oppDefenceElo = isTeamA ? teamBELO[0] : teamAELO[0];
+      const oppAttackElo = isTeamA ? teamBELO[1] : teamAELO[1];
+      const opponentsNames = `${playerWithElo(oppDefence, oppDefenceElo)} & ${playerWithElo(oppAttack, oppAttackElo)}`;
 
       const myScore = isTeamA ? match.score[0] : match.score[1];
       const oppScore = isTeamA ? match.score[1] : match.score[0];
@@ -145,24 +169,21 @@ export class PlayersView {
       const myRole = isAttack
         ? '<span style="font-size:0.9em;color:#dc3545;">⚔️ ATT</span>'
         : '<span style="font-size:0.9em;color:#0077cc;">🛡️ DIF</span>';
-      const teammateNames = `${teammate?.name || '?'}`;
-      const opponentsNames = `${oppDefence?.name || '?'} & ${oppAttack?.name || '?'}`;
 
       // Elo delle squadre prima della partita
-      const myTeamElo = isTeamA ? Math.round(match.teamELO![0]) : Math.round(match.teamELO![1]);
-      const oppTeamElo = isTeamA ? Math.round(match.teamELO![1]) : Math.round(match.teamELO![0]);
+      const myTeamElo = isTeamA ? Math.round(match.teamELO[0]) : Math.round(match.teamELO[1]);
+      const oppTeamElo = isTeamA ? Math.round(match.teamELO[1]) : Math.round(match.teamELO[0]);
 
       // Delta ELO
-      const myDelta = isTeamA ? Math.round(match.deltaELO![0]) : Math.round(match.deltaELO![1]);
-      const oppDelta = isTeamA ? Math.round(match.deltaELO![1]) : Math.round(match.deltaELO![0]);
+      const myDelta = isTeamA ? Math.round(match.deltaELO[0]) : Math.round(match.deltaELO[1]);
+      const oppDelta = isTeamA ? Math.round(match.deltaELO[1]) : Math.round(match.deltaELO[0]);
       const deltaColor = myDelta >= 0 ? 'green' : 'red';
       const oppDeltaColor = oppDelta >= 0 ? 'green' : 'red';
-      const deltaFormatted = `<span style="color:${deltaColor};">(${myDelta >= 0 ? '+' : ''}${myDelta})</span>`;
       const oppDeltaFormatted = `<span style="color:${oppDeltaColor};">(${oppDelta >= 0 ? '+' : ''}${oppDelta})</span>`;
 
       // Percentuali di vittoria attesa
-      const myExpected = isTeamA ? match.expectedScore![0] : match.expectedScore![1];
-      const oppExpected = isTeamA ? match.expectedScore![1] : match.expectedScore![0];
+      const myExpected = isTeamA ? match.expectedScore[0] : match.expectedScore[1];
+      const oppExpected = isTeamA ? match.expectedScore[1] : match.expectedScore[0];
       const myExpectedPercent = typeof myExpected === 'number' ? Math.round(myExpected * 100) : '?';
       const oppExpectedPercent = typeof oppExpected === 'number' ? Math.round(oppExpected * 100) : '?';
 
@@ -309,22 +330,34 @@ export class PlayersView {
         <div class="best-worst-grid">
           <div class="best-worst-item">
             <span class="stat-label">Migliore Vittoria (ELO)</span>
-            <span class="stat-score positive">${(() => { const result = formatMatchResult(stats.bestVictoryByElo, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-score positive">${(() => {
+              const result = formatMatchResult(stats.bestVictoryByElo, player.id);
+              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+            })()}</span>
             <span class="stat-details">${formatMatchResult(stats.bestVictoryByElo, player.id).details}</span>
           </div>
           <div class="best-worst-item">
             <span class="stat-label">Peggiore Sconfitta (ELO)</span>
-            <span class="stat-score negative">${(() => { const result = formatMatchResult(stats.worstDefeatByElo, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-score negative">${(() => {
+              const result = formatMatchResult(stats.worstDefeatByElo, player.id);
+              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+            })()}</span>
             <span class="stat-details">${formatMatchResult(stats.worstDefeatByElo, player.id).details}</span>
           </div>
           <div class="best-worst-item">
             <span class="stat-label">Migliore Vittoria (Punteggio)</span>
-            <span class="stat-score positive">${(() => { const result = formatMatchByScore(stats.bestVictoryByScore, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-score positive">${(() => {
+              const result = formatMatchByScore(stats.bestVictoryByScore, player.id);
+              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+            })()}</span>
             <span class="stat-details">${formatMatchByScore(stats.bestVictoryByScore, player.id).details}</span>
           </div>
           <div class="best-worst-item">
             <span class="stat-label">Peggiore Sconfitta (Punteggio)</span>
-            <span class="stat-score negative">${(() => { const result = formatMatchByScore(stats.worstDefeatByScore, player.id); return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`; })()}</span>
+            <span class="stat-score negative">${(() => {
+              const result = formatMatchByScore(stats.worstDefeatByScore, player.id);
+              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+            })()}</span>
             <span class="stat-details">${formatMatchByScore(stats.worstDefeatByScore, player.id).details}</span>
           </div>
         </div>
@@ -344,8 +377,8 @@ export class PlayersView {
             <table class="match-history-table">
               <thead>
                 <tr>
-                  <th>Elo Personale</th>
-                  <th>Elo Squadra</th>
+                  <th>Elo</th>
+                  <th>Elo Team</th>
                   <th>Ruolo</th>
                   <th>Compagno</th>
                   <th>Risultato</th>

@@ -1,11 +1,10 @@
 import { IPlayer } from '@/models/player.interface';
-import { MatchService } from '@/services/match.service';
+import { addMatch } from '@/services/match.service';
+import { saveMatch } from '@/services/repository.service';
 import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { updateElo } from '@/utils/update-elo.util';
-import { IMatchProposal, MatchmakingService } from '../services/matchmaking.service';
-import { PlayerService } from '../services/player.service';
-import { RepositoryService } from '../services/repository.service';
+import { findBestMatch, IMatchProposal } from '../services/matchmaking.service';
+import { getAllPlayers, getPlayerByName } from '../services/player.service';
 
 /**
  * Player state: 0 = unchecked, 1 = checked (queue), 2 = priority
@@ -35,7 +34,7 @@ export class MatchmakingView {
    */
   private static renderPlayersList(): void {
     const playersList = document.getElementById('players-list')!;
-    const allPlayers = PlayerService.getAllPlayers();
+    const allPlayers = getAllPlayers();
     const sortedPlayers = allPlayers.sort((a, b) => a.name.localeCompare(b.name));
 
     // Determine today's availability key
@@ -142,6 +141,7 @@ export class MatchmakingView {
           <li>Il goal è valido solo se ci sono stati almeno due tocchi <b>volontari</b> da stecche diverse</li>
           <li>Non valgono schizzo e rullata</li>
           <li>Se la palla non può essere colpita e non è tra difensore e portiere, si riparte da calcio d'inizio</li>
+          <li>I ruoli devono essere rispettati e non posso essere cambiati.</li>
         </ul>
       </div>
     `;
@@ -184,7 +184,7 @@ export class MatchmakingView {
    * Select all players.
    */
   private static selectAllPlayers(): void {
-    const allPlayers = PlayerService.getAllPlayers();
+    const allPlayers = getAllPlayers();
     const playersList = document.getElementById('players-list')!;
 
     allPlayers.forEach((player) => {
@@ -207,7 +207,7 @@ export class MatchmakingView {
    * Deselect all players.
    */
   private static deselectAllPlayers(): void {
-    const allPlayers = PlayerService.getAllPlayers();
+    const allPlayers = getAllPlayers();
     const playersList = document.getElementById('players-list')!;
 
     allPlayers.forEach((player) => {
@@ -250,16 +250,13 @@ export class MatchmakingView {
     generateButton.disabled = !shouldEnable;
   }
 
-  /**
-   * Generate balanced matches from selected players using MatchmakingService.
-   */
   private static generateMatches(): void {
     // Get all selected players (both queue and priority)
-    const selectedPlayerIds: string[] = [];
-    const priorityPlayerIds: string[] = [];
+    const selectedPlayerIds: number[] = [];
+    const priorityPlayerIds: number[] = [];
 
     MatchmakingView.playerStates.forEach((state, playerName) => {
-      const player = PlayerService.getPlayerByName(playerName);
+      const player = getPlayerByName(playerName);
       if (!player) return;
 
       if (state === 1) {
@@ -275,7 +272,7 @@ export class MatchmakingView {
       return;
     }
 
-    const match = MatchmakingService.findBestMatch(selectedPlayerIds, priorityPlayerIds);
+    const match = findBestMatch(selectedPlayerIds, priorityPlayerIds);
 
     if (match) {
       // Auto-assegna i ruoli mettendo in difesa chi gioca più spesso in difesa
@@ -663,9 +660,8 @@ export class MatchmakingView {
     };
 
     try {
-      const match = MatchService.addMatch(teamA, teamB, [scoreTeamA, scoreTeamB]);
-      await RepositoryService.saveMatch(match);
-      updateElo(match);
+      const matchDTO = addMatch(teamA, teamB, [scoreTeamA, scoreTeamB]);
+      await saveMatch(matchDTO);
 
       // Reset state
       MatchmakingView.currentMatch = null;

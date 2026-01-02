@@ -1,133 +1,77 @@
-import { IMatch } from '@/models/match.interface';
+import { IMatch, IMatchDTO } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { db, MATCHES_COLLECTION, PLAYERS_COLLECTION } from '@/utils/firebase.util';
-import { collection, doc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore/lite';
 
-/**
- * Repository layer for loading and saving data.
- */
-export class RepositoryService {
-  /**
-   * Load all players.
-   *
-   * @returns Promise resolving to a list of {@link IPlayer} objects.
-   */
-  public static async loadPlayers(): Promise<IPlayer[]> {
-    const snap = await getDocs(collection(db, PLAYERS_COLLECTION));
+export async function fetchPlayers(): Promise<IPlayer[]> {
+  const snap = await getDocs(collection(db, PLAYERS_COLLECTION));
 
-    const players: IPlayer[] = snap.docs.map((d) => {
-      const data = d.data() as IPlayer;
-      return {
-        id: d.id,
-        name: data.name,
-        elo: data.elo,
-        defence: data.defence / 100,
-        matches: 0,
-        bestElo: undefined,
-        goalsAgainst: 0,
-        goalsFor: 0,
-        matchesAsAttacker: 0,
-        matchesAsDefender: 0,
-        wins: 0,
-        matchesDelta: [],
-        teammatesDelta: undefined
-      };
+  const players = snap.docs.map((d) => {
+    const data = d.data() as IPlayer;
+
+    return {
+      id: Number.parseInt(d.id),
+      name: data.name,
+      elo: data.elo,
+      defence: data.defence / 100,
+      matches: 0,
+      bestElo: -1,
+      goalsAgainst: 0,
+      goalsFor: 0,
+      matchesAsAttacker: 0,
+      matchesAsDefender: 0,
+      matchesDelta: [],
+      wins: 0,
+      rank: -1
+    } satisfies IPlayer;
+  });
+
+  return players;
+}
+
+export async function fetchMatches(): Promise<IMatch[]> {
+  const snap = await getDocs(collection(db, MATCHES_COLLECTION));
+  const matches: IMatch[] = [];
+
+  snap.docs.forEach((d) => {
+    const data = d.data() as IMatch;
+    const id = Number.parseInt(d.id);
+
+    if (Number.isNaN(id)) return;
+
+    matches.push({
+      id,
+      teamA: data.teamA,
+      teamB: data.teamB,
+      score: data.score,
+      createdAt: data.createdAt,
+      deltaELO: [-1, -1],
+      expectedScore: [-1, -1],
+      teamELO: [-1, -1],
+      teamAELO: [-1, -1],
+      teamBELO: [-1, -1]
     });
+  });
 
-    return players;
-  }
+  return matches;
+}
 
-  /**
-   * Persist a single player.
-   *
-   * Performs a "merge" update, meaning partial data overwrites existing
-   * fields without removing unspecified fields.
-   *
-   * @param player - The player to save.
-   * @returns Promise that resolves once the operation completes.
-   */
-  public static async savePlayer(player: IPlayer): Promise<void> {
-    const { id, ...data } = player;
-    const ref = doc(collection(db, PLAYERS_COLLECTION), id);
+export async function saveMatch(match: IMatchDTO): Promise<void> {
+  const ref = doc(collection(db, MATCHES_COLLECTION), match.id.toString());
+  await setDoc(ref, match, { merge: true });
+}
 
-    await setDoc(ref, data, { merge: true });
-  }
-
-  /**
-   * Persist multiple players using a batch write.
-   *
-   * Each document is merged with its existing record.
-   *
-   * @param players - The list of players to save.
-   * @returns Promise that resolves once the batch is committed.
-   */
-  public static async savePlayers(players: IPlayer[]): Promise<void> {
-    const batch = writeBatch(db);
-    const colRef = collection(db, PLAYERS_COLLECTION);
-
-    for (const player of players) {
-      const { id, ...data } = player;
-      const ref = doc(colRef, id);
-      batch.set(ref, data, { merge: true });
-    }
-
-    await batch.commit();
-  }
-
-  /**
-   * Load all matches.
-   *
-   * @returns Promise resolving to a list of {@link IMatch} objects.
-   */
-  public static async loadMatches(): Promise<IMatch[]> {
-    const snap = await getDocs(collection(db, MATCHES_COLLECTION));
-
-    const matches: IMatch[] = snap.docs.map((d) => {
-      const data = d.data() as IMatch;
-      return {
-        id: d.id,
-        teamA: data.teamA,
-        teamB: data.teamB,
-        score: data.score,
-        createdAt: data.createdAt
-      };
-    });
-
-    return matches;
-  }
-
-  /**
-   * Persist a single match.
-   *
-   * Performs a merge update: existing fields are overwritten
-   * but unspecified ones are preserved.
-   *
-   * @param match - The match to save.
-   * @returns Promise that resolves once the operation completes.
-   */
-  public static async saveMatch(match: IMatch): Promise<void> {
-    const { id, ...data } = match;
-    const ref = doc(collection(db, MATCHES_COLLECTION), id);
-
-    await setDoc(ref, data, { merge: true });
-  }
-
-  /**
-   * Persist multiple matches using a batch write.
-   *
-   * @param matches - The list of matches to save.
-   * @returns Promise that resolves once the batch commit finishes.
-   */
-  public static async saveMatches(matches: IMatch[]): Promise<void> {
-    const batch = writeBatch(db);
-    const colRef = collection(db, MATCHES_COLLECTION);
-
-    for (const match of matches) {
-      const { id, ...data } = match;
-      const ref = doc(colRef, id);
-      batch.set(ref, data, { merge: true });
-    }
-
-    await batch.commit();
-  }
+export function parseMatchDTO(match: IMatchDTO): IMatch {
+  return {
+    id: match.id,
+    teamA: match.teamA,
+    teamB: match.teamB,
+    score: match.score,
+    createdAt: match.createdAt,
+    deltaELO: [-1, -1],
+    expectedScore: [-1, -1],
+    teamELO: [-1, -1],
+    teamAELO: [-1, -1],
+    teamBELO: [-1, -1]
+  };
 }

@@ -1,177 +1,97 @@
 import { IPlayer } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { fetchPlayers } from './repository.service';
 
-/**
- * Service handling storage and management of player records.
- * todo: get player sorted alphabetically for selects
- */
-export class PlayerService {
-  /**
-   * Internal store of players, mapping player id -> player.
-   */
-  private static readonly _players = new Map<string, IPlayer>();
-  /**
-   * Memoized mapping of player id -> rank.
-   *
-   * This is computed lazily and invalidated whenever players change.
-   */
-  private static _rankMemo: Map<string, number> | null = null;
+const playersMap = new Map<number, IPlayer>();
+let playersArray: IPlayer[] = [];
+let rankOutdated = true;
 
-  /**
-   * Find a player by identifier.
-   *
-   * @param id - Player id.
-   * @returns The matching player, or `undefined` if none exists.
-   */
-  public static getPlayerById(id: string): IPlayer | undefined {
-    return PlayerService._players.get(id);
+await loadPlayers();
+
+export function getPlayerById(id: number): IPlayer | undefined {
+  return playersMap.get(id);
+}
+
+export function getPlayerByName(name: string): IPlayer | undefined {
+  for (const [, player] of playersMap) {
+    if (player.name.includes(name)) return player;
   }
+  return undefined;
+}
 
-  /**
-   * Find a player by name (partial match).
-   *
-   * @param name - Name or substring to search.
-   * @returns The first matching player, or `undefined` if not found.
-   */
-  public static getPlayerByName(name: string): IPlayer | undefined {
-    for (const [, player] of PlayerService._players) {
-      if (player.name.includes(name)) {
-        return player;
-      }
-    }
-    return undefined;
-  }
+export function getAllPlayers(): IPlayer[] {
+  return playersArray;
+}
 
-  /**
-   * Get an array of all stored players.
-   *
-   * @returns All players currently registered.
-   */
-  public static getAllPlayers(): IPlayer[] {
-    return Array.from(PlayerService._players.values());
-  }
+export function getRank(id: number): number {
+  if (rankOutdated) computeRanks();
+  return getPlayerById(id)?.rank ?? -1;
+}
 
-  /**
-   * Get the ranking position of a player based on Elo.
-   *
-   * Players are sorted by Elo descending. Players that share the same
-   * Elo share the same rank number. Computation is memoized and only
-   * recomputed when the player list or their Elo changes.
-   *
-   * @param id - Player id.
-   * @returns The rank of the player, or `undefined` if not found.
-   */
-  public static getRank(id: string): number | undefined {
-    if (!PlayerService._rankMemo) {
-      PlayerService.recomputeRanks();
+export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppoB: number, delta: number, isDefender: boolean, goalsFor: number, goalsAgainst: number): void {
+  const player = getPlayerById(id);
+  if (!player) return;
+
+  player.elo += delta;
+  player.bestElo = Math.max(player.bestElo ?? player.elo, player.elo);
+  player.matches++;
+  player.wins += delta > 0 ? 1 : 0;
+  player.goalsFor += goalsFor;
+  player.goalsAgainst += goalsAgainst;
+  player.matchesAsDefender += isDefender ? 1 : 0;
+  player.matchesAsAttacker += isDefender ? 0 : 1;
+
+  if (id > idMate) { // to avoid to calculate twice the same teammate delta
+    if (!player.teammatesMatchCount) {
+      player.teammatesDelta = new Map<number, number>();
+      player.teammatesMatchCount = new Map<number, number>();
     }
 
-    return PlayerService._rankMemo?.get(id);
+    player.teammatesDelta!.set(idMate, (player.teammatesDelta!.get(idMate) ?? 0) + delta);
+    player.teammatesMatchCount.set(idMate, (player.teammatesMatchCount.get(idMate) ?? 0) + 1);
   }
 
-  /**
-   * Update a player's elo and match count after a match.
-   *
-   * If the player is not found, nothing happens.
-   *
-   * @param id - Player id.
-   * @param delta - Elo delta (positive or negative).
-   */
-  public static updateAfterMatch(id: string, idMate: string, idOppoA: string, idOppoB: string, delta: number, isDefender: boolean, goalsFor: number, goalsAgainst: number): void {
-    const player = PlayerService.getPlayerById(id);
-    if (!player) return;
-
-    player.elo += delta;
-    player.bestElo = Math.max(player.bestElo ?? player.elo, player.elo);
-    player.matches++;
-    player.wins += delta > 0 ? 1 : 0;
-    player.goalsFor += goalsFor;
-    player.goalsAgainst += goalsAgainst;
-    player.matchesAsDefender += isDefender ? 1 : 0;
-    player.matchesAsAttacker += isDefender ? 0 : 1;
-
-    if (id > idMate) { // to avoid to calculate twice the same teammate delta
-      if (!player.teammatesMatchCount) {
-        player.teammatesDelta = new Map<string, number>();
-        player.teammatesMatchCount = new Map<string, number>();
-      }
-
-      player.teammatesDelta!.set(idMate, (player.teammatesDelta!.get(idMate) ?? 0) + delta);
-      player.teammatesMatchCount.set(idMate, (player.teammatesMatchCount.get(idMate) ?? 0) + 1);
-    }
-
-    if (id > idOppoA) { // to avoid to calculate twice the same teammate delta
-      player.opponentsMatchCount ??= new Map<string, number>();
-      player.opponentsMatchCount.set(idOppoA, (player.opponentsMatchCount.get(idOppoA) ?? 0) + 1);
-    }
-
-    if (id > idOppoB) { // to avoid to calculate twice the same teammate delta
-      player.opponentsMatchCount ??= new Map<string, number>();
-      player.opponentsMatchCount.set(idOppoB, (player.opponentsMatchCount.get(idOppoB) ?? 0) + 1);
-    }
-
-    player.matchesDelta.push(delta);
-
-    PlayerService.invalidateRankMemo();
+  if (id > idOppoA) { // to avoid to calculate twice the same teammate delta
+    player.opponentsMatchCount ??= new Map<number, number>();
+    player.opponentsMatchCount.set(idOppoA, (player.opponentsMatchCount.get(idOppoA) ?? 0) + 1);
   }
 
-  /**
-   * Replace all stored players with the provided list.
-   *
-   * Clears any previously stored players and then loads each player
-   * from the given array. If two players share the same id in the
-   * provided list, the last one will take precedence.
-   *
-   * @param players - Array of players to load into the store.
-   */
-  public static loadPlayers(players: IPlayer[]): void {
-    PlayerService.clearPlayers();
-    for (const player of players) {
-      PlayerService._players.set(player.id, player);
-    }
-
-    PlayerService.invalidateRankMemo();
+  if (id > idOppoB) { // to avoid to calculate twice the same teammate delta
+    player.opponentsMatchCount ??= new Map<number, number>();
+    player.opponentsMatchCount.set(idOppoB, (player.opponentsMatchCount.get(idOppoB) ?? 0) + 1);
   }
 
-  /**
-   * Remove all stored player records.
-   */
-  public static clearPlayers(): void {
-    PlayerService._players.clear();
-    PlayerService.invalidateRankMemo();
+  player.matchesDelta.push(delta);
+
+  rankOutdated = true;
+}
+
+export async function loadPlayers(): Promise<void> {
+  playersArray = await fetchPlayers();
+
+  for (const player of playersArray) {
+    playersMap.set(player.id, player);
   }
+}
 
-  /**
-   * Mark the rank memo as stale so it will be recomputed
-   * on the next call to getRank().
-   */
-  private static invalidateRankMemo(): void {
-    PlayerService._rankMemo = null;
-  }
+function computeRanks(): void {
+  const players = playersArray.toSorted((a, b) => b.elo - a.elo);
 
-  /**
-   * Recompute rank mapping (player id -> rank) based on Elo.
-   *
-   * Players are sorted by Elo descending. Players with the same Elo
-   * receive the same rank number.
-   */
-  private static recomputeRanks(): void {
-    const players = PlayerService.getAllPlayers().toSorted((a, b) => b.elo - a.elo);
+  let rank = 0;
+  let previousElo = -1;
 
-    const cache = new Map<string, number>();
-    let rank = 1;
-    let previousElo: number | null = null;
+  for (const player of players) {
+    if (player.matches < 1) continue; // TODO customize it
 
-    for (const player of players) {
-      const elo = getDisplayElo(player);
-      if (previousElo !== null && elo !== previousElo) {
-        rank++;
-      }
+    const elo = getDisplayElo(player);
 
-      cache.set(player.id, rank);
+    if (elo !== previousElo) {
+      rank++;
       previousElo = elo;
     }
 
-    PlayerService._rankMemo = cache;
+    player.rank = rank;
   }
+
+  rankOutdated = false;
 }

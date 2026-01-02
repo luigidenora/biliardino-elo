@@ -1,75 +1,74 @@
 <!doctype html>
 <html lang="it">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>🎮 Biliardino ELO - Genera Partite</title>
-    <meta name="description" content="Generatore di partite bilanciate con ELO." />
-    <meta name="theme-color" content="#062c7d" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./styles/matchmaking.css" />
-    <link rel="stylesheet" href="./styles/login.css" />
-  </head>
 
-  <body>
-    <div class="header">
-      <a class="nav-link" href="./index.html">← Torna alla Classifica</a>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CAlcio Balilla</title>
+  <meta name="description" content="CA Biliardino Championship" />
+  <meta name="theme-color" content="#062c7d" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles/matchmaking.css" />
+  <link rel="stylesheet" href="./styles/login.css" />
+</head>
+
+<body>
+  <div class="header">
+    <a class="nav-link" href="./index.html">← Torna alla Classifica</a>
+  </div>
+
+  <div class="container">
+    <div class="players-section">
+      <h2>Seleziona Giocatori</h2>
+      <div class="controls">
+        <button id="select-all-btn" type="button">Tutti</button>
+        <button id="deselect-all-btn" type="button">Nessuno</button>
+        <span id="selected-count" class="count">0 selezionati</span>
+      </div>
+      <div id="players-list" class="players-list">
+        <!-- Players checkboxes will be rendered here -->
+      </div>
+      <button id="generate-match-btn" class="generate-btn" disabled>
+        ⚡ Genera Partita
+      </button>
     </div>
 
-    <div class="container">
-      <div class="players-section">
-        <h2>Seleziona Giocatori</h2>
-        <div class="controls">
-          <button id="select-all-btn" type="button">Tutti</button>
-          <button id="deselect-all-btn" type="button">Nessuno</button>
-          <span id="selected-count" class="count">0 selezionati</span>
-        </div>
-        <div id="players-list" class="players-list">
-          <!-- Players checkboxes will be rendered here -->
-        </div>
-        <button id="generate-match-btn" class="generate-btn" disabled>
-          ⚡ Genera Partita
-        </button>
-      </div>
-
-      <div class="matches-section">
-        <div id="matches-container" class="matches-container">
-          <p class="empty-state">
-            Seleziona almeno 4 giocatori e clicca su "Genera Partita"
-          </p>
-        </div>
+    <div class="matches-section">
+      <div id="matches-container" class="matches-container">
+        <p class="empty-state">
+          Seleziona almeno 4 giocatori e clicca su "Genera Partita"
+        </p>
       </div>
     </div>
+  </div>
 
-    <dialog id="loginDialog" class="login-dialog">
-      <form method="dialog" id="loginForm" class="login-form">
-        <h3>Login</h3>
+  <dialog id="loginDialog" class="login-dialog">
+    <form method="dialog" id="loginForm" class="login-form">
+      <h3>Login</h3>
 
-        <label>
-          Username
-          <input type="email" id="loginEmail" required />
-        </label>
+      <label>
+        Username
+        <input type="email" id="loginEmail" required />
+      </label>
 
-        <label>
-          Password
-          <input type="password" id="loginPassword" required />
-        </label>
+      <label>
+        Password
+        <input type="password" id="loginPassword" required />
+      </label>
 
-        <menu>
-          <button value="cancel">Cancel</button>
-          <button id="loginBtn" value="default">Login</button>
-        </menu>
-      </form>
-    </dialog>
+      <menu>
+        <button id="cancelLoginBtn" value="cancel" type="button" >Cancel</button>
+        <button id="loginBtn" value="default">Login</button>
+      </menu>
+    </form>
+  </dialog>
 
-    <script type="module" src="/src/matchmaking.ts"></script>
-  </body>
+  <script type="module" src="/src/matchmaking.ts"></script>
+</body>
+
 </html>

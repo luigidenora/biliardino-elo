@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore/lite';
 
 /**
  * Firebase project configuration used by the web application.
@@ -36,12 +36,12 @@ export const AUTH = getAuth(app);
 /**
  * Firestore collection name used to persist and retrieve match documents.
  */
-export const MATCHES_COLLECTION = 'matches';
+export const MATCHES_COLLECTION = 'matchesShark';
 
 /**
  * Firestore collection name used to persist and retrieve player documents.
  */
-export const PLAYERS_COLLECTION = 'players';
+export const PLAYERS_COLLECTION = 'playersShark';
 
 /**
  * Signs in a predefined user using email and password authentication.
