@@ -557,7 +557,7 @@ export class MatchmakingView {
           <div class="match-player-grid">
             <div class="match-player-avatar">
               <img 
-                src="/biliardino-elo/avatars/${player1.id}.png" 
+                src="/biliardino-elo/avatars/${player1.id}.webp" 
                 alt="${player1.name}"
                 class="match-avatar-img"
                 onerror="this.src='${fallbackAvatar}'"
@@ -574,7 +574,7 @@ export class MatchmakingView {
           <div class="match-player-grid">
             <div class="match-player-avatar">
               <img 
-                src="/biliardino-elo/avatars/${player2.id}.png" 
+                src="/biliardino-elo/avatars/${player2.id}.webp" 
                 alt="${player2.name}"
                 class="match-avatar-img"
                 onerror="this.src='${fallbackAvatar}'"

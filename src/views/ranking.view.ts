@@ -331,7 +331,7 @@ export class RankingView {
       const avatarHTML = `
         <div class="player-avatar">
           <img 
-            src="/biliardino-elo/avatars/${player.id}.png" 
+            src="/biliardino-elo/avatars/${player.id}.webp" 
             alt="${player.name}"
             class="avatar-img"
             onerror="this.src='${fallbackAvatar}'"
