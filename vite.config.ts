@@ -15,6 +15,12 @@ export default defineConfig(config => ({
         players: path.resolve(__dirname, 'players.html'),
         add: path.resolve(__dirname, 'add.html'),
         matchmaking: path.resolve(__dirname, 'matchmaking.html')
+      },
+      output: {
+        // Keep Firebase in a single shared chunk so it is cached across pages.
+        manualChunks: {
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore/lite']
+        }
       }
     }
   }
