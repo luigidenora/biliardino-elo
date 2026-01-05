@@ -9,7 +9,7 @@ computeMatches();
 
 export async function loadAllMatches(): Promise<void> {
   matches = await fetchMatches();
-  matches.sort((a, b) => b.createdAt - a.createdAt);
+  matches.sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export function getAllMatches(): IMatch[] {
@@ -22,7 +22,7 @@ export function addMatch(teamA: ITeam, teamB: ITeam, score: [number, number]): I
   const matchDTO = { id, teamA, teamB, score, createdAt: Date.now() } satisfies IMatchDTO;
   const match = parseMatchDTO(matchDTO);
 
-  matches.unshift(match);
+  matches.push(match);
 
   computeMatch(match);
 
@@ -44,7 +44,7 @@ export function editMatch(id: number, teamA: ITeam, teamB: ITeam, score: [number
 }
 
 function computeMatches(): void {
-  for (const match of matches.toReversed()) { // TODO iterate it reversed instead of create new array
+  for (const match of matches) {
     computeMatch(match);
   }
 }

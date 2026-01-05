@@ -80,7 +80,7 @@ export function getPlayerStats(player: number): PlayerStats {
   let bestVictoryScore = -1;
   let worstDefeatScore = -1;
 
-  for (const match of matches.toReversed()) { // TODO iterate it reversed instead of create new array
+  for (const match of matches) {
     const team = getTeam(player, match);
     if (team === -1) continue;
 
