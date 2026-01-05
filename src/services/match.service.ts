@@ -44,7 +44,7 @@ export function editMatch(id: number, teamA: ITeam, teamB: ITeam, score: [number
 }
 
 function computeMatches(): void {
-  for (const match of matches) {
+  for (const match of matches.toReversed()) { // TODO iterate it reversed instead of create new array
     computeMatch(match);
   }
 }
