@@ -19,8 +19,13 @@ export function updateMatch(match: IMatch): void {
 
   const [goalsA, goalsB] = match.score;
 
-  const eloA = (getPlayerElo(teamAP1, true) + getPlayerElo(teamAP2, false)) / 2;
-  const eloB = (getPlayerElo(teamBP1, true) + getPlayerElo(teamBP2, false)) / 2;
+  const teamAP1Elo = getPlayerElo(teamAP1, true);
+  const teamAP2Elo = getPlayerElo(teamAP2, false);
+  const teamBP1Elo = getPlayerElo(teamBP1, true);
+  const teamBP2Elo = getPlayerElo(teamBP2, false);
+
+  const eloA = (teamAP1Elo + teamAP2Elo) / 2;
+  const eloB = (teamBP1Elo + teamBP2Elo) / 2;
 
   const expA = expectedScore(eloA, eloB);
   const expB = 1 - expA;
@@ -48,11 +53,11 @@ export function updateMatch(match: IMatch): void {
   match.teamELO[0] = eloA;
   match.teamELO[1] = eloB;
 
-  match.teamAELO[0] = teamAP1.elo;
-  match.teamAELO[1] = teamAP2.elo;
+  match.teamAELO[0] = teamAP1Elo;
+  match.teamAELO[1] = teamAP2Elo;
 
-  match.teamBELO[0] = teamBP1.elo;
-  match.teamBELO[1] = teamBP2.elo;
+  match.teamBELO[0] = teamBP1Elo;
+  match.teamBELO[1] = teamBP2Elo;
 }
 
 export function getPlayerElo(player: IPlayer, isDef: boolean): number {
