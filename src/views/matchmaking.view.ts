@@ -493,18 +493,21 @@ export class MatchmakingView {
       return total > 0 ? Math.round((count / total) * 100) : 0;
     };
 
-    const defPercP1 = role1 === 'defence' ? calcPerc((player1 as any).matchesAsDefender, (player1 as any).matches) : calcPerc((player1 as any).matchesAsAttacker, (player1 as any).matches);
-    const attPercP2 = role2 === 'attack' ? calcPerc((player2 as any).matchesAsAttacker, (player2 as any).matches) : calcPerc((player2 as any).matchesAsDefender, (player2 as any).matches);
+    // Usa la property defence per calcolare la percentuale del ruolo
+    const defPercP1 = Math.round(player1.defence * 100);
+    const attPercP1 = 100 - defPercP1;
+    const defPercP2 = Math.round(player2.defence * 100);
+    const attPercP2 = 100 - defPercP2;
 
     const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
 
     const roleIcon1 = role1 === 'defence' ? '🛡️' : '⚔️';
     const roleBadgeClass1 = role1 === 'defence' ? 'badge-def' : 'badge-att';
-    const roleLabel1 = role1 === 'defence' ? `DIF ${defPercP1}%` : `ATT ${defPercP1}%`;
+    const roleLabel1 = role1 === 'defence' ? `DIF ${defPercP1}%` : `ATT ${attPercP1}%`;
 
     const roleIcon2 = role2 === 'attack' ? '⚔️' : '🛡️';
     const roleBadgeClass2 = role2 === 'attack' ? 'badge-att' : 'badge-def';
-    const roleLabel2 = role2 === 'attack' ? `ATT ${attPercP2}%` : `DIF ${attPercP2}%`;
+    const roleLabel2 = role2 === 'attack' ? `ATT ${attPercP2}%` : `DIF ${defPercP2}%`;
 
     teamCard.innerHTML = `
       <div class="team-title">
