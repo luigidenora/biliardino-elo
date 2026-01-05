@@ -18,7 +18,6 @@ type PlayerState = 0 | 1 | 2;
 export class MatchmakingView {
   private static readonly playerStates: Map<string, PlayerState> = new Map();
   private static currentMatch: IMatchProposal | null = null;
-  private static rolesSwapped: { teamA: boolean; teamB: boolean } = { teamA: false, teamB: false };
 
   /**
    * Initialize the matchmaking UI.
@@ -337,19 +336,16 @@ export class MatchmakingView {
       alert('Impossibile generare partite con i giocatori selezionati.');
       return;
     }
-
-    // Auto-assegna i ruoli mettendo in difesa chi gioca più spesso in difesa
-    const autoAssigned = MatchmakingView.assignPreferredRoles(match);
-    MatchmakingView.currentMatch = autoAssigned;
-    MatchmakingView.renderMatches([autoAssigned]);
+    // Assegna ruoli standard
+    MatchmakingView.currentMatch = match;
+    MatchmakingView.renderMatches([match]);
     MatchmakingView.updateUI();
-
     await MatchmakingView.persistCurrentMatch();
   }
-
   /**
    * Persist the currently generated match so it can be resumed after refresh.
    */
+
   private static async persistCurrentMatch(): Promise<void> {
     if (!MatchmakingView.currentMatch) return;
 
@@ -370,40 +366,6 @@ export class MatchmakingView {
     } catch (error) {
       console.error('Failed to persist generated match', error);
     }
-  }
-
-  /**
-   * Auto-assegna i ruoli usando la somma delle percentuali dei ruoli assegnati.
-   * Calcola se invertire ma NON scambia i giocatori, solo setta il flag rolesSwapped.
-   */
-  private static assignPreferredRoles(match: IMatchProposal): IMatchProposal {
-    const calcRolePct = (p: IPlayer, role: 'defence' | 'attack'): number => {
-      const matches = (p as any).matches || 0;
-      const count = role === 'defence'
-        ? ((p as any).matchesAsDefender || 0)
-        : ((p as any).matchesAsAttacker || 0);
-      return matches > 0 ? (count / matches) * 100 : 0;
-    };
-
-    // Team A: confronta somma attuale vs somma con ruoli invertiti, scegli la maggiore
-    const teamA_sum_current = calcRolePct(match.teamA.defence, 'defence') + calcRolePct(match.teamA.attack, 'attack');
-    const teamA_sum_swapped = calcRolePct(match.teamA.attack, 'defence') + calcRolePct(match.teamA.defence, 'attack');
-    if (teamA_sum_swapped > teamA_sum_current || (teamA_sum_swapped === teamA_sum_current && Math.random() < 0.5)) {
-      MatchmakingView.rolesSwapped.teamA = true;
-    } else {
-      MatchmakingView.rolesSwapped.teamA = false;
-    }
-
-    // Team B: confronta somma attuale vs somma con ruoli invertiti, scegli la maggiore
-    const teamB_sum_current = calcRolePct(match.teamB.defence, 'defence') + calcRolePct(match.teamB.attack, 'attack');
-    const teamB_sum_swapped = calcRolePct(match.teamB.attack, 'defence') + calcRolePct(match.teamB.defence, 'attack');
-    if (teamB_sum_swapped > teamB_sum_current || (teamB_sum_swapped === teamB_sum_current && Math.random() < 0.5)) {
-      MatchmakingView.rolesSwapped.teamB = true;
-    } else {
-      MatchmakingView.rolesSwapped.teamB = false;
-    }
-
-    return match;
   }
 
   /**
@@ -448,11 +410,11 @@ export class MatchmakingView {
     const winProbA = 1 / (1 + Math.pow(10, (avgEloTeamB - avgEloTeamA) / 400));
     const winProbB = 1 - winProbA;
 
-    // Determina i giocatori in base allo switch
-    const teamADefence = MatchmakingView.rolesSwapped.teamA ? match.teamA.attack : match.teamA.defence;
-    const teamAAttack = MatchmakingView.rolesSwapped.teamA ? match.teamA.defence : match.teamA.attack;
-    const teamBDefence = MatchmakingView.rolesSwapped.teamB ? match.teamB.attack : match.teamB.defence;
-    const teamBAttack = MatchmakingView.rolesSwapped.teamB ? match.teamB.defence : match.teamB.attack;
+    // Determina i giocatori (ruoli standard)
+    const teamADefence = match.teamA.defence;
+    const teamAAttack = match.teamA.attack;
+    const teamBDefence = match.teamB.defence;
+    const teamBAttack = match.teamB.attack;
 
     // Team A
     const teamACard = MatchmakingView.createTeamCard('A', teamADefence, 'defence', teamAAttack, 'attack', avgEloTeamA, winProbA);
@@ -585,32 +547,9 @@ export class MatchmakingView {
           </div>
         </div>
       </div>
-      <button type="button" class="switch-roles-btn" data-team="${teamName}">🔄 Inverti Ruoli</button>
     `;
 
-    // Aggiungi event listener per il bottone switch
-    const switchBtn = teamCard.querySelector('.switch-roles-btn') as HTMLButtonElement;
-    switchBtn.addEventListener('click', () => {
-      MatchmakingView.switchTeamRoles(teamName);
-    });
-
     return teamCard;
-  }
-
-  /**
-   * Switch roles for a team.
-   */
-  private static switchTeamRoles(teamName: string): void {
-    if (teamName === 'A') {
-      MatchmakingView.rolesSwapped.teamA = !MatchmakingView.rolesSwapped.teamA;
-    } else if (teamName === 'B') {
-      MatchmakingView.rolesSwapped.teamB = !MatchmakingView.rolesSwapped.teamB;
-    }
-
-    // Re-render la partita
-    if (MatchmakingView.currentMatch) {
-      MatchmakingView.renderMatches([MatchmakingView.currentMatch]);
-    }
   }
 
   /**
@@ -727,11 +666,11 @@ export class MatchmakingView {
 
     const match = MatchmakingView.currentMatch;
 
-    // Usa i ruoli corretti (eventualmente switchati)
-    const teamADefence = MatchmakingView.rolesSwapped.teamA ? match.teamA.attack : match.teamA.defence;
-    const teamAAttack = MatchmakingView.rolesSwapped.teamA ? match.teamA.defence : match.teamA.attack;
-    const teamBDefence = MatchmakingView.rolesSwapped.teamB ? match.teamB.attack : match.teamB.defence;
-    const teamBAttack = MatchmakingView.rolesSwapped.teamB ? match.teamB.defence : match.teamB.attack;
+    // Usa i ruoli standard
+    const teamADefence = match.teamA.defence;
+    const teamAAttack = match.teamA.attack;
+    const teamBDefence = match.teamB.defence;
+    const teamBAttack = match.teamB.attack;
 
     const teamA = {
       defence: teamADefence.id,
@@ -754,7 +693,6 @@ export class MatchmakingView {
 
       // Reset state
       MatchmakingView.currentMatch = null;
-      MatchmakingView.rolesSwapped = { teamA: false, teamB: false };
       MatchmakingView.renderMatches([]);
       MatchmakingView.updateUI();
     } catch (error) {
