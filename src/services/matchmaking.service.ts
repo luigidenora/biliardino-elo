@@ -1,5 +1,6 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
+import { getPlayerElo } from './elo.service';
 import { getAllMatches } from './match.service';
 import { getAllPlayers, getPlayerById } from './player.service';
 
@@ -58,28 +59,29 @@ export function findBestMatch(availablePlayerId: number[], priorityPlayersId: nu
   const attArray: IPlayer[] = [];
   getPlayersRolesArray(getAllMatches(), players, defArray, attArray);
 
-  console.log(defArray);
-  console.log(attArray);
-
-  return generateBestMatch(maxEloDiff, maxMatches, maxDiversity, players, priorityPlayers);
+  return generateBestMatch(maxEloDiff, maxMatches, maxDiversity, defArray, attArray, priorityPlayers);
 }
 
-function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity: number, players: IPlayer[], priorityPlayers: IPlayer[]): IMatchProposal | null {
-  const n = players.length;
-  const bestProposal: IMatchProposal = { teamA: { defence: players[0], attack: players[0] }, teamB: { defence: players[0], attack: players[0] } };
+function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity: number, def: IPlayer[], att: IPlayer[], priorityPlayers: IPlayer[]): IMatchProposal | null {
+  const defCount = def.length;
+  const attCount = att.length;
+  const bestProposal: IMatchProposal = { teamA: { defence: def[0], attack: att[0] }, teamB: { defence: def[0], attack: att[0] } };
   let bestScore = -Infinity;
 
-  for (let i = 0; i < n; i++) { // TODO early exit here
-    for (let j = i + 1; j < n; j++) {
-      for (let k = i + 1; k < n; k++) {
-        if (k === j) continue;
-        for (let l = k + 1; l < n; l++) {
-          if (l === i || l === j) continue;
+  for (let i = 0; i < defCount - 1; i++) {
+    const p1 = def[i];
 
-          const p1 = players[i];
-          const p2 = players[j];
-          const p3 = players[k];
-          const p4 = players[l];
+    for (let j = 0; j < attCount - 1; j++) {
+      const p2 = att[j];
+      if (p2 === p1) continue;
+
+      for (let k = i + 1; k < defCount; k++) {
+        const p3 = def[k];
+        if (p3 === p2) continue;
+
+        for (let l = j + 1; l < attCount; l++) {
+          const p4 = att[l];
+          if (p4 === p1 || p4 === p3) continue;
 
           if (!validatePriorityPlayers(p1, p2, p3, p4, priorityPlayers)) continue;
 
@@ -104,15 +106,15 @@ function validatePriorityPlayers(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPla
 
 function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlayer, maxEloDiff: number, maxMatches: number, maxDiversity: number, bestScore: number, proposal: IMatchProposal): number {
   // MATCH ELO DIFFERENCE SCORE
-  const teamAElo = (defA.elo + attA.elo) / 2; // il / 2 può essere tolgo se usiamo la somma
-  const teamBElo = (defB.elo + attB.elo) / 2;
+  const teamAElo = (getPlayerElo(defA, true) + getPlayerElo(attA, false)) / 2; // il / 2 può essere tolgo se usiamo la somma
+  const teamBElo = (getPlayerElo(defB, true) + getPlayerElo(attB, false)) / 2;
   const matchEloDiff = Math.abs(teamAElo - teamBElo);
   const matchEloDiffNormalized = 1 - (matchEloDiff / maxEloDiff);
   const matchBalanceScore = matchEloDiffNormalized * config.matchBalanceWeight;
 
   // TEAM ELO DIFFERENCE SCORE
-  const diffTeamAElo = Math.abs(defA.elo - attA.elo);
-  const diffTeamBElo = Math.abs(defB.elo - attB.elo);
+  const diffTeamAElo = Math.abs(getPlayerElo(defA, true) - getPlayerElo(attA, false));
+  const diffTeamBElo = Math.abs(getPlayerElo(defB, true) - getPlayerElo(attB, false));
   const teamEloDiff = Math.max(diffTeamAElo, diffTeamBElo);
   const teamEloDiffNormalized = 1 - Math.min(1, teamEloDiff / maxEloDiff);
   const teamBalanceScore = teamEloDiffNormalized * config.teamBalanceWeight; // stiamo usando la differenza tra i primi 2 player e gli ultimi 2, ma va bene comunque
