@@ -1,4 +1,6 @@
+import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
+import { getAllMatches } from './match.service';
 import { getAllPlayers, getPlayerById } from './player.service';
 
 export interface IMatchmakingConfig {
@@ -31,11 +33,11 @@ export interface IMatchProposal {
 }
 
 const config: IMatchmakingConfig = {
-  matchBalanceWeight: 0.4,
-  teamBalanceWeight: 0.2,
+  matchBalanceWeight: 0.35,
+  teamBalanceWeight: 0.25,
   priorityWeight: 0.2,
   diversityWeight: 0.2,
-  randomness: 0.08
+  randomness: 0.05
 };
 
 export function findBestMatch(availablePlayerId: number[], priorityPlayersId: number[]): IMatchProposal | null {
@@ -52,6 +54,12 @@ export function findBestMatch(availablePlayerId: number[], priorityPlayersId: nu
   const maxEloDiff = getMaxEloDifference(allPlayers);
   const maxMatches = getMaxMatchesPlayed(allPlayers);
   const maxDiversity = getMaxDiversity(allPlayers);
+  const defArray: IPlayer[] = [];
+  const attArray: IPlayer[] = [];
+  getPlayersRolesArray(getAllMatches(), players, defArray, attArray);
+
+  console.log(defArray);
+  console.log(attArray);
 
   return generateBestMatch(maxEloDiff, maxMatches, maxDiversity, players, priorityPlayers);
 }
@@ -232,4 +240,50 @@ function calculateMatchScore(diversityScore: number, matchBalanceScore: number, 
   const randomness = (Math.random() * 2 - 1) * config.randomness;
   const baseScore = diversityScore + matchBalanceScore + priorityScore + teamBalanceScore;
   return baseScore * (1 - randomness);
+}
+
+function getPlayersRolesArray(matches: IMatch[], players: IPlayer[], defArray: IPlayer[], attArray: IPlayer[]): void {
+  const playersMap = new Map<number, { matches: number; def: number }>();
+
+  for (const player of players) {
+    playersMap.set(player.id, { matches: 0, def: 0 });
+  }
+
+  for (const match of matches) {
+    const teamA = match.teamA;
+    const teamB = match.teamB;
+
+    checkPlayer(teamA.defence, true);
+    checkPlayer(teamA.attack, false);
+    checkPlayer(teamB.defence, true);
+    checkPlayer(teamB.attack, false);
+  }
+
+  for (const [id, info] of playersMap) {
+    const player = getPlayerById(id)!;
+    const expectedDef = player.defence * 10;
+    const att = info.matches - info.def;
+    const expectedAtt = 10 - expectedDef;
+
+    if (info.def < expectedDef) {
+      defArray.push(player);
+    }
+
+    if (att < expectedAtt) {
+      attArray.push(player);
+    }
+  }
+
+  function checkPlayer(id: number, isDef: boolean): void {
+    const playerInfo = playersMap.get(id);
+    if (!playerInfo) return;
+
+    if (playerInfo.matches < 9) {
+      playerInfo.matches++;
+      playerInfo.def += isDef ? 1 : 0;
+    } else {
+      playerInfo.matches = 0;
+      playerInfo.def = 0;
+    }
+  }
 }
