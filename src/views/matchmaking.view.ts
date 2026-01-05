@@ -401,8 +401,8 @@ export class MatchmakingView {
     const matchContent = document.createElement('div');
     matchContent.className = 'match-content';
 
-    const avgEloTeamA = (match.teamA.defence.elo + match.teamA.attack.elo) / 2;
-    const avgEloTeamB = (match.teamB.defence.elo + match.teamB.attack.elo) / 2;
+    const avgEloTeamA = (getPlayerElo(match.teamA.defence, true) + getPlayerElo(match.teamA.attack, false)) / 2;
+    const avgEloTeamB = (getPlayerElo(match.teamB.defence, true) + getPlayerElo(match.teamB.attack, false)) / 2;
 
     // Teams container con VS e form al centro
     const teamsContainer = document.createElement('div');
