@@ -214,13 +214,15 @@ export class MatchmakingView {
     const selectAllButton = document.getElementById('select-all-btn');
     const deselectAllButton = document.getElementById('deselect-all-btn');
     const generateButton = document.getElementById('generate-match-btn');
+    const deleteMatchButton = document.getElementById('delete-match-btn');
     const matchesContainer = document.getElementById('matches-container');
 
-    if (!selectAllButton || !deselectAllButton || !generateButton || !matchesContainer) {
+    if (!selectAllButton || !deselectAllButton || !generateButton || !matchesContainer || !deleteMatchButton) {
       console.error('Missing required DOM elements:', {
         selectAllButton: !!selectAllButton,
         deselectAllButton: !!deselectAllButton,
         generateButton: !!generateButton,
+        deleteMatchButton: !!deleteMatchButton,
         matchesContainer: !!matchesContainer
       });
       return;
@@ -229,6 +231,7 @@ export class MatchmakingView {
     selectAllButton.addEventListener('click', () => MatchmakingView.selectAllPlayers());
     deselectAllButton.addEventListener('click', () => MatchmakingView.deselectAllPlayers());
     generateButton.addEventListener('click', () => MatchmakingView.generateMatches());
+    deleteMatchButton.addEventListener('click', () => MatchmakingView.deleteGeneratedMatch());
 
     // Delegate event handling for dynamically created save match forms
     matchesContainer.addEventListener('submit', (e) => {
@@ -299,14 +302,19 @@ export class MatchmakingView {
 
     const selectedCountElement = document.getElementById('selected-count');
     const generateButton = document.getElementById('generate-match-btn') as HTMLButtonElement;
+    const deleteMatchButton = document.getElementById('delete-match-btn') as HTMLButtonElement | null;
 
     if (selectedCountElement) {
       selectedCountElement.textContent = `${totalSelected} selezionati`;
     }
 
-    // Enable generate button only if at least 4 players and no match exists
+    // Enable generate button only if at least 4 players are selected
     const shouldEnable = totalSelected >= 4;
     generateButton.disabled = !shouldEnable;
+
+    if (deleteMatchButton) {
+      deleteMatchButton.disabled = !MatchmakingView.currentMatch;
+    }
   }
 
   private static async generateMatches(): Promise<void> {
@@ -377,12 +385,20 @@ export class MatchmakingView {
     // Mantieni disclaimer e regolamento sempre visibili
     const disclaimer = matchesContainer.querySelector('.match-disclaimer-fixed');
     const rulesPanel = matchesContainer.querySelector('.match-rules-panel');
+    const actionsBar = matchesContainer.querySelector('.match-actions');
+    const initialEmptyState = matchesContainer.querySelector('.empty-state');
     matchesContainer.innerHTML = '';
     if (disclaimer) matchesContainer.appendChild(disclaimer);
     if (rulesPanel) matchesContainer.appendChild(rulesPanel);
+    if (actionsBar) matchesContainer.appendChild(actionsBar);
 
     if (matches.length === 0) {
-      matchesContainer.innerHTML += '<p class="no-matches">Nessuna partita generata.</p>';
+      const emptyState = (initialEmptyState?.cloneNode(true) as HTMLElement)
+        ?? Object.assign(document.createElement('p'), {
+          className: 'empty-state',
+          textContent: 'Seleziona almeno 4 giocatori e clicca su "Genera Partita"'
+        });
+      matchesContainer.appendChild(emptyState);
       return;
     }
 
@@ -634,6 +650,21 @@ export class MatchmakingView {
     form.appendChild(submitButton);
 
     return form;
+  }
+
+  /**
+   * Delete the currently generated match and clear persisted state.
+   */
+  private static async deleteGeneratedMatch(): Promise<void> {
+    MatchmakingView.currentMatch = null;
+    MatchmakingView.renderMatches([]);
+    MatchmakingView.updateUI();
+
+    try {
+      await clearRunningMatch();
+    } catch (error) {
+      console.error('Failed to delete generated match', error);
+    }
   }
 
   /**

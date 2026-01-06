@@ -317,6 +317,38 @@ h2 {
   gap: 1.5rem;
 }
 
+.match-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.delete-match-button {
+  padding: 0.6rem 1rem;
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  background: linear-gradient(135deg, #ffecec 0%, #ffdede 100%);
+  color: #b11a1a;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.delete-match-button:not(:disabled):hover {
+  background: linear-gradient(135deg, #ffdede 0%, #ffc4c4 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(177, 26, 26, 0.2);
+}
+
+.delete-match-button:disabled {
+  background: #f6f6f6;
+  color: #a0a0a0;
+  border-color: rgba(0, 0, 0, 0.06);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .empty-state {
   text-align: center;
   color: #999;
