@@ -678,9 +678,9 @@ export class RankingView {
       // Calcola rating medio della partita per colorare la riga
       const avgRating = (eloA + eloB) / 2;
       let rowBackgroundColor = '';
-      if (avgRating >= 1100) {
+      if (avgRating >= 1080) {
         rowBackgroundColor = 'background-color: rgba(0, 0, 255, 0.25);'; // blu leggero
-      } else if (avgRating >= 1050) {
+      } else if (avgRating >= 1040) {
         rowBackgroundColor = 'background-color: rgba(0, 127, 255, 0.1);'; // azzurro chiaro
       } else if (avgRating <= 900) {
         rowBackgroundColor = 'background-color: rgba(255, 0, 0, 0.2);'; // rosso leggero
@@ -760,7 +760,7 @@ export class RankingView {
       container.innerHTML = `
         <div class="live-match-panel">
           <div class="live-match-header">
-            <span class="live-badge">🔴 LIVE</span>
+            <span class="live-badge">LIVE</span>
             <span class="live-title">Partita in Corso</span>
           </div>
           <div class="live-match-content">
