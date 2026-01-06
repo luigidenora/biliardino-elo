@@ -6,6 +6,7 @@ export interface IPlayerDTO {
 }
 
 export interface IPlayer extends IPlayerDTO {
+  startElo: number;
   matches: number;
   matchesAsDefender: number;
   matchesAsAttacker: number;

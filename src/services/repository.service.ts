@@ -15,6 +15,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       id: Number.parseInt(d.id),
       name: data.name,
       elo: data.elo,
+      startElo: data.elo,
       defence: data.defence / 100,
       matches: 0,
       bestElo: -1,

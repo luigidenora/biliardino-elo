@@ -44,7 +44,7 @@ export interface PlayerStats {
 export function getPlayerStats(player: number): PlayerStats {
   const result: PlayerStats = {
     history: [],
-    elo: -Infinity,
+    elo: getPlayerById(player)!.startElo,
     bestElo: -Infinity,
     worstElo: Infinity,
     matches: 0,
