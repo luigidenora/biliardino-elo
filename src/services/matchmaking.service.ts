@@ -34,8 +34,8 @@ export interface IMatchProposal {
 }
 
 const config: IMatchmakingConfig = {
-  matchBalanceWeight: 0.35,
-  teamBalanceWeight: 0.25,
+  matchBalanceWeight: 0.4,
+  teamBalanceWeight: 0.2,
   priorityWeight: 0.2,
   diversityWeight: 0.2,
   randomness: 0.05
