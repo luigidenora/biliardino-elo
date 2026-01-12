@@ -2,9 +2,9 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerById } from './player.service';
 
-export const StartK = 40 * 1.35;
+export const StartK = 40 * 1.5;
 export const FinalK = 40;
-export const MatchesK = 10; // 1 partita a settimana
+export const MatchesK = 10;
 
 export function updateMatch(match: IMatch): void {
   const teamAP1 = getPlayerById(match.teamA.defence);
