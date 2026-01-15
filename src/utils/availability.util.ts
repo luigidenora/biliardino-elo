@@ -31,7 +31,8 @@ export const availabilityList = {
     'Loris Bevilacqua',
     'Marco De Luca',
     'Nicola Sergio',
-    'Gianluca De Vincenzo'
+    'Gianluca De Vincenzo',
+    'Ilenia Taccogna'
   ],
   wednesday: [
     'Francesco Molinari',
@@ -71,7 +72,8 @@ export const availabilityList = {
     'Loris Bevilacqua',
     'Marco De Luca',
     'Nicola Sergio',
-    'Gianluca De Vincenzo'
+    'Gianluca De Vincenzo',
+    'Ilenia Taccogna'
   ],
   friday: [
     'Francesco Molinari',
