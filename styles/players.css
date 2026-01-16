@@ -666,3 +666,192 @@ a.nav-link:hover {
     font-size: 1.25rem;
   }
 }
+
+/* =========================================================
+   PP (Player Profile)
+   ========================================================= */
+
+/* wrapper: mobile centrato, desktop full-width */
+.pp-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* card (default = mobile/tablet come ora) */
+.player-card.pp-card {
+  width: min(520px, 100%);
+  margin: 0;
+  /* centraggio gestito da .pp-row */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 2rem 1.75rem;
+  text-align: center;
+}
+
+/* avatar tondo garantito */
+.pp-card .pp-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: 0 0 auto;
+  background: #fff;
+}
+
+.pp-card .pp-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* header */
+.pp-card .pp-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pp-card .pp-name {
+  margin: 0;
+  padding: 0;
+  border-left: none;
+  font-size: clamp(1.35rem, 1vw + 1.1rem, 2rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.pp-card .pp-win {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+/* stats: SOLO nostra grid */
+.pp-card .pp-stats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+/* =========================================================
+   DESKTOP: card full-width, avatar a sinistra, stats 2 colonne
+   ========================================================= */
+@media (min-width: 1024px) {
+  .pp-row {
+    justify-content: stretch;
+    /* la card può diventare larga quanto la pagina */
+  }
+
+  .player-card.pp-card {
+    width: 100%;
+    max-width: none;
+    /* rimuove il limite 520px */
+    flex-direction: row;
+    /* avatar a sinistra */
+    align-items: center;
+    text-align: left;
+    gap: 2rem;
+    padding: 2rem 2.25rem;
+  }
+
+  .pp-card .pp-avatar {
+    width: 132px;
+    height: 132px;
+  }
+
+  /* serve che .pp-content esista nel markup (ce l'hai già) */
+  .pp-card .pp-content {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .pp-card .pp-header {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .pp-card .pp-stats {
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+    gap: 0.9rem 1.25rem;
+  }
+}
+
+/* =========================================================
+   MOBILE: stats a tutta larghezza (pp-card only)
+   ========================================================= */
+@media (max-width: 480px) {
+  .pp-card .pp-stats {
+    width: 100%;
+  }
+
+  .pp-card .pp-stats .stat-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+  }
+
+  .pp-card .pp-stats .stat-label {
+    text-align: left;
+    font-size: 0.95rem;
+    flex: 1;
+  }
+
+  .pp-card .pp-stats .stat-value {
+    text-align: right;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    min-width: 64px;
+  }
+}
+
+/* ===== Center row: Compagni + Migliori/Peggiori ===== */
+.player-card.teammates-card {
+  grid-column: span 2;
+}
+
+.player-card.best-worst-card {
+  grid-column: span 2;
+}
+
+/* Quando la grid passa a 3 colonne: meglio full width (centrate) */
+@media (max-width: 1400px) {
+
+  .player-card.teammates-card,
+  .player-card.best-worst-card {
+    grid-column: span 3;
+  }
+}
+
+/* Quando la grid passa a 2 colonne: full width */
+@media (max-width: 1024px) {
+
+  .player-card.teammates-card,
+  .player-card.best-worst-card {
+    grid-column: span 2;
+  }
+}
+
+/* ===== Touch devices: 1 colonna fino a 1024px (telefono/tablet), desktop invariato ===== */
+@media (max-width: 1024px) and (pointer: coarse) {
+  .players-container {
+    grid-template-columns: 1fr;
+  }
+
+  /* tutte le card devono occupare tutta la riga */
+  .player-card {
+    grid-column: span 1 !important;
+  }
+}

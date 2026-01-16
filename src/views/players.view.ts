@@ -217,27 +217,73 @@ export class PlayersView {
       `;
     };
 
-    container.innerHTML = `
-      <div class="player-card">
-        <h2>📊 Generale</h2>
-        <div class="stats-grid">
+    // === Avatar (stesso standard della classifica) ===
+    const fallbackAvatar =
+      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
+
+    const avatarSrc = `/biliardino-elo/avatars/${player.id}.webp`;
+
+    const avatarHTML = `
+      <div class="player-avatar">
+        <img
+          src="${avatarSrc}"
+          alt="${player.name}"
+          class="avatar-img"
+          onerror="this.src='${fallbackAvatar}'"
+        />
+      </div>
+    `;
+
+    const profileCardHtml = `
+  <div class="pp-row">
+    <div class="player-card pp-card">
+      <div class="pp-avatar">
+        <img
+          src="/biliardino-elo/avatars/${player.id}.webp"
+          alt="${player.name}"
+          class="pp-avatar-img"
+          onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4='"
+        />
+      </div>
+
+      <div class="pp-content">
+        <div class="pp-header">
+          <h2 class="pp-name">🎮 ${player.name}</h2>
+          <span class="pp-win">Win ${winPercentage}%</span>
+        </div>
+
+        <div class="pp-stats">
           <div class="stat-item">
             <span class="stat-label">ELO Attuale</span>
             <span class="stat-value highlight">${formatElo(stats.elo)}</span>
           </div>
+
           <div class="stat-item">
             <span class="stat-label">Miglior ELO</span>
             <span class="stat-value positive">${formatElo(stats.bestElo)}</span>
           </div>
+
           <div class="stat-item">
             <span class="stat-label">Peggior ELO</span>
             <span class="stat-value negative">${formatElo(stats.worstElo)}</span>
           </div>
+
+          <div class="stat-item">
+            <span class="stat-label">Partite</span>
+            <span class="stat-value">${stats.matches}</span>
+          </div>
         </div>
       </div>
+    </div>
+  </div>
+`;
+
+
+    container.innerHTML = `
+      ${profileCardHtml}
 
       <div class="player-card">
-        <h2>🎮 Partite</h2>
+        <h2>⚽ Partite</h2>
         <div class="stats-grid">
           <div class="stat-item">
             <span class="stat-label">Partite Totali</span>
@@ -312,7 +358,7 @@ export class PlayersView {
         </div>
       </div>
 
-      <div class="player-card">
+      <div class="player-card teammates-card">
         <h2>👥 Compagni e Avversari</h2>
         <div class="stats-grid">
             <div class="stat-item">
@@ -344,33 +390,33 @@ export class PlayersView {
           <div class="best-worst-item">
             <span class="stat-label">Migliore Vittoria (ELO)</span>
             <span class="stat-score positive">${(() => {
-              const result = formatMatch(stats.bestVictoryByElo, player.id);
-              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
-            })()}</span>
+        const result = formatMatch(stats.bestVictoryByElo, player.id);
+        return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+      })()}</span>
             <span class="stat-details">${formatMatch(stats.bestVictoryByElo, player.id).details}</span>
           </div>
           <div class="best-worst-item">
             <span class="stat-label">Peggiore Sconfitta (ELO)</span>
             <span class="stat-score negative">${(() => {
-              const result = formatMatch(stats.worstDefeatByElo, player.id);
-              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
-            })()}</span>
+        const result = formatMatch(stats.worstDefeatByElo, player.id);
+        return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+      })()}</span>
             <span class="stat-details">${formatMatch(stats.worstDefeatByElo, player.id).details}</span>
           </div>
           <div class="best-worst-item">
             <span class="stat-label">Migliore Vittoria (Punteggio)</span>
             <span class="stat-score positive">${(() => {
-              const result = formatMatchByScore(stats.bestVictoryByScore, player.id);
-              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
-            })()}</span>
+        const result = formatMatchByScore(stats.bestVictoryByScore, player.id);
+        return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+      })()}</span>
             <span class="stat-details">${formatMatchByScore(stats.bestVictoryByScore, player.id).details}</span>
           </div>
           <div class="best-worst-item">
             <span class="stat-label">Peggiore Sconfitta (Punteggio)</span>
             <span class="stat-score negative">${(() => {
-              const result = formatMatchByScore(stats.worstDefeatByScore, player.id);
-              return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
-            })()}</span>
+        const result = formatMatchByScore(stats.worstDefeatByScore, player.id);
+        return result.score === 'N/A' ? result.score : `<strong>${result.score}</strong>`;
+      })()}</span>
             <span class="stat-details">${formatMatchByScore(stats.worstDefeatByScore, player.id).details}</span>
           </div>
         </div>
@@ -385,8 +431,8 @@ export class PlayersView {
         <h2>📜 Storico Partite</h2>
         <div class="match-history">
           ${stats.history.length === 0
-            ? '<p class="empty-state">Nessuna partita giocata</p>'
-            : `
+        ? '<p class="empty-state">Nessuna partita giocata</p>'
+        : `
             <table class="match-history-table">
               <thead>
                 <tr>
@@ -401,20 +447,20 @@ export class PlayersView {
               </thead>
               <tbody>
                 ${(() => {
-                  const startElo = player.startElo;
-                  const playerElos: number[] = [startElo];
-                  let currentElo = startElo;
-                  for (const match of stats.history) {
-                    const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
-                    const teamDelta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
-                    currentElo += teamDelta;
-                    playerElos.push(currentElo);
-                  }
-                  return stats.history.slice().reverse().map((match, idx) => {
-                    const eloBeforeMatch = playerElos[stats.history.length - idx - 1];
-                    return formatMatchHistory(match, eloBeforeMatch);
-                  }).join('');
-                })()}
+          const startElo = player.startElo;
+          const playerElos: number[] = [startElo];
+          let currentElo = startElo;
+          for (const match of stats.history) {
+            const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
+            const teamDelta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
+            currentElo += teamDelta;
+            playerElos.push(currentElo);
+          }
+          return stats.history.slice().reverse().map((match, idx) => {
+            const eloBeforeMatch = playerElos[stats.history.length - idx - 1];
+            return formatMatchHistory(match, eloBeforeMatch);
+          }).join('');
+        })()}
               </tbody>
             </table>
           `}
