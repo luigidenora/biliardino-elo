@@ -6,50 +6,74 @@ import { collection, deleteDoc, doc, DocumentData, getDoc, getDocFromServer, get
 const CURRENT_RUNNING_MATCH = 'current';
 const CACHE_CONTROL_COLLECTION = 'cache-control';
 const CACHE_CONTROL_DOC = 'id';
-const CACHE_HASH_KEY = 'firestore_cache_hash';
+const CACHE_HASH_PLAYERS_KEY = 'firestore_cache_hash_players';
+const CACHE_HASH_MATCHES_KEY = 'firestore_cache_hash_matches';
 
-const useCache = await shouldUseCache();
+const { useCacheMatches, useCachePlayers } = await shouldUseCache();
 
-async function getCacheHash(): Promise<string | null> {
+async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMatches: number | null }> {
   try {
     const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     const snap = await getDoc(ref);
 
-    if (!snap.exists()) return null;
+    if (!snap.exists()) return { hashPlayers: null, hashMatches: null };
 
     const data = snap.data();
-    return data?.hash || null;
+    return {
+      hashPlayers: data?.hashPlayers || null,
+      hashMatches: data?.hashMatches || null
+    };
   } catch (error) {
-    console.error('Error fetching cache hash:', error);
-    return null;
+    console.error('Error fetching cache hashes:', error);
+    return { hashPlayers: null, hashMatches: null };
   }
 }
 
-function getStoredHash(): string | null {
-  return localStorage.getItem(CACHE_HASH_KEY);
+async function updateMatchesHash(): Promise<void> {
+  try {
+    const hashMatches = Math.random();
+    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    await setDoc(ref, { hashMatches }, { merge: true });
+  } catch (error) {
+    console.error('Error saving matches cache hash:', error);
+  }
 }
 
-function setStoredHash(hash: string): void {
-  localStorage.setItem(CACHE_HASH_KEY, hash);
+function getStoredHash(key: string): number | null {
+  const stored = localStorage.getItem(CACHE_HASH_PLAYERS_KEY);
+  return stored ? Number(stored) : null;
 }
 
-async function shouldUseCache(): Promise<boolean> {
-  const serverHash = await getCacheHash();
-  const storedHash = getStoredHash();
+function setStoredHashPlayers(hash: number): void {
+  localStorage.setItem(CACHE_HASH_PLAYERS_KEY, hash.toString());
+}
 
-  if (!serverHash) return false;
+function setStoredHashMatches(hash: number): void {
+  localStorage.setItem(CACHE_HASH_MATCHES_KEY, hash.toString());
+}
 
-  const useCache = serverHash === storedHash;
+async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMatches: boolean }> {
+  const { hashMatches, hashPlayers } = await fetchCacheHashes();
+  const storedHashPlayers = getStoredHash(CACHE_HASH_PLAYERS_KEY);
+  const storedHashMatches = getStoredHash(CACHE_HASH_MATCHES_KEY);
 
-  if (!useCache) {
-    setStoredHash(serverHash);
+  const useCachePlayers = hashPlayers != null && hashPlayers === storedHashPlayers;
+
+  if (!useCachePlayers) {
+    setStoredHashPlayers(hashPlayers!);
   }
 
-  return useCache;
+  const useCacheMatches = hashMatches != null && hashMatches === storedHashMatches;
+
+  if (!useCacheMatches) {
+    setStoredHashMatches(hashMatches!);
+  }
+
+  return { useCachePlayers, useCacheMatches };
 }
 
 export async function fetchPlayers(): Promise<IPlayer[]> {
-  const snap = await getDocsCacheServer(PLAYERS_COLLECTION);
+  const snap = await getDocsCacheServer(PLAYERS_COLLECTION, useCachePlayers);
 
   const players = snap.docs.map((d) => {
     const data = d.data() as IPlayer;
@@ -76,7 +100,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 }
 
 export async function fetchMatches(): Promise<IMatch[]> {
-  const snap = await getDocsCacheServer(MATCHES_COLLECTION);
+  const snap = await getDocsCacheServer(MATCHES_COLLECTION, useCacheMatches);
   const matches: IMatch[] = [];
 
   snap.docs.forEach((d) => {
@@ -105,6 +129,7 @@ export async function fetchMatches(): Promise<IMatch[]> {
 export async function saveMatch(match: IMatchDTO): Promise<void> {
   const ref = doc(collection(db, MATCHES_COLLECTION), match.id.toString());
   await setDoc(ref, match, { merge: true });
+  await updateMatchesHash();
 }
 
 export function parseMatchDTO(match: IMatchDTO): IMatch {
@@ -140,7 +165,7 @@ export async function clearRunningMatch(): Promise<void> {
   await deleteDoc(ref);
 }
 
-async function getDocsCacheServer(collectionName: string): Promise<QuerySnapshot<DocumentData, DocumentData>> {
+async function getDocsCacheServer(collectionName: string, useCache: boolean): Promise<QuerySnapshot<DocumentData, DocumentData>> {
   if (useCache) {
     console.log('cached fetch for collection:', collectionName);
     return await getDocsFromCache(collection(db, collectionName));
