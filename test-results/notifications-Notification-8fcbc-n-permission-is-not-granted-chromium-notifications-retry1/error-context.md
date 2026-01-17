@@ -1,0 +1,62 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - button "Chiudi" [ref=e3] [cursor=pointer]: ✕
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: 🔕
+        - generic [ref=e7]:
+          - generic [ref=e8]: Notifiche bloccate
+          - generic [ref=e9]: Le notifiche sono state bloccate. Vai nelle impostazioni del browser per riattivarle.
+      - button "Apri impostazioni" [ref=e10] [cursor=pointer]
+  - generic [ref=e11]:
+    - link "← Torna alla Home" [ref=e12] [cursor=pointer]:
+      - /url: ./index.html
+    - heading "🔔 Impostazioni Notifiche" [level=1] [ref=e13]
+    - generic [ref=e14]:
+      - heading "📊 Status Attuale" [level=2] [ref=e15]
+      - generic [ref=e16]:
+        - generic [ref=e17]: "Utente Registrato:"
+        - generic [ref=e18]: "-"
+      - generic [ref=e19]:
+        - generic [ref=e20]: "Giocatore:"
+        - generic [ref=e21]: "-"
+      - generic [ref=e22]:
+        - generic [ref=e23]: "Permesso Notifiche:"
+        - generic [ref=e24]: "-"
+      - generic [ref=e25]:
+        - generic [ref=e26]: "Subscription Attiva:"
+        - generic [ref=e27]: "-"
+      - generic [ref=e28]:
+        - generic [ref=e29]: "Subscription Salvata:"
+        - generic [ref=e30]: "-"
+      - generic [ref=e31]:
+        - generic [ref=e32]: "Notifiche Completamente Attive:"
+        - generic [ref=e33]: "-"
+      - generic [ref=e34]:
+        - generic [ref=e35]: "Banner Notifiche Chiuso:"
+        - generic [ref=e36]: "-"
+    - generic [ref=e38]:
+      - heading "🧪 Test Notifiche" [level=2] [ref=e39]
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]: Titolo Notifica
+          - textbox "Titolo Notifica" [ref=e43]:
+            - /placeholder: "Es: Partita Iniziata!"
+            - text: Test Notifica
+        - generic [ref=e44]:
+          - generic [ref=e45]: Messaggio
+          - textbox "Messaggio" [ref=e46]:
+            - /placeholder: "Es: La tua partita sta per iniziare!"
+            - text: Questa è una notifica di test dal sistema CA Biliardino
+        - button "📤 Invia Notifica di Test" [ref=e47] [cursor=pointer]
+    - generic [ref=e49]:
+      - heading "⚙️ Gestione" [level=2] [ref=e50]
+      - button "🔔 Mostra Banner" [active] [ref=e51] [cursor=pointer]
+      - button "🔄 Reset Banner Notifiche" [ref=e52] [cursor=pointer]
+      - button "👤 Reset Utente" [ref=e53] [cursor=pointer]
+      - button "🗑️ Reset Tutto" [ref=e54] [cursor=pointer]
+      - button "🔄 Aggiorna Status" [ref=e55] [cursor=pointer]
+```
