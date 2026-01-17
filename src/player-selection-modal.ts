@@ -122,7 +122,7 @@ function setupModalEventListeners(modal: HTMLElement, onSelect: (playerId: numbe
       const playerNameFull = getAllPlayers().find(p => p.id === playerId)?.name || '';
 
       // Remove previous selection
-      playerList.querySelectorAll('.player-item').forEach(item => {
+      playerList.querySelectorAll('.player-item').forEach((item) => {
         item.classList.remove('selected');
       });
 

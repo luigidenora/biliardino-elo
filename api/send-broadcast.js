@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     for (const data of subscriptionsData) {
       try {
         const playerName = data.playerName || 'Giocatore';
-        
+
         await webpush.sendNotification(
           data.subscription,
           JSON.stringify({

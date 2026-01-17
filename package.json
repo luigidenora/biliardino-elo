@@ -9,15 +9,21 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "lint": "eslint --fix"
+    "lint": "eslint --fix",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@stylistic/eslint-plugin": "^5.6.1",
     "@types/node": "^24.10.1",
+    "@vitest/ui": "^4.0.17",
+    "happy-dom": "^20.3.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
-    "vite": "^7.2.6"
+    "vite": "^7.2.6",
+    "vitest": "^4.0.17"
   },
   "dependencies": {
     "@vercel/blob": "^0.27.0",

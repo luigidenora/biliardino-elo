@@ -30,9 +30,11 @@ const app = useMockData ? null : initializeApp(firebaseConfig);
  * Used by the repository code to read and write collections.
  * Set to null in dev mode when using mock data.
  */
-export const db = useMockData ? null : initializeFirestore(app!, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
+export const db = useMockData
+  ? null
+  : initializeFirestore(app!, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
 
 /**
  * Firebase Authentication instance for the current app.
