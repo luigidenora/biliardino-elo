@@ -286,8 +286,6 @@
   </div>
 
   <script type="module">
-    import { subscribeToPushNotifications } from './src/pwa.ts';
-
     // Helper function to show result messages
     function showResult(elementId, message, type = 'success') {
       const el = document.getElementById(elementId);
@@ -297,6 +295,17 @@
         el.classList.remove('hidden');
         setTimeout(() => el.classList.add('hidden'), 10000);
       }
+    }
+
+    // Helper to check if Notification API is available
+    function checkNotificationSupport() {
+      if (!('Notification' in window)) {
+        return { supported: false, error: 'Il browser non supporta le notifiche' };
+      }
+      if (!('serviceWorker' in navigator)) {
+        return { supported: false, error: 'Il browser non supporta i Service Workers' };
+      }
+      return { supported: true };
     }
 
     // 1. Add Subscription
@@ -316,13 +325,63 @@
         return;
       }
 
+      // Check browser support
+      const supportCheck = checkNotificationSupport();
+      if (!supportCheck.supported) {
+        showResult('add-result', `❌ ${supportCheck.error}`, 'error');
+        return;
+      }
+
       try {
         // Save to localStorage
         localStorage.setItem('biliardino_player_id', playerId);
         localStorage.setItem('biliardino_player_name', playerName);
 
-        // Request notification permission and create subscription
-        await subscribeToPushNotifications();
+        // Request notification permission
+        showResult('add-result', '🔔 Richiesta permesso notifiche...', 'info');
+        
+        const permission = await Notification.requestPermission();
+        
+        if (permission !== 'granted') {
+          showResult('add-result', '❌ Permesso notifiche negato. Abilita le notifiche nelle impostazioni del browser.', 'error');
+          return;
+        }
+
+        // Get service worker registration
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Check for existing subscription
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+          // Create new subscription
+          const vapidKey = 'BOUHmi8SrZME9HKSAyqwKpTSiW1BATEoejeFqSzCUkxa718VNmx6ATtiUbi4YmCl-eAQC6kndhXCP-vZl9QHfpE';
+          const convertedVapidKey = urlBase64ToUint8Array(vapidKey);
+          
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+        }
+
+        // Save subscription to server
+        const response = await fetch('/api/save-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            playerId: Number(playerId),
+            playerName: playerName
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Errore server (${response.status}): ${error}`);
+        }
+
+        // Save subscription to localStorage
+        localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
 
         showResult('add-result', `✅ Subscription creata con successo per ${playerName} (ID: ${playerId})`, 'success');
         
@@ -334,6 +393,22 @@
         showResult('add-result', `❌ Errore: ${err.message}`, 'error');
       }
     });
+
+    // Helper function to convert VAPID key
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+      
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
 
     // 2. Test Subscription by User ID
     document.getElementById('test-by-user-btn')?.addEventListener('click', async () => {
