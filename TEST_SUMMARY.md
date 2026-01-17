@@ -2,13 +2,13 @@
 
 ## Overview
 
-This PR adds a comprehensive test suite for the subscription notification system using **Vitest**, covering both API endpoints and web interface functionality.
+This PR adds a comprehensive test suite for the subscription notification system using **Vitest** for unit/integration tests and **Playwright** for end-to-end tests, covering both API endpoints and complete user flows through the web interface.
 
 ## Test Statistics
 
-- **Total Tests:** 119 ✅
-- **Test Files:** 4
-- **Execution Time:** ~1.3 seconds
+- **Total Unit/Integration Tests:** 119 ✅ (~1.3 seconds)
+- **Total E2E Tests:** 13 ✅ (Playwright)
+- **Test Files:** 5 (4 Vitest + 1 Playwright)
 - **Coverage:** 96.33% statements, 93.47% branches, 94.73% functions
 
 ## What Was Added
@@ -158,6 +158,67 @@ End-to-end testing of the complete subscription flow:
 - ✅ API returning non-JSON responses
 - ✅ Fetch timeouts and aborted operations
 
+### 6. E2E Tests with Playwright (13 tests)
+
+**File:** `e2e/notifications.spec.ts`
+
+Complete end-to-end browser tests with real notification permissions:
+
+#### Notification Subscription Flow
+- ✅ Displays notification dashboard correctly
+- ✅ Shows initial state as not configured
+- ✅ Allows resetting notification state
+- ✅ Completes full notification subscription flow (permission → player selection → subscription)
+- ✅ Handles notification permission denial
+- ✅ Allows sending test notifications
+- ✅ Shows player selection modal when activating without user
+- ✅ Filters players in selection modal
+- ✅ Persists notification state across page reloads
+- ✅ Shows banner when permission not granted
+- ✅ Updates status display in real-time
+
+#### Notification Banner Integration
+- ✅ Shows banner on main pages when notifications not configured
+- ✅ Hides banner when notifications are fully configured
+
+**Key Features:**
+- Real browser testing with Chromium
+- Automated notification permission granting
+- Player selection modal interaction
+- LocalStorage state verification
+- Banner display logic testing
+- Form interaction and validation
+
+End-to-end testing of the complete subscription flow:
+
+#### ensurePlayerSelected()
+- ✅ Returns true when player already selected
+- ✅ Shows modal and stores selection correctly
+- ✅ Handles missing playerId or playerName
+
+#### subscribeToPushNotifications()
+- ✅ Successfully subscribes with valid player info
+- ✅ Throws appropriate errors when playerId/playerName missing
+- ✅ Handles notification permission denial
+- ✅ Creates new subscription when none exists
+- ✅ Reuses existing subscription if available
+- ✅ Handles subscription creation errors
+- ✅ Handles API save errors with proper error messages
+- ✅ Handles network errors and timeouts
+- ✅ Saves to localStorage ONLY after successful API call
+- ✅ Sends correct data structure to API
+
+#### urlBase64ToUint8Array()
+- ✅ Correctly converts VAPID key to Uint8Array
+
+#### Edge Cases & Error Recovery
+- ✅ Very long player names (500+ chars)
+- ✅ Special characters in player names (Unicode, apostrophes, hyphens)
+- ✅ Zero as valid playerId
+- ✅ Concurrent subscription attempts
+- ✅ API returning non-JSON responses
+- ✅ Fetch timeouts and aborted operations
+
 ## Test Coverage Report
 
 ```
@@ -208,10 +269,14 @@ All external dependencies are properly mocked:
 
 Added comprehensive documentation:
 
-- **Test README** (`src/__tests__/README.md`) - Complete guide on running tests, writing new tests, debugging, and best practices
+- **Test README** (`src/__tests__/README.md`) - Complete guide for unit/integration tests
+- **E2E README** (`e2e/README.md`) - Complete guide for Playwright E2E tests  
 - **This Summary** - High-level overview of test implementation
+- **Playwright Config** (`playwright.config.ts`) - E2E test configuration
 
 ## Running the Tests
+
+### Unit and Integration Tests (Vitest)
 
 ```bash
 # Run all tests
@@ -230,14 +295,35 @@ npm test -- src/__tests__/api/save-subscription.test.ts
 npm test -- -t "should successfully save"
 ```
 
+### E2E Tests (Playwright)
+
+```bash
+# Run all E2E tests (headless)
+npm run test:e2e
+
+# Run with interactive UI
+npm run test:e2e:ui
+
+# Run in headed mode (see browser)
+npm run test:e2e:headed
+
+# Debug tests step-by-step
+npm run test:e2e:debug
+
+# Run specific test
+npx playwright test -g "should complete full notification subscription flow"
+```
+
 ## Benefits
 
 1. **Confidence in Changes** - Comprehensive test coverage ensures changes don't break existing functionality
-2. **Fast Feedback** - Tests run in ~1.3 seconds, perfect for TDD workflow
-3. **Documentation** - Tests serve as living documentation of expected behavior
-4. **Regression Prevention** - Catches bugs before they reach production
-5. **Refactoring Safety** - Safe to refactor with tests validating behavior
-6. **CI/CD Ready** - Tests are fast, deterministic, and run in CI environments
+2. **Fast Feedback** - Unit tests run in ~1.3 seconds, perfect for TDD workflow
+3. **Real Browser Testing** - E2E tests verify actual user flows with Playwright
+4. **Documentation** - Tests serve as living documentation of expected behavior
+5. **Regression Prevention** - Catches bugs before they reach production
+6. **Refactoring Safety** - Safe to refactor with tests validating behavior
+7. **CI/CD Ready** - Tests are fast, deterministic, and run in CI environments
+8. **Complete Coverage** - From unit tests to full browser automation
 
 ## Future Enhancements
 
@@ -253,10 +339,12 @@ While this test suite is comprehensive, potential future additions could include
 
 This test implementation provides **rigorous, production-ready testing** for the subscription notification system, covering:
 
-- ✅ API endpoint validation
-- ✅ Web interface logic
+- ✅ API endpoint validation (Vitest - 45 tests)
+- ✅ Web interface logic (Vitest - 49 tests)
+- ✅ Integration flows (Vitest - 25 tests)
+- ✅ **Complete E2E user flows (Playwright - 13 tests)**
 - ✅ Error handling and edge cases
 - ✅ Real-world user scenarios
-- ✅ Integration between components
+- ✅ **Real browser testing with notification permissions**
 
-All 119 tests pass, with excellent code coverage (96%+), ensuring the notification subscription system is robust, reliable, and maintainable.
+All **132 tests pass** (119 unit/integration + 13 E2E), with excellent code coverage (96%+), ensuring the notification subscription system is robust, reliable, and maintainable. The E2E tests provide confidence that the complete flow works in real browsers with actual notification permissions.
