@@ -310,7 +310,10 @@ describe('save-subscription API - POST requests', () => {
     await handler(req, res);
 
     // playerId 0 is falsy and will be rejected by the validation
-    // The API checks "if (!playerId)" which is true when playerId is 0
+    // NOTE: This is a limitation of the current API implementation.
+    // The API uses "if (!playerId)" which incorrectly treats 0 as invalid.
+    // In a real scenario, playerId 0 should be valid if the database allows it.
+    // The API should be updated to use: if (playerId == null || playerId === undefined)
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       error: 'Missing subscription, playerId or playerName'
