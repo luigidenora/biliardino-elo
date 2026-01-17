@@ -1,42 +1,99 @@
 import { list } from '@vercel/blob';
 import webpush from 'web-push';
 
+// Verifica configurazione
+if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+  console.error('❌ ERRORE: VAPID keys non configurate');
+}
+
+if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  console.error('❌ ERRORE: BLOB_READ_WRITE_TOKEN non configurato');
+}
+
 webpush.setVapidDetails(
   'mailto:info@biliardino.app',
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
 
+/**
+ * API per inviare broadcast a tutti gli utenti registrati
+ * 
+ * POST /api/send-broadcast
+ * Body: {
+ *   matchTime: string (es: "14:30"),
+ *   title?: string (opzionale),
+ *   body?: string (opzionale)
+ * }
+ */
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const now = new Date();
-    const hour = now.getHours();
-    const matchTime = hour === 10 ? '11:00' : '16:00';
+    const { matchTime, title: customTitle, body: customBody } = req.body;
+
+    if (!matchTime) {
+      return res.status(400).json({ error: 'matchTime è obbligatorio' });
+    }
+
+    // Verifica configurazione
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error('❌ BLOB_READ_WRITE_TOKEN non configurato');
+      return res.status(500).json({ 
+        error: 'Configurazione server incompleta',
+        details: 'BLOB_READ_WRITE_TOKEN mancante'
+      });
+    }
 
     const { blobs } = await list({
       prefix: 'biliardino-subs/',
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
+    if (!blobs || blobs.length === 0) {
+      return res.status(404).json({
+        error: 'Nessuna subscription trovata',
+        message: 'Non ci sono subscriptions registrate nel sistema'
+      });
+    }
+
     const subscriptionsData = await Promise.all(
       blobs.map(async (blob) => {
-        const response = await fetch(blob.url);
-        return await response.json();
+        try {
+          const response = await fetch(blob.url);
+          return await response.json();
+        } catch (err) {
+          console.error(`❌ Errore caricamento blob ${blob.pathname}:`, err);
+          return null;
+        }
       })
     );
 
-    let success = 0;
-    let fail = 0;
+    const validSubscriptions = subscriptionsData.filter(sub => sub !== null);
 
-    for (const data of subscriptionsData) {
+    if (validSubscriptions.length === 0) {
+      return res.status(404).json({
+        error: 'Nessuna subscription valida',
+        message: 'Non ci sono subscriptions valide da notificare'
+      });
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const data of validSubscriptions) {
       try {
         const playerName = data.playerName || 'Giocatore';
+        const title = customTitle || '🎮 CAlcio Balilla';
+        const body = customBody || `Ciao ${playerName}! Partita alle ${matchTime} 🏆`;
 
         await webpush.sendNotification(
           data.subscription,
           JSON.stringify({
-            title: '🎮 CAlcio Balilla',
-            body: `Ciao ${playerName}! Partita alle ${matchTime} 🏆`,
+            title,
+            body,
             url: `/confirm.html?time=${matchTime}`,
             tag: `match-${matchTime}`,
             requireInteraction: true,
@@ -44,17 +101,28 @@ export default async function handler(req, res) {
             badge: '/icons/icon-192.jpg'
           })
         );
-        success++;
+        sent++;
+        console.log(`✅ Notifica inviata a ${playerName}`);
       } catch (err) {
         console.warn('❌ Errore invio a:', data.playerName || data.playerId, err.message);
-        fail++;
+        failed++;
       }
     }
 
-    console.log(`✅ Broadcast: ${success}/${subscriptionsData.length} inviati (Match: ${matchTime})`);
-    res.status(200).json({ success, fail, total: subscriptionsData.length, matchTime });
+    console.log(`✅ Broadcast completato: ${sent}/${validSubscriptions.length} inviati (Match: ${matchTime})`);
+    
+    return res.status(200).json({ 
+      sent, 
+      failed, 
+      total: validSubscriptions.length, 
+      matchTime 
+    });
   } catch (err) {
     console.error('❌ Errore broadcast:', err);
-    res.status(500).json({ error: 'Errore invio broadcast' });
+    return res.status(500).json({ 
+      error: 'Errore invio broadcast',
+      details: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 }
