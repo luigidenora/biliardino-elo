@@ -35,15 +35,15 @@ export default async function handler(req, res) {
       })
     );
 
-    res.status(200).json({ 
-      success: true, 
-      message: `Notifica inviata a ${name}!` 
+    res.status(200).json({
+      success: true,
+      message: `Notifica inviata a ${name}!`
     });
   } catch (err) {
     console.error('❌ Errore test:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Errore invio notifica',
-      details: err.message 
+      details: err.message
     });
   }
 }

@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         ok: false,
         message: 'Conferme insufficienti',
         required: 5,
-        current: validConfirmations.length,
+        current: validConfirmations.length
       });
     }
 
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     // Ottieni le subscriptions di questi giocatori
     const { blobs } = await list({
       prefix: 'biliardino-subs/',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
     const allSubscriptions = await Promise.all(
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       })
     );
 
-    const selectedSubscriptions = allSubscriptions.filter(sub => 
+    const selectedSubscriptions = allSubscriptions.filter(sub =>
       selectedIds.includes(sub.playerId)
     );
 
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
       selected: selectedIds,
       notified: success,
       failed: fail,
-      matchTime,
+      matchTime
     });
   } catch (err) {
     console.error('❌ Errore matchmaking:', err);

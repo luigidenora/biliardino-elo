@@ -86,7 +86,7 @@ async function saveSubscription(subscription: PushSubscription, playerId: number
     const response = await fetch('/api/save-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription, playerId, playerName }),
+      body: JSON.stringify({ subscription, playerId, playerName })
     });
 
     if (!response.ok) {
@@ -112,6 +112,6 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return new Uint8Array(
     atob(base64)
       .split('')
-      .map((c) => c.charCodeAt(0))
+      .map(c => c.charCodeAt(0))
   );
 }

@@ -23,11 +23,11 @@ export default async function handler(req, res) {
       }
 
       const key = generateId(subscription.endpoint);
-      const data = { 
-        subscription, 
-        playerId: playerIdNum,  // Salva come numero
+      const data = {
+        subscription,
+        playerId: playerIdNum, // Salva come numero
         playerName,
-        createdAt: new Date().toISOString() 
+        createdAt: new Date().toISOString()
       };
 
       const blob = await put(key, JSON.stringify(data), {

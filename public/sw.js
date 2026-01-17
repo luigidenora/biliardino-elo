@@ -76,7 +76,7 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
-  
+
   const title = data.title || 'CAlcio Balilla';
   const options = {
     body: data.body || 'Hai una nuova notifica!',
@@ -84,7 +84,7 @@ self.addEventListener('push', (event) => {
     badge: '/biliardino-elo/icons/icon-192-maskable.png',
     data: data.url || '/biliardino-elo/',
     tag: data.tag || 'default',
-    requireInteraction: data.requireInteraction || false,
+    requireInteraction: data.requireInteraction || false
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

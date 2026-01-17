@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       count: confirmations.length,
-      confirmations: confirmations.filter(Boolean),
+      confirmations: confirmations.filter(Boolean)
     });
   } catch (err) {
     console.error('❌ Errore lettura confirmations:', err);
