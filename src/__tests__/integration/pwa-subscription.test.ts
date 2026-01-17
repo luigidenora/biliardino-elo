@@ -257,11 +257,7 @@ describe('subscribeToPushNotifications', () => {
       text: () => Promise.resolve('Error')
     });
 
-    try {
-      await subscribeToPushNotifications();
-    } catch (e) {
-      // Expected to throw
-    }
+    await expect(subscribeToPushNotifications()).rejects.toThrow();
 
     expect(localStorage.getItem('biliardino_subscription')).toBeNull();
   });

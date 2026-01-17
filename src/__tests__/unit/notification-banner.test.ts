@@ -223,11 +223,17 @@ describe('Notification Banner - Edge cases', () => {
     localStorage.setItem('biliardino_subscription', 'invalid-json{');
     (window.Notification as any).permission = 'granted';
 
-    // The function checks for presence of the item, not validity
-    // So it should still be considered "present" but invalid
+    // The banner logic checks for presence using localStorage.getItem(),
+    // which returns a truthy string even if it's invalid JSON.
+    // NOTE: This is a potential edge case. The banner will show "hidden"
+    // because it detects a value, but getSavedSubscription() returns null
+    // for invalid JSON. The banner should ideally validate the JSON or
+    // the logic should use getSavedSubscription() instead of direct getItem().
     const state = getBannerState();
-    // Since there IS a subscription value (even if invalid), it should be hidden
-    expect(state).toBe('hidden');
+    expect(state).toBe('hidden'); // Current behavior
+    
+    // In a better implementation, this should be 'enable-notifications'
+    // since the subscription is actually invalid
   });
 
   it('should handle empty string values', () => {
