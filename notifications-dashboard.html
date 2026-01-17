@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="it">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Impostazioni Notifiche - CA Biliardino</title>
+  <meta name="theme-color" content="#062c7d" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles/ranking.css" />
+  <link rel="stylesheet" href="./styles/notification-banner.css" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .test-container {
+      background: white;
+      border-radius: 18px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    h1 {
+      color: #1d1d1f;
+      margin-bottom: 1.5rem;
+    }
+
+    .status-section {
+      background: #f5f5f7;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #d2d2d7;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: #1d1d1f;
+    }
+
+    .status-value {
+      color: #6e6e73;
+    }
+
+    .status-true {
+      color: #30d158;
+      font-weight: 600;
+    }
+
+    .status-false {
+      color: #ff3b30;
+      font-weight: 600;
+    }
+
+    .test-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .test-btn {
+      background: #007aff;
+      color: white;
+      border: none;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .test-btn:hover {
+      background: #0051d5;
+      transform: scale(1.02);
+    }
+
+    .test-btn:active {
+      transform: scale(0.98);
+    }
+
+    .test-btn.secondary {
+      background: #6e6e73;
+    }
+
+    .test-btn.secondary:hover {
+      background: #515154;
+    }
+
+    .test-btn.danger {
+      background: #ff3b30;
+    }
+
+    .test-btn.danger:hover {
+      background: #cc2e24;
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #007aff;
+      text-decoration: none;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+
+    .back-button:hover {
+      transform: translateX(-4px);
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      color: #1d1d1f;
+      margin-bottom: 1rem;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: #d2d2d7;
+      margin: 2rem 0;
+    }
+
+    .test-section {
+      background: #f5f5f7;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .test-notification-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-group label {
+      font-weight: 600;
+      color: #1d1d1f;
+      font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      padding: 0.75rem;
+      border: 1px solid #d2d2d7;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+  </style>
+</head>
+
+<body>
+  <script type="module" src="./src/notification-banner.ts"></script>
+
+  <!-- Banner Notifiche Push -->
+  <div id="notification-banner" class="notification-banner hidden">
+    <button id="notification-banner-close" class="banner-close" aria-label="Chiudi">✕</button>
+    <div class="banner-content">
+      <div class="banner-header">
+        <div class="banner-icon">🔔</div>
+        <div class="banner-text-wrapper">
+          <div class="banner-title">Abilita le Notifiche</div>
+          <div class="banner-text">Ricevi un avviso quando inizia la partita</div>
+        </div>
+      </div>
+      <button id="notification-banner-button" class="banner-button">
+        Attiva
+      </button>
+    </div>
+  </div>
+
+  <div class="test-container">
+    <a href="./index.html" class="back-button">← Torna alla Home</a>
+    <h1>🔔 Impostazioni Notifiche</h1>
+
+    <div class="status-section">
+      <h2>📊 Status Attuale</h2>
+      <div class="status-item">
+        <span class="status-label">Utente Registrato:</span>
+        <span id="user-registered" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Giocatore:</span>
+        <span id="player-status" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Permesso Notifiche:</span>
+        <span id="notification-permission" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Subscription Attiva:</span>
+        <span id="subscription-active" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Subscription Salvata:</span>
+        <span id="subscription-saved" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Notifiche Completamente Attive:</span>
+        <span id="fully-active" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Banner Notifiche Chiuso:</span>
+        <span id="notification-dismissed" class="status-value">-</span>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="test-section">
+      <h2>🧪 Test Notifiche</h2>
+      <div class="test-notification-form">
+        <div class="form-group">
+          <label for="test-title">Titolo Notifica</label>
+          <input type="text" id="test-title" placeholder="Es: Partita Iniziata!" value="Test Notifica">
+        </div>
+        <div class="form-group">
+          <label for="test-body">Messaggio</label>
+          <textarea id="test-body"
+            placeholder="Es: La tua partita sta per iniziare!">Questa è una notifica di test dal sistema CA Biliardino</textarea>
+        </div>
+        <button id="send-test-notification-btn" class="test-btn">📤 Invia Notifica di Test</button>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="test-buttons">
+      <h2>⚙️ Gestione</h2>
+      <button id="show-banner-btn" class="test-btn">🔔 Mostra Banner</button>
+      <button id="reset-notification-btn" class="test-btn secondary">🔄 Reset Banner Notifiche</button>
+      <button id="reset-player-btn" class="test-btn secondary">👤 Reset Utente</button>
+      <button id="reset-all-btn" class="test-btn danger">🗑️ Reset Tutto</button>
+      <button id="refresh-btn" class="test-btn secondary">🔄 Aggiorna Status</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getNotificationStatus } from './src/utils/notification-status.util.ts';
+
+    async function updateStatus() {
+      const status = await getNotificationStatus();
+
+      // User Registered
+      const userRegisteredEl = document.getElementById('user-registered');
+      if (userRegisteredEl) {
+        userRegisteredEl.textContent = status.userRegistered ? '✓ Si' : '✗ No';
+        userRegisteredEl.className = status.userRegistered ? 'status-value status-true' : 'status-value status-false';
+      }
+
+      // Player Status
+      const playerStatusEl = document.getElementById('player-status');
+      if (playerStatusEl) {
+        playerStatusEl.textContent = status.playerName ? `✓ ${status.playerName} (ID: ${status.playerId})` : '✗ Non selezionato';
+        playerStatusEl.className = status.playerName ? 'status-value status-true' : 'status-value status-false';
+      }
+
+      // Notification Permission
+      const permissionEl = document.getElementById('notification-permission');
+      if (permissionEl) {
+        permissionEl.textContent = status.permission === 'granted' ? '✓ Concesso' :
+          status.permission === 'denied' ? '✗ Negato' :
+            '⏸ Non chiesto';
+        permissionEl.className = status.permission === 'granted' ? 'status-value status-true' :
+          status.permission === 'denied' ? 'status-value status-false' :
+            'status-value';
+      }
+
+      // Subscription Active
+      const subscriptionActiveEl = document.getElementById('subscription-active');
+      if (subscriptionActiveEl) {
+        subscriptionActiveEl.textContent = status.hasSubscription ? '✓ Si' : '✗ No';
+        subscriptionActiveEl.className = status.hasSubscription ? 'status-value status-true' : 'status-value status-false';
+      }
+
+      // Subscription Saved
+      const subscriptionSavedEl = document.getElementById('subscription-saved');
+      if (subscriptionSavedEl) {
+        subscriptionSavedEl.textContent = status.subscriptionSaved ? '✓ Si' : '✗ No';
+        subscriptionSavedEl.className = status.subscriptionSaved ? 'status-value status-true' : 'status-value status-false';
+      }
+
+      // Fully Active
+      const fullyActiveEl = document.getElementById('fully-active');
+      if (fullyActiveEl) {
+        fullyActiveEl.textContent = status.fullyActive ? '✅ SI' : '❌ NO';
+        fullyActiveEl.className = status.fullyActive ? 'status-value status-true' : 'status-value status-false';
+        if (status.fullyActive) {
+          fullyActiveEl.style.fontWeight = '700';
+          fullyActiveEl.style.fontSize = '1.1rem';
+        }
+      }
+
+      // Notification Dismissed
+      const notificationDismissed = localStorage.getItem('biliardino_notification_dismissed');
+      const notificationDismissedEl = document.getElementById('notification-dismissed');
+      if (notificationDismissedEl) {
+        notificationDismissedEl.textContent = notificationDismissed === 'true' ? '✓ Si' : '✗ No';
+        notificationDismissedEl.className = 'status-value';
+      }
+    }
+
+    // Initial status update
+    updateStatus();
+
+    // Show banner button
+    document.getElementById('show-banner-btn')?.addEventListener('click', () => {
+      const banner = document.getElementById('notification-banner');
+      if (banner) {
+        banner.classList.remove('hidden');
+      }
+    });
+
+    // Reset notification dismissed
+    document.getElementById('reset-notification-btn')?.addEventListener('click', () => {
+      localStorage.removeItem('biliardino_notification_dismissed');
+      updateStatus();
+      alert('✓ Banner notifiche reset!');
+    });
+
+    // Reset player
+    document.getElementById('reset-player-btn')?.addEventListener('click', () => {
+      localStorage.removeItem('biliardino_player_id');
+      localStorage.removeItem('biliardino_player_name');
+      updateStatus();
+      alert('✓ Utente reset!');
+    });
+
+    // Reset all
+    document.getElementById('reset-all-btn')?.addEventListener('click', async () => {
+      if (confirm('Sei sicuro di voler resettare tutto (inclusa la subscription)?')) {
+        // Rimuovi localStorage
+        localStorage.removeItem('biliardino_notification_dismissed');
+        localStorage.removeItem('biliardino_player_id');
+        localStorage.removeItem('biliardino_player_name');
+        localStorage.removeItem('biliardino_subscription');
+
+        // Prova a rimuovere anche la subscription dal browser
+        try {
+          if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            const subscription = await reg.pushManager.getSubscription();
+            if (subscription) {
+              await subscription.unsubscribe();
+              console.log('✓ Subscription rimossa dal browser');
+            }
+          }
+        } catch (err) {
+          console.error('Errore rimozione subscription:', err);
+        }
+
+        updateStatus();
+        alert('✓ Tutto resettato!');
+      }
+    });
+
+    // Refresh button
+    document.getElementById('refresh-btn')?.addEventListener('click', () => {
+      updateStatus();
+    });
+
+    // Test notification button
+    document.getElementById('send-test-notification-btn')?.addEventListener('click', async () => {
+      const title = document.getElementById('test-title').value;
+      const body = document.getElementById('test-body').value;
+      const savedSubscription = localStorage.getItem('biliardino_subscription');
+      const playerName = localStorage.getItem('biliardino_player_name');
+
+      if (!savedSubscription) {
+        alert('❌ Devi prima attivare le notifiche!');
+        return;
+      }
+
+      if (!playerName) {
+        alert('❌ Devi prima selezionare il tuo nome!');
+        return;
+      }
+
+      try {
+        const subscription = JSON.parse(savedSubscription);
+        const response = await fetch('/api/test-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription,
+            playerName,
+            title: title || 'Test Notifica',
+            body: body || 'Questa è una notifica di test'
+          })
+        });
+
+        if (response.ok) {
+          alert('✅ Notifica di test inviata! Controlla il tuo dispositivo.');
+        } else {
+          const error = await response.text();
+          alert(`❌ Errore invio notifica: ${error}`);
+        }
+      } catch (err) {
+        console.error('Errore:', err);
+        alert(`❌ Errore: ${err.message}`);
+      }
+    });
+  </script>
+</body>
+
+</html>

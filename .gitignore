@@ -29,3 +29,6 @@ Thumbs.db
 
 # Coverage reports
 coverage/
+.vercel
+.env*.local
+vercel.json

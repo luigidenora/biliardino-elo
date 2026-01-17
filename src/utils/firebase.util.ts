@@ -1,3 +1,4 @@
+import { useMockData } from '@/config/env.config';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
@@ -19,22 +20,26 @@ const firebaseConfig = {
 
 /**
  * Root Firebase application instance initialized with the project configuration.
+ * Only initialized in production mode.
  */
-const app = initializeApp(firebaseConfig);
+const app = useMockData ? null : initializeApp(firebaseConfig);
+
 /**
  * Firestore database instance bound to the initialized Firebase app.
  *
  * Used by the repository code to read and write collections.
+ * Set to null in dev mode when using mock data.
  */
-export const db = initializeFirestore(app, {
+export const db = useMockData ? null : initializeFirestore(app!, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
 /**
  * Firebase Authentication instance for the current app.
  * Used to authenticate predefined users via email (username) and password.
+ * Set to null in dev mode when using mock data.
  */
-export const AUTH = getAuth(app);
+export const AUTH = useMockData ? null : getAuth(app!);
 
 /**
  * Firestore collection name used to persist and retrieve match documents.
@@ -60,5 +65,17 @@ export const RUNNING_MATCH_COLLECTION = 'runningMatch';
  * @throws FirebaseError if authentication fails (invalid credentials, user not found, etc.).
  */
 export async function login(email: string, password: string): Promise<any> {
-  return signInWithEmailAndPassword(AUTH, email, password);
+  if (useMockData) {
+    console.log('[MOCK] Login attempt with email:', email);
+    // Mock successful login
+    return Promise.resolve({
+      user: {
+        uid: 'mock-user-id',
+        email: email,
+        displayName: 'Mock User'
+      }
+    });
+  }
+
+  return signInWithEmailAndPassword(AUTH!, email, password);
 }
