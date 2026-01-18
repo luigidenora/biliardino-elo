@@ -16,7 +16,7 @@ function createNotificationButton(): HTMLElement {
   const button = document.createElement('a');
   button.id = 'notification-user-button';
   button.className = 'notification-user-button';
-  button.href = './notifications-dashboard.html';
+  button.href = './notifications-test.html';
   button.setAttribute('aria-label', 'Impostazioni Notifiche');
 
   const icon = document.createElement('span');
