@@ -14,7 +14,7 @@ Il sistema permette agli utenti di:
 ### Client-Side
 - **Banner Notifiche**: Richiesta di abilitazione con selezione utente
 - **Notification Button**: Indicatore di stato sempre visibile (top-right)
-- **Dashboard**: Interfaccia di gestione e test (`/notifications-dashboard.html`)
+- **Dashboard**: Interfaccia di gestione e test (`/notifications-test.html`)
 - **Service Worker**: Gestione notifiche in background (`/public/sw.js`)
 
 ### Server-Side
@@ -29,7 +29,7 @@ Il sistema permette agli utenti di:
 - `src/notification-button.ts` - Pulsante di stato top-right
 - `src/utils/notification-status.util.ts` - Utility di verifica stato
 - `src/pwa.ts` - Gestione subscription e service worker
-- `notifications-dashboard.html` - Dashboard utente
+- `notifications-test.html` - Dashboard utente e test production
 - `styles/notification-banner.css` - Stili banner
 - `styles/notification-button.css` - Stili pulsante
 
@@ -104,11 +104,11 @@ availability:[time]:[playerId] = "confirmed"  (TTL: 30min)
 ## 🧪 Testing
 
 ### Dashboard Notifiche
-Accedi a `/notifications-dashboard` per:
-- Visualizzare stato completo del sistema
-- Inviare notifiche di test personalizzate
-- Resettare configurazione
-- Verificare subscription attiva
+Accedi a `/notifications-test.html` per:
+- Visualizzare tutte le subscriptions salvate su Vercel Blob
+- Aggiungere nuove subscriptions manualmente
+- Inviare notifiche di test a utenti specifici
+- Inviare broadcast a tutti gli utenti registrati
 
 ### API Endpoints
 
@@ -182,7 +182,7 @@ vercel --prod
 1. Verifica permesso browser concesso
 2. Controlla subscription salvata (dashboard)
 3. Verifica variabili VAPID corrette
-4. Testa con `/notifications-dashboard`
+4. Testa con `/notifications-test.html`
 
 ### Subscription non salvata
 1. Verifica `BLOB_READ_WRITE_TOKEN` presente

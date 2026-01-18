@@ -15,7 +15,6 @@ export default defineConfig(config => ({
         players: path.resolve(__dirname, 'players.html'),
         add: path.resolve(__dirname, 'add.html'),
         matchmaking: path.resolve(__dirname, 'matchmaking.html'),
-        'notifications-dashboard': path.resolve(__dirname, 'notifications-dashboard.html'),
         'notifications-test': path.resolve(__dirname, 'notifications-test.html'),
         confirm: path.resolve(__dirname, 'confirm.html')
       },

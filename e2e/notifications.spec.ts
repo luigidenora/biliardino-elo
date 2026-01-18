@@ -95,7 +95,7 @@ async function getNotificationStatus(page: Page) {
 test.describe('Notification Subscription E2E Tests', () => {
   test.beforeEach(async ({ page, context }) => {
     // Navigate to notifications dashboard
-    await page.goto('/notifications-dashboard.html');
+    await page.goto('/notifications-test.html');
     
     // Wait for page to be fully loaded and scripts to execute
     await page.waitForLoadState('networkidle');
