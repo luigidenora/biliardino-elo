@@ -201,6 +201,92 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
+
+    /* Subscription Table Styles */
+    .subscriptions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .subscriptions-table thead {
+      background: #e8e8ed;
+    }
+
+    .subscriptions-table th {
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      color: #1d1d1f;
+      border-bottom: 2px solid #d2d2d7;
+    }
+
+    .subscriptions-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #e8e8ed;
+      color: #1d1d1f;
+    }
+
+    .subscriptions-table tbody tr:hover {
+      background: #f9f9f9;
+    }
+
+    .subscriptions-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .refresh-btn {
+      background: #007aff;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .refresh-btn:hover {
+      background: #0051d5;
+    }
+
+    .table-count {
+      font-size: 0.9rem;
+      color: #6e6e73;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #6e6e73;
+      font-style: italic;
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 2rem;
+      color: #6e6e73;
+    }
+
+    .subscription-date {
+      font-size: 0.85rem;
+      color: #6e6e73;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
   </style>
 </head>
 
@@ -209,6 +295,34 @@
     <a href="./index.html" class="back-button">← Torna alla Home</a>
     <h1>🔔 Test Notifiche <span class="production-badge">Production</span></h1>
     <p class="subtitle">Interfaccia di testing per le notifiche push con Vercel Blob Storage</p>
+
+    <!-- Subscriptions Table -->
+    <div class="test-section">
+      <h2>📊 Subscriptions Salvate su Vercel Blob</h2>
+      <div class="table-actions">
+        <span class="table-count" id="subscription-count">Caricamento...</span>
+        <button id="refresh-table-btn" class="refresh-btn">🔄 Aggiorna</button>
+      </div>
+      <div class="table-scroll">
+        <table class="subscriptions-table">
+          <thead>
+            <tr>
+              <th>Player ID</th>
+              <th>Nome Giocatore</th>
+              <th>Endpoint</th>
+              <th>Data Creazione</th>
+            </tr>
+          </thead>
+          <tbody id="subscriptions-tbody">
+            <tr>
+              <td colspan="4" class="loading-state">⏳ Caricamento subscriptions...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
 
     <!-- 1. Add Subscription -->
     <div class="test-section">
@@ -308,6 +422,76 @@
       return { supported: true };
     }
 
+    // Function to load and display subscriptions from Vercel Blob
+    async function loadSubscriptions() {
+      const tbody = document.getElementById('subscriptions-tbody');
+      const countEl = document.getElementById('subscription-count');
+      
+      try {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading-state">⏳ Caricamento subscriptions...</td></tr>';
+        countEl.textContent = 'Caricamento...';
+
+        const response = await fetch('/api/save-subscription');
+        
+        if (!response.ok) {
+          throw new Error(`Errore HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const subscriptions = data.subscriptions || [];
+
+        if (subscriptions.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-state">📭 Nessuna subscription salvata</td></tr>';
+          countEl.textContent = '0 subscriptions';
+          return;
+        }
+
+        // Sort by creation date (newest first)
+        subscriptions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Populate table
+        tbody.innerHTML = subscriptions.map(sub => {
+          const date = new Date(sub.createdAt);
+          const formattedDate = date.toLocaleString('it-IT', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          // Truncate endpoint for display
+          const endpoint = sub.subscription?.endpoint || 'N/A';
+          const truncatedEndpoint = endpoint.length > 50 
+            ? endpoint.substring(0, 47) + '...' 
+            : endpoint;
+
+          return `
+            <tr>
+              <td><strong>${sub.playerId}</strong></td>
+              <td>${sub.playerName}</td>
+              <td title="${endpoint}"><code style="font-size: 0.85em;">${truncatedEndpoint}</code></td>
+              <td class="subscription-date">${formattedDate}</td>
+            </tr>
+          `;
+        }).join('');
+
+        countEl.textContent = `${subscriptions.length} subscription${subscriptions.length !== 1 ? 's' : ''}`;
+      } catch (err) {
+        console.error('Errore caricamento subscriptions:', err);
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: #ff3b30;">❌ Errore caricamento: ${err.message}</td></tr>`;
+        countEl.textContent = 'Errore';
+      }
+    }
+
+    // Load subscriptions on page load
+    loadSubscriptions();
+
+    // Refresh button
+    document.getElementById('refresh-table-btn')?.addEventListener('click', () => {
+      loadSubscriptions();
+    });
+
     // 1. Add Subscription
     document.getElementById('add-subscription-btn')?.addEventListener('click', async () => {
       const playerIdInput = document.getElementById('add-player-id');
@@ -384,6 +568,9 @@
         localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
 
         showResult('add-result', `✅ Subscription creata con successo per ${playerName} (ID: ${playerId})`, 'success');
+        
+        // Reload the subscriptions table
+        setTimeout(() => loadSubscriptions(), 1000);
         
         // Clear inputs
         playerIdInput.value = '';
