@@ -47,8 +47,13 @@ export function updateMatch(match: IMatch): void {
   match.expectedScore[0] = expA;
   match.expectedScore[1] = expB;
 
-  match.deltaELO[0] = deltaA;
-  match.deltaELO[1] = deltaB;
+  if (Math.max(goalsA, goalsB) < 8) {
+    match.deltaELO[0] = 0;
+    match.deltaELO[1] = 0;
+  } else {
+    match.deltaELO[0] = deltaA;
+    match.deltaELO[1] = deltaB;
+  }
 
   match.teamELO[0] = eloA;
   match.teamELO[1] = eloB;
