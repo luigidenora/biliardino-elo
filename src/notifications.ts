@@ -244,14 +244,19 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
       });
 
       const body = { subscription, playerId, playerName };
-      await fetch('/api/subscription', {
+      const response = await fetch('/api/subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
-      // Back-compat keys if referenced elsewhere
+      if (!response.ok) {
+        throw new Error(`Errore API: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('Subscription salvata con successo');
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
+
     }).catch((err) => {
       console.error('Service Worker non pronto', err);
       throw err;
