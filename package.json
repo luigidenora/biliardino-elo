@@ -9,22 +9,13 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "lint": "eslint --fix",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "lint": "eslint --fix"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@playwright/test": "^1.57.0",
     "@stylistic/eslint-plugin": "^5.6.1",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.17",
-    "@vitest/ui": "^4.0.17",
     "happy-dom": "^20.3.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
