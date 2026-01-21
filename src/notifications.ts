@@ -1,42 +1,16 @@
 import styles from '../styles/notifications.module.css';
 import { VAPID_PUBLIC_KEY } from './config/env.config';
+import BANNER_TEMPLATE from './notification-banner.html?raw';
 import { getAllPlayers } from './services/player.service';
 import { areNotificationsActive, getRegisteredPlayerName } from './utils/notification-status.util';
 /**
  * Inizializza il servizio di notifiche push
  */
 export function initNotification(): void {
-  self.addEventListener("install", (event) => {
-    (self as any).skipWaiting();
-  });
-
-  self.addEventListener("activate", (event) => {
-    console.log("PWA service worker attivato");
-  });
-
-  self.addEventListener("fetch", (event) => {
-    // fallback: lascia tutto pass-through per ora
-  });
-  self.addEventListener("push", (event: any/* PushEvent */) => {
-    const data = event.data?.json() || {};
-
-    const title = data.title || "CA Biliardino";
-    const options = {
-      body: data.body || "Nuova partita generata!",
-      icon: "/icon-192.png",
-      data: data.url || "/",
-    };
-
-    event.waitUntil((self as any).registration.showNotification(title, options));
-  });
-
-  self.addEventListener("notificationclick", (event: any/* NotificationEvent */) => {
-    event.notification.close();
-    const url = event.notification.data;
-    event.waitUntil((self as any).clients.openWindow(url));
-  });
-
-  initNotificationButton();
+  const canShowNotifications = renderIosPwaInstallPrompt();
+  if (canShowNotifications) {
+    initNotificationButton();
+  }
 }
 
 // Timer registry for auto-collapse of expanded button
@@ -274,10 +248,25 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
 
 }
 
-// Inizializza quando il DOM è pronto
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initNotificationButton);
-} else {
-  initNotificationButton();
+/**
+ * Mostra il banner di installazione PWA per iOS se applicabile
+ * @return true se non è iOS o già in standalone, false se è necessaria l'installazione dalla pwa (ios)
+  */
+function renderIosPwaInstallPrompt(): boolean {
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as any).standalone === true;
+
+  if (!isIos || isInStandalone) return true;
+
+  const bannerContainer = document.createElement("div");
+  bannerContainer.id = "ios-pwa-install-banner";
+  bannerContainer.className = styles.iosPwaInstallBanner;
+  bannerContainer.innerHTML = BANNER_TEMPLATE;
+  document.body.appendChild(bannerContainer);
+  return false;
+
 }
+
 
