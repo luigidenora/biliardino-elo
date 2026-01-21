@@ -1,15 +1,14 @@
 import { initNotification } from "./notifications";
 
-window.addEventListener("DOMContentLoaded", async () => {
-  registerServiceWorker();
-  initNotification();
-});
+const baseUrl = import.meta.env.BASE_URL || '/';
 
-function registerServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register(`/sw.js`)
-      .then((reg) => console.log("Service worker registrato", reg.scope))
-      .catch((err) => console.error("Service worker fallito:", err));
-  }
+if ('serviceWorker' in navigator && !import.meta.env.DEV) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${baseUrl}sw.js`, { scope: baseUrl }).then(() => {
+      initNotification();
+    }).catch(() => {
+      // No-op: PWA registration failure should not break the app.
+
+    });
+  });
 }

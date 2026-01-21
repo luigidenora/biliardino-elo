@@ -35,8 +35,6 @@ export function initNotification(): void {
     event.waitUntil((self as any).clients.openWindow(url));
   });
 
-
-
   initNotificationButton();
 }
 
