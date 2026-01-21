@@ -2,7 +2,7 @@ import styles from '../styles/notifications.module.css';
 import { VAPID_PUBLIC_KEY } from './config/env.config';
 import BANNER_TEMPLATE from './notification-banner.html?raw';
 import { getAllPlayers } from './services/player.service';
-import { areNotificationsActive, getRegisteredPlayerName } from './utils/notification-status.util';
+import { getRegisteredPlayerName } from './utils/notification-status.util';
 /**
  * Inizializza il servizio di notifiche push
  */
@@ -69,7 +69,16 @@ function createNotificationButton(): HTMLElement {
   inlineSelect.setAttribute('id', 'select-notification-player');
 
   const players = [...getAllPlayers().toSorted((a, b) => a.name.localeCompare(b.name))];
-  const savedId = localStorage.getItem('biliardino_player_id') || localStorage.getItem('selected_player_id');
+  const savedId = localStorage.getItem('biliardino_player_id');
+
+  // Opzione vuota iniziale
+  const placeholderOpt = document.createElement('option');
+  placeholderOpt.value = '';
+  placeholderOpt.textContent = 'Seleziona utente...';
+  placeholderOpt.disabled = true;
+  if (!savedId) placeholderOpt.selected = true;
+  inlineSelect.appendChild(placeholderOpt);
+
   players.forEach((p) => {
     const opt = document.createElement('option');
     opt.value = String(p.id);
@@ -80,6 +89,10 @@ function createNotificationButton(): HTMLElement {
 
   inlineSelect.addEventListener('change', async () => {
     const playerId = Number(inlineSelect.value);
+    if (!playerId) {
+      collapseInlineSelect(button);
+      return;
+    }
     const playerName = players.find((p) => p.id === playerId)?.name || '';
     try {
       await subscribeAndSave(playerId, playerName);
@@ -109,7 +122,7 @@ function createNotificationButton(): HTMLElement {
   avatar.className = styles.userAvatar;
   avatar.alt = 'Avatar Utente';
   avatar.setAttribute('data-player-avatar', 'true');
-  const fallbackAvatar = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZTBlMGUwIi8+PGNpcmNsZSBjeD0iMjQiIGN5PSIxNSIgcj0iNyIgZmlsbD0iIzcyN2Y3MCIvPjxwYXRoIGQ9Ik0gMTAgMzAgQyAxMCAyNCAyNiAyMCAyNiAyMCBDIDI2IDIwIDQyIDI0IDQyIDMwIiBmaWxsPSIjNzI3ZjcwIi8+PC9zdmc+`;
+  const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
   avatar.addEventListener('error', () => { avatar.src = fallbackAvatar; });
 
   // Icona notifiche (SVG)
@@ -124,9 +137,9 @@ function createNotificationButton(): HTMLElement {
   `;
 
   // Order: select (left side), then avatar/icon (right side)
-  button.appendChild(inlineSelect);
   button.appendChild(avatar);
   button.appendChild(notificationIcon);
+  button.appendChild(inlineSelect);
 
   return button;
 }
@@ -144,7 +157,6 @@ function toggleInlineSelect(button: HTMLElement): void {
   // Expand the button
   button.classList.add(styles.notificationExpanded);
   // Hide tooltip while expanded
-  button.setAttribute('data-tooltip', '');
   requestAnimationFrame(() => {
     select.focus();
     // Try to open the native picker
@@ -162,9 +174,6 @@ function collapseInlineSelect(button: HTMLElement): void {
     window.clearTimeout(existingTimer);
     collapseTimers.delete(button);
   }
-  // Restore tooltip
-  const playerName = getRegisteredPlayerName();
-  button.setAttribute('data-tooltip', playerName || 'Notifiche');
 }
 
 /**
@@ -176,24 +185,21 @@ async function updateButtonState(): Promise<void> {
 
   const avatarImg = button.querySelector(`.${styles.userAvatar}`) as HTMLImageElement;
   const notificationIcon = button.querySelector(`.${styles.notificationUserIcon}`) as HTMLElement;
+  const allowed = Notification.permission === 'granted';
 
-  const isActive = areNotificationsActive();
-  const playerName = getRegisteredPlayerName();
+  var tooltipText = allowed ? 'Notifiche abilitate' : 'Notifiche disabilitate';
   const playerId = localStorage.getItem('biliardino_player_id');
 
-  // Aggiorna il tooltip con il nome utente
-  const tooltipText = playerName ? playerName : 'Notifiche';
-  button.setAttribute('data-tooltip', tooltipText);
+  // Default - icona campanello standard
+  if (notificationIcon) notificationIcon.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+    `;
 
-  if (isActive && playerName) {
-    // Notifiche attive con utente - mostra avatar con puntino verde
-    if (avatarImg && playerId) {
-      avatarImg.src = `/biliardino-elo/avatars/${playerId}.webp`;
-    }
-    button.classList.add(styles.active);
-    button.classList.remove(styles.inactive);
-  } else if (playerName) {
-    // Utente selezionato ma notifiche non attive - icona con linea
+  if (!allowed) {
+    // Notifiche non permesse - icona campanello barrata
     if (notificationIcon) notificationIcon.innerHTML = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -201,23 +207,35 @@ async function updateButtonState(): Promise<void> {
         <line x1="1" y1="1" x2="23" y2="23"></line>
       </svg>
     `;
-    button.classList.add(styles.inactive);
-    button.classList.remove(styles.active);
-  } else {
-    // Nessun utente selezionato - icona standard grigia
-    if (notificationIcon) notificationIcon.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-      </svg>
-    `;
-    button.classList.add(styles.inactive);
-    button.classList.remove(styles.active);
+  } else if (playerId) {
+    // Notifiche permesse e utente selezionato - mostra avatar
+    if (avatarImg) {
+      avatarImg.src = `/biliardino-elo/avatars/${playerId}.webp`;
+    }
+
+    tooltipText += playerId ? ` - Utente: ${getRegisteredPlayerName()}` : ' - Nessun utente selezionato';
   }
+  if (allowed && playerId) {
+    // Notifiche permesse e utente selezionato - verifica subscription
+    if (localStorage.getItem('biliardino_subscription')) {
+      button.classList.add(styles.active);
+      button.classList.remove(styles.inactive);
+      tooltipText = 'Notifiche attive';
+    } else {
+      // No subscription salvata - notifiche offline
+      button.classList.add(styles.inactive);
+      button.classList.remove(styles.active);
+      tooltipText = 'Nessuna subscription';
+    }
+  }
+
+  button.setAttribute('data-tooltip', tooltipText)
 }
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
   if ("serviceWorker" in navigator) {
+    localStorage.setItem('biliardino_player_id', String(playerId));
+    localStorage.setItem('biliardino_player_name', playerName);
     navigator.serviceWorker.ready.then(async (reg) => {
       const existingSub = await reg.pushManager.getSubscription();
       const subscription = existingSub || await reg.pushManager.subscribe({
@@ -232,15 +250,13 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
         body: JSON.stringify(body),
       });
 
-      localStorage.setItem('biliardino_player_id', String(playerId));
-      localStorage.setItem('biliardino_player_name', playerName);
       // Back-compat keys if referenced elsewhere
-      localStorage.setItem('selected_player_id', String(playerId));
-      localStorage.setItem('selected_player_name', playerName);
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
     }).catch((err) => {
       console.error('Service Worker non pronto', err);
       throw err;
+    }).finally(() => {
+      updateButtonState();
     });
   } else {
     console.error("Service workers are not supported.");
