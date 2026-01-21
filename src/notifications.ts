@@ -7,10 +7,7 @@ import { getRegisteredPlayerName } from './utils/notification-status.util';
  * Inizializza il servizio di notifiche push
  */
 export function initNotification(): void {
-  const canShowNotifications = renderIosPwaInstallPrompt();
-  if (canShowNotifications) {
-    initNotificationButton();
-  }
+  initNotificationButton();
 }
 
 // Timer registry for auto-collapse of expanded button
@@ -46,6 +43,7 @@ function createNotificationHeader(): HTMLElement {
   button.addEventListener('click', (e) => {
     e.preventDefault();
     if (Notification.permission === 'default') {
+      showIosPwaBannerIfNeeded();
       Notification.requestPermission().then(() => {
         updateButtonState();
       });
@@ -88,7 +86,7 @@ function createNotificationButton(): HTMLElement {
   players.forEach((p) => {
     const opt = document.createElement('option');
     opt.value = String(p.id);
-    opt.textContent = p.name + p.name + p.name;
+    opt.textContent = p.name;
     if (savedId && String(p.id) === savedId) opt.selected = true;
     inlineSelect.appendChild(opt);
   });
@@ -276,23 +274,20 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
 
 /**
  * Mostra il banner di installazione PWA per iOS se applicabile
- * @return true se non è iOS o già in standalone, false se è necessaria l'installazione dalla pwa (ios)
   */
-function renderIosPwaInstallPrompt(): boolean {
+function showIosPwaBannerIfNeeded() {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone =
     window.matchMedia("(display-mode: standalone)").matches ||
     (window.navigator as any).standalone === true;
-
-  if (!isIos || isInStandalone) return true;
-
-  const bannerContainer = document.createElement("div");
-  bannerContainer.id = "ios-pwa-install-banner";
-  bannerContainer.className = styles.iosPwaInstallBanner;
-  bannerContainer.innerHTML = BANNER_TEMPLATE;
-  document.body.appendChild(bannerContainer);
-  return false;
-
+  if (isIos) {
+    if (!isInStandalone) {
+      document.getElementById("ios-pwa-install-banner")?.remove();
+      const bannerContainer = document.createElement("div");
+      bannerContainer.id = "ios-pwa-install-banner";
+      bannerContainer.className = styles.iosPwaInstallBanner;
+      bannerContainer.innerHTML = BANNER_TEMPLATE;
+      document.body.appendChild(bannerContainer);
+    }
+  }
 }
-
-
