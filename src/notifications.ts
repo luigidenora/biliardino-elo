@@ -189,7 +189,6 @@ async function updateButtonState(): Promise<void> {
 
   var tooltipText = allowed ? 'Notifiche abilitate' : 'Notifiche disabilitate';
   const playerId = localStorage.getItem('biliardino_player_id');
-
   // Default - icona campanello standard
   if (notificationIcon) notificationIcon.innerHTML = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

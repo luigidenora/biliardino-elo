@@ -166,6 +166,14 @@
 
 /* State: inactive (red indicator) */
 .inactive {
+  .userAvatar {
+    display: block;
+  }
+
+  .notificationUserIcon {
+    display: none;
+  }
+
   &::after {
     content: '';
     position: absolute;
