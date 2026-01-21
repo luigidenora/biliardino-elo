@@ -1,5 +1,5 @@
 import styles from '../styles/notifications.module.css';
-import { VAPID_PUBLIC_KEY } from './config/env.config';
+import { API_BASE_URL, VAPID_PUBLIC_KEY } from './config/env.config';
 import BANNER_TEMPLATE from './notification-banner.html?raw';
 import { getAllPlayers } from './services/player.service';
 import { getRegisteredPlayerName } from './utils/notification-status.util';
@@ -247,7 +247,7 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
       });
 
       const body = { subscription, playerId, playerName };
-      const response = await fetch('/api/subscription', {
+      const response = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
