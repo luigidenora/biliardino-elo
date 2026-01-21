@@ -5,7 +5,17 @@ import { areNotificationsActive, getRegisteredPlayerName } from './utils/notific
  * Inizializza il servizio di notifiche push
  */
 export function initNotification(): void {
+  self.addEventListener("install", (event) => {
+    (self as any).skipWaiting();
+  });
 
+  self.addEventListener("activate", (event) => {
+    console.log("PWA service worker attivato");
+  });
+
+  self.addEventListener("fetch", (event) => {
+    // fallback: lascia tutto pass-through per ora
+  });
   self.addEventListener("push", (event: any/* PushEvent */) => {
     const data = event.data?.json() || {};
 
@@ -114,8 +124,9 @@ function createNotificationButton(): HTMLElement {
   const inlineSelect = document.createElement('select');
   inlineSelect.className = styles.notificationInlineSelect;
   inlineSelect.setAttribute('aria-label', 'Seleziona utente');
+  inlineSelect.setAttribute('id', 'select-notification-player');
 
-  const players = getAllPlayers();
+  const players = [...getAllPlayers().toSorted((a, b) => a.name.localeCompare(b.name))];
   const savedId = localStorage.getItem('biliardino_player_id') || localStorage.getItem('selected_player_id');
   players.forEach((p) => {
     const opt = document.createElement('option');
@@ -136,6 +147,19 @@ function createNotificationButton(): HTMLElement {
       console.error('Errore registrazione', err);
       collapseInlineSelect(button);
     }
+  });
+
+  inlineSelect.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  inlineSelect.addEventListener('blur', () => {
+    // Auto-collapse after short delay to allow option click
+    const timerId = window.setTimeout(() => {
+      collapseInlineSelect(button);
+      collapseTimers.delete(button);
+    }, 200);
+    collapseTimers.set(button, timerId);
   });
 
   // Avatar dell'utente - nascosto di default
@@ -184,20 +208,9 @@ function toggleInlineSelect(button: HTMLElement): void {
     // Try to open the native picker
     try {
       select.click();
-    } catch {}
+    } catch { }
   });
 
-  // Auto-collapse after 3 seconds if no interaction
-  const timerId = window.setTimeout(() => collapseInlineSelect(button), 3000);
-  collapseTimers.set(button, timerId);
-
-  const onDocClick = (ev: MouseEvent) => {
-    if (!button.contains(ev.target as Node)) {
-      collapseInlineSelect(button);
-      document.removeEventListener('mousedown', onDocClick);
-    }
-  };
-  document.addEventListener('mousedown', onDocClick);
 }
 
 function collapseInlineSelect(button: HTMLElement): void {
@@ -262,6 +275,7 @@ async function updateButtonState(): Promise<void> {
 }
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
+  debugger;
   const reg = await navigator.serviceWorker.ready;
 
   const existingSub = await reg.pushManager.getSubscription();

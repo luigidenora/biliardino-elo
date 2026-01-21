@@ -2,7 +2,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(config => ({
-  base: '/',
+  base: '/biliardino-elo/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')
@@ -14,9 +14,7 @@ export default defineConfig(config => ({
         main: path.resolve(__dirname, 'index.html'),
         players: path.resolve(__dirname, 'players.html'),
         add: path.resolve(__dirname, 'add.html'),
-        matchmaking: path.resolve(__dirname, 'matchmaking.html'),
-        'notifications-test': path.resolve(__dirname, 'notifications-test.html'),
-        confirm: path.resolve(__dirname, 'confirm.html')
+        matchmaking: path.resolve(__dirname, 'matchmaking.html')
       },
       output: {
         // Keep Firebase in a single shared chunk so it is cached across pages.
