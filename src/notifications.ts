@@ -45,7 +45,13 @@ function createNotificationHeader(): HTMLElement {
   header.appendChild(button);
   button.addEventListener('click', (e) => {
     e.preventDefault();
-    toggleInlineSelect(button);
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(() => {
+        updateButtonState();
+      });
+    } else {
+      toggleInlineSelect(button);
+    }
   });
 
   return header;
@@ -187,7 +193,7 @@ async function updateButtonState(): Promise<void> {
   const notificationIcon = button.querySelector(`.${styles.notificationUserIcon}`) as HTMLElement;
   const allowed = Notification.permission === 'granted';
 
-  var tooltipText = allowed ? 'Notifiche abilitate' : 'Notifiche disabilitate';
+  var tooltipText = allowed ? 'Notifiche abilitate' : 'Abilita notifiche';
   const playerId = localStorage.getItem('biliardino_player_id');
   // Default - icona campanello standard
   if (notificationIcon) notificationIcon.innerHTML = `
