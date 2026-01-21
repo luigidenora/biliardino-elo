@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       confirmations: confirmations.filter(Boolean)
     });
   } catch (err) {
-    console.error('❌ Errore lettura confirmations:', err);
+    console.error('Errore lettura confirmations:', err);
     res.status(500).json({ error: 'Errore lettura conferme' });
   }
 }

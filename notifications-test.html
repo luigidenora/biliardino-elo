@@ -400,6 +400,10 @@
   </div>
 
   <script type="module">
+
+    const PUBLIC_VAPID_KEY =
+      "BOUHmi8SrZME9HKSAyqwKpTSiW1BATEoejeFqSzCUkxa718VNmx6ATtiUbi4YmCl-eAQC6kndhXCP-vZl9QHfpE";
+
     // Helper function to show result messages
     function showResult(elementId, message, type = 'success') {
       const el = document.getElementById(elementId);
@@ -422,17 +426,48 @@
       return { supported: true };
     }
 
+    async function subscribeToPush() {
+      const reg = await navigator.serviceWorker.ready;
+
+      const existingSub = await reg.pushManager.getSubscription();
+
+      if (existingSub) {
+        // Se abbiamo già salvato la stessa subscription in localStorage, evitiamo doppio POST
+        const saved = localStorage.getItem("biliardino_subscription");
+        if (saved && JSON.stringify(existingSub) === saved) {
+          console.log("🔄 Subscription già salvata, nessuna azione necessaria");
+          return;
+        }
+      }
+
+      const subscription = existingSub || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY),
+      });
+
+      try {
+        await fetch("/api/subscription", {
+          method: "POST",
+          body: JSON.stringify(subscription),
+          headers: { "Content-Type": "application/json" },
+        });
+        localStorage.setItem("biliardino_subscription", JSON.stringify(subscription));
+        console.log("✅ Subscription salvata correttamente");
+      } catch (err) {
+        console.error("Errore salvataggio subscription:", err);
+      }
+    }
     // Function to load and display subscriptions from Vercel Blob
     async function loadSubscriptions() {
       const tbody = document.getElementById('subscriptions-tbody');
       const countEl = document.getElementById('subscription-count');
-      
+
       try {
         tbody.innerHTML = '<tr><td colspan="4" class="loading-state">⏳ Caricamento subscriptions...</td></tr>';
         countEl.textContent = 'Caricamento...';
 
-        const response = await fetch('/api/save-subscription');
-        
+        const response = await fetch('/api/subscription');
+
         if (!response.ok) {
           throw new Error(`Errore HTTP ${response.status}`);
         }
@@ -462,8 +497,8 @@
 
           // Truncate endpoint for display
           const endpoint = sub.subscription?.endpoint || 'N/A';
-          const truncatedEndpoint = endpoint.length > 50 
-            ? endpoint.substring(0, 47) + '...' 
+          const truncatedEndpoint = endpoint.length > 50
+            ? endpoint.substring(0, 47) + '...'
             : endpoint;
 
           return `
@@ -479,7 +514,7 @@
         countEl.textContent = `${subscriptions.length} subscription${subscriptions.length !== 1 ? 's' : ''}`;
       } catch (err) {
         console.error('Errore caricamento subscriptions:', err);
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: #ff3b30;">❌ Errore caricamento: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: #ff3b30;">Errore caricamento: ${err.message}</td></tr>`;
         countEl.textContent = 'Errore';
       }
     }
@@ -500,19 +535,19 @@
       const playerName = playerNameInput.value.trim();
 
       if (!playerId || !playerName) {
-        showResult('add-result', '❌ Inserisci Player ID e Nome Giocatore', 'error');
+        showResult('add-result', 'Inserisci Player ID e Nome Giocatore', 'error');
         return;
       }
 
       if (isNaN(Number(playerId))) {
-        showResult('add-result', '❌ Player ID deve essere un numero', 'error');
+        showResult('add-result', 'Player ID deve essere un numero', 'error');
         return;
       }
 
       // Check browser support
       const supportCheck = checkNotificationSupport();
       if (!supportCheck.supported) {
-        showResult('add-result', `❌ ${supportCheck.error}`, 'error');
+        showResult('add-result', `${supportCheck.error}`, 'error');
         return;
       }
 
@@ -523,33 +558,19 @@
 
         // Request notification permission
         showResult('add-result', '🔔 Richiesta permesso notifiche...', 'info');
-        
+
         const permission = await Notification.requestPermission();
-        
+
         if (permission !== 'granted') {
-          showResult('add-result', '❌ Permesso notifiche negato. Abilita le notifiche nelle impostazioni del browser.', 'error');
+          showResult('add-result', 'Permesso notifiche negato. Abilita le notifiche nelle impostazioni del browser.', 'error');
           return;
         }
 
-        // Get service worker registration
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Check for existing subscription
-        let subscription = await registration.pushManager.getSubscription();
-        
-        if (!subscription) {
-          // Create new subscription
-          const vapidKey = 'BOUHmi8SrZME9HKSAyqwKpTSiW1BATEoejeFqSzCUkxa718VNmx6ATtiUbi4YmCl-eAQC6kndhXCP-vZl9QHfpE';
-          const convertedVapidKey = urlBase64ToUint8Array(vapidKey);
-          
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: convertedVapidKey
-          });
-        }
+
+
 
         // Save subscription to server
-        const response = await fetch('/api/save-subscription', {
+        const response = await fetch('/api/subscription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -568,16 +589,16 @@
         localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
 
         showResult('add-result', `✅ Subscription creata con successo per ${playerName} (ID: ${playerId})`, 'success');
-        
+
         // Reload the subscriptions table
         setTimeout(() => loadSubscriptions(), 1000);
-        
+
         // Clear inputs
         playerIdInput.value = '';
         playerNameInput.value = '';
       } catch (err) {
         console.error('Errore creazione subscription:', err);
-        showResult('add-result', `❌ Errore: ${err.message}`, 'error');
+        showResult('add-result', `Errore: ${err.message}`, 'error');
       }
     });
 
@@ -587,10 +608,10 @@
       const base64 = (base64String + padding)
         .replace(/\-/g, '+')
         .replace(/_/g, '/');
-      
+
       const rawData = window.atob(base64);
       const outputArray = new Uint8Array(rawData.length);
-      
+
       for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
       }
@@ -605,12 +626,12 @@
       const url = document.getElementById('test-url').value.trim();
 
       if (!playerId) {
-        showResult('test-user-result', '❌ Inserisci un Player ID', 'error');
+        showResult('test-user-result', 'Inserisci un Player ID', 'error');
         return;
       }
 
       if (!title || !body) {
-        showResult('test-user-result', '❌ Inserisci titolo e messaggio', 'error');
+        showResult('test-user-result', 'Inserisci titolo e messaggio', 'error');
         return;
       }
 
@@ -632,11 +653,11 @@
           showResult('test-user-result', `✅ Notifica inviata con successo a Player ID ${playerId}`, 'success');
         } else {
           const error = await response.text();
-          showResult('test-user-result', `❌ Errore: ${error}`, 'error');
+          showResult('test-user-result', `Errore: ${error}`, 'error');
         }
       } catch (err) {
         console.error('Errore invio notifica:', err);
-        showResult('test-user-result', `❌ Errore: ${err.message}`, 'error');
+        showResult('test-user-result', `Errore: ${err.message}`, 'error');
       }
     });
 
@@ -647,13 +668,13 @@
       const customBody = document.getElementById('broadcast-body').value.trim();
 
       if (!matchTime) {
-        showResult('broadcast-result', '❌ Inserisci l\'orario della partita', 'error');
+        showResult('broadcast-result', 'Inserisci l\'orario della partita', 'error');
         return;
       }
 
       // Validate time format
       if (!/^\d{1,2}:\d{2}$/.test(matchTime)) {
-        showResult('broadcast-result', '❌ Formato orario non valido. Usa HH:MM (es: 14:30)', 'error');
+        showResult('broadcast-result', 'Formato orario non valido. Usa HH:MM (es: 14:30)', 'error');
         return;
       }
 
@@ -670,16 +691,16 @@
 
         if (response.ok) {
           const result = await response.json();
-          showResult('broadcast-result', 
-            `✅ Broadcast inviato! ${result.sent || 0} notifiche inviate su ${result.total || 0} subscriptions`, 
+          showResult('broadcast-result',
+            `✅ Broadcast inviato! ${result.sent || 0} notifiche inviate su ${result.total || 0} subscriptions`,
             'success');
         } else {
           const error = await response.text();
-          showResult('broadcast-result', `❌ Errore: ${error}`, 'error');
+          showResult('broadcast-result', `Errore: ${error}`, 'error');
         }
       } catch (err) {
         console.error('Errore broadcast:', err);
-        showResult('broadcast-result', `❌ Errore: ${err.message}`, 'error');
+        showResult('broadcast-result', `Errore: ${err.message}`, 'error');
       }
     });
   </script>

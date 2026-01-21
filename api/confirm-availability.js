@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ ok: true, count });
   } catch (err) {
-    console.error('❌ Errore conferma availability:', err);
+    console.error('Errore conferma availability:', err);
     res.status(500).json({ error: 'Errore salvataggio conferma' });
   }
 }
