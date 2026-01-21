@@ -1,4 +1,5 @@
 import styles from '../styles/notifications.module.css';
+import { VAPID_PUBLIC_KEY } from './config/env.config';
 import { getAllPlayers } from './services/player.service';
 import { areNotificationsActive, getRegisteredPlayerName } from './utils/notification-status.util';
 /**
@@ -41,37 +42,6 @@ export function initNotification(): void {
 // Timer registry for auto-collapse of expanded button
 const collapseTimers = new Map<HTMLElement, number>();
 
-async function notificationsSubscribe() {
-  const reg = await navigator.serviceWorker.ready;
-
-  const existingSub = await reg.pushManager.getSubscription();
-
-  if (existingSub) {
-    // Se abbiamo già salvato la stessa subscription in localStorage, evitiamo doppio POST
-    const saved = localStorage.getItem("notification_subscription");
-    if (saved && JSON.stringify(existingSub) === saved) {
-      console.log("🔄 Subscription già salvata, nessuna azione necessaria");
-      return;
-    }
-  }
-
-  const subscription = existingSub || await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(process.env.VITE_VAPID_PUBLIC_KEY),
-  });
-
-  try {
-    await fetch("/api/subscription", {
-      method: "POST",
-      body: JSON.stringify(subscription),
-      headers: { "Content-Type": "application/json" },
-    });
-    localStorage.setItem("notification_subscription", JSON.stringify(subscription));
-    console.log("Subscription salvata correttamente");
-  } catch (err) {
-    console.error("Errore salvataggio subscription:", err);
-  }
-}
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -273,28 +243,35 @@ async function updateButtonState(): Promise<void> {
 }
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
-  debugger;
-  const reg = await navigator.serviceWorker.ready;
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.ready.then(async (reg) => {
+      const existingSub = await reg.pushManager.getSubscription();
+      const subscription = existingSub || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
 
-  const existingSub = await reg.pushManager.getSubscription();
-  const subscription = existingSub || await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(process.env.VITE_VAPID_PUBLIC_KEY),
-  });
+      const body = { subscription, playerId, playerName };
+      await fetch('/api/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-  const body = { subscription, playerId, playerName };
-  await fetch('/api/subscription', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+      localStorage.setItem('biliardino_player_id', String(playerId));
+      localStorage.setItem('biliardino_player_name', playerName);
+      // Back-compat keys if referenced elsewhere
+      localStorage.setItem('selected_player_id', String(playerId));
+      localStorage.setItem('selected_player_name', playerName);
+      localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
+    }).catch((err) => {
+      console.error('Service Worker non pronto', err);
+      throw err;
+    });
+  } else {
+    console.error("Service workers are not supported.");
+  }
 
-  localStorage.setItem('biliardino_player_id', String(playerId));
-  localStorage.setItem('biliardino_player_name', playerName);
-  // Back-compat keys if referenced elsewhere
-  localStorage.setItem('selected_player_id', String(playerId));
-  localStorage.setItem('selected_player_name', playerName);
-  localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
 }
 
 // Inizializza quando il DOM è pronto
