@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       message: `Notifica inviata a ${name}!`
     });
   } catch (err) {
-    console.error('❌ Errore test:', err);
+    console.error('Errore test:', err);
     res.status(500).json({
       error: 'Errore invio notifica',
       details: err.message

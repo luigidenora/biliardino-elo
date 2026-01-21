@@ -3,11 +3,11 @@ import webpush from 'web-push';
 
 // Verifica configurazione
 if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-  console.error('❌ ERRORE: VAPID keys non configurate');
+  console.error('ERRORE: VAPID keys non configurate');
 }
 
 if (!process.env.BLOB_READ_WRITE_TOKEN) {
-  console.error('❌ ERRORE: BLOB_READ_WRITE_TOKEN non configurato');
+  console.error('ERRORE: BLOB_READ_WRITE_TOKEN non configurato');
 }
 
 webpush.setVapidDetails(
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     // Verifica configurazione
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.error('❌ BLOB_READ_WRITE_TOKEN non configurato');
+      console.error('BLOB_READ_WRITE_TOKEN non configurato');
       return res.status(500).json({ 
         error: 'Configurazione server incompleta',
         details: 'BLOB_READ_WRITE_TOKEN mancante'
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
           const response = await fetch(blob.url);
           return await response.json();
         } catch (err) {
-          console.error(`❌ Errore caricamento blob ${blob.pathname}:`, err);
+          console.error(`Errore caricamento blob ${blob.pathname}:`, err);
           return null;
         }
       })
@@ -104,7 +104,7 @@ export default async function handler(req, res) {
         sent++;
         console.log(`✅ Notifica inviata a ${playerName}`);
       } catch (err) {
-        console.warn('❌ Errore invio a:', data.playerName || data.playerId, err.message);
+        console.warn('Errore invio a:', data.playerName || data.playerId, err.message);
         failed++;
       }
     }
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
       matchTime 
     });
   } catch (err) {
-    console.error('❌ Errore broadcast:', err);
+    console.error('Errore broadcast:', err);
     return res.status(500).json({ 
       error: 'Errore invio broadcast',
       details: err.message,

@@ -81,7 +81,7 @@ export default async function handler(req, res) {
         );
         success++;
       } catch (err) {
-        console.warn('❌ Errore notifica a:', subData.playerId, err.message);
+        console.warn('Errore notifica a:', subData.playerId, err.message);
         fail++;
       }
     }
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
       matchTime
     });
   } catch (err) {
-    console.error('❌ Errore matchmaking:', err);
+    console.error('Errore matchmaking:', err);
     res.status(500).json({ error: 'Errore matchmaking' });
   }
 }

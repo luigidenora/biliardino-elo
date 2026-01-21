@@ -3,11 +3,11 @@ import webpush from 'web-push';
 
 // Verifica che le variabili d'ambiente siano configurate
 if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-  console.error('❌ ERRORE: VAPID keys non configurate nelle variabili d\'ambiente');
+  console.error('ERRORE: VAPID keys non configurate nelle variabili d\'ambiente');
 }
 
 if (!process.env.BLOB_READ_WRITE_TOKEN) {
-  console.error('❌ ERRORE: BLOB_READ_WRITE_TOKEN non configurato nelle variabili d\'ambiente');
+  console.error('ERRORE: BLOB_READ_WRITE_TOKEN non configurato nelle variabili d\'ambiente');
 }
 
 webpush.setVapidDetails(
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
     // Verifica configurazione
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.error('❌ BLOB_READ_WRITE_TOKEN non configurato');
+      console.error('BLOB_READ_WRITE_TOKEN non configurato');
       return res.status(500).json({ 
         error: 'Configurazione server incompleta',
         details: 'BLOB_READ_WRITE_TOKEN mancante'
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
           const response = await fetch(blob.url);
           return await response.json();
         } catch (err) {
-          console.error(`❌ Errore caricamento blob ${blob.pathname}:`, err);
+          console.error(`Errore caricamento blob ${blob.pathname}:`, err);
           return null;
         }
       })
@@ -117,14 +117,14 @@ export default async function handler(req, res) {
         playerName: playerSub.playerName
       });
     } catch (sendErr) {
-      console.error('❌ Errore invio notifica:', sendErr);
+      console.error('Errore invio notifica:', sendErr);
       return res.status(500).json({
         error: 'Errore durante l\'invio della notifica',
         details: sendErr.message
       });
     }
   } catch (err) {
-    console.error('❌ Errore API send-notification:', err);
+    console.error('Errore API send-notification:', err);
     return res.status(500).json({
       error: 'Errore server',
       details: err.message,

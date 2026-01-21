@@ -39,7 +39,7 @@ export default async function handler(req, res) {
       console.log('✅ Subscription salvata:', playerName, '(ID:', playerIdNum, ')');
       return res.status(201).json({ ok: true, url: blob.url, playerId: playerIdNum });
     } catch (err) {
-      console.error('❌ Errore salvataggio subscription:', err);
+      console.error('Errore salvataggio subscription:', err);
       return res.status(500).json({ error: 'Write error' });
     }
   }
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ subscriptions });
     } catch (err) {
-      console.error('❌ Errore lettura subscriptions:', err);
+      console.error('Errore lettura subscriptions:', err);
       return res.status(500).json({ error: 'Read error' });
     }
   }

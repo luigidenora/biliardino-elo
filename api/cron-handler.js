@@ -56,7 +56,7 @@ export default async function handler(req, res) {
       time: `${hour}:${minute}`
     });
   } catch (err) {
-    console.error('❌ Errore CRON handler:', err);
+    console.error('Errore CRON handler:', err);
     res.status(500).json({ error: err.message });
   }
 }
