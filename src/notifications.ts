@@ -82,7 +82,7 @@ function createNotificationButton(): HTMLElement {
   players.forEach((p) => {
     const opt = document.createElement('option');
     opt.value = String(p.id);
-    opt.textContent = p.name;
+    opt.textContent = p.name + p.name + p.name;
     if (savedId && String(p.id) === savedId) opt.selected = true;
     inlineSelect.appendChild(opt);
   });
