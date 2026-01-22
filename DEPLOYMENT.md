@@ -21,7 +21,7 @@ Vercel ospita sia il frontend che le API serverless su un unico dominio.
 
    ```bash
    # Push Notifications
-   VITE_VAPID_PUBLIC_KEY=BOUHmi8SrZME9HKSAyqwKpTSiW1BATEoejeFqSzCUkxa718VNmx6ATtiUbi4YmCl-eAQC6kndhXCP-vZl9QHfpE
+   VITE_VAPID_PUBLIC_KEY=<your-public-key>
    VAPID_PRIVATE_KEY=<your-private-key>
    
    # Vercel Blob Storage
@@ -67,7 +67,7 @@ GitHub Pages ospita solo il frontend. Le API devono essere deployate separatamen
    Aggiungi:
    ```bash
    API_BASE_URL=https://your-api.vercel.app/api
-   VAPID_PUBLIC_KEY=BOUHmi8SrZME9HKSAyqwKpTSiW1BATEoejeFqSzCUkxa718VNmx6ATtiUbi4YmCl-eAQC6kndhXCP-vZl9QHfpE
+   VAPID_PUBLIC_KEY=<your-public-key>
    ```
 
 2. **Deploy API su Vercel**
