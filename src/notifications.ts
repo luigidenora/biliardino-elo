@@ -276,7 +276,6 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
  * Mostra il banner di installazione PWA per iOS se applicabile
   */
 function showIosPwaBannerIfNeeded() {
-  if (Notification.permission === 'granted') return;
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone =
     window.matchMedia("(display-mode: standalone)").matches ||
