@@ -1,6 +1,7 @@
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerElo } from '@/services/elo.service';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { BASE_PATH } from '../config/env.config';
 import { getAllMatches } from '../services/match.service';
 import { getAllPlayers, getPlayerById } from '../services/player.service';
 import { fetchRunningMatch } from '../services/repository.service';
@@ -393,7 +394,7 @@ export class RankingView {
       const avatarHTML = `
         <div class="player-avatar">
           <img 
-            src="/biliardino-elo/avatars/${player.id}.webp" 
+            src="${BASE_PATH}avatars/${player.id}.webp" 
             alt="${player.name}"
             class="avatar-img"
             onerror="this.src='${fallbackAvatar}'"
@@ -515,8 +516,8 @@ export class RankingView {
           <div class="stat-label">Miglior Coppia</div>
           <div class="stat-value-group">
             ${bestPair.delta === -Infinity
-              ? '<div class="stat-empty">-</div>'
-              : `
+        ? '<div class="stat-empty">-</div>'
+        : `
               <div class="stat-pair-names">
                 <div>${bestPair.player1}</div>
                 <div class="pair-separator">+</div>
@@ -533,8 +534,8 @@ export class RankingView {
           <div class="stat-label">Peggior Coppia</div>
           <div class="stat-value-group">
             ${worstPair.delta === Infinity
-              ? '<div class="stat-empty">-</div>'
-              : `
+        ? '<div class="stat-empty">-</div>'
+        : `
               <div class="stat-pair-names">
                 <div>${worstPair.player1}</div>
                 <div class="pair-separator">+</div>
@@ -793,7 +794,7 @@ export class RankingView {
               </div>
               <div class="live-players">
                 <div class="live-player">
-                  <img src="/biliardino-elo/avatars/${defA.id}.webp" alt="${defA.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
+                  <img src="${BASE_PATH}avatars/${defA.id}.webp" alt="${defA.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
                   <div class="live-player-info">
                     <span class="live-player-name">🛡️ ${defA.name}</span>
                     <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -803,7 +804,7 @@ export class RankingView {
                   </div>
                 </div>
                 <div class="live-player">
-                  <img src="/biliardino-elo/avatars/${attA.id}.webp" alt="${attA.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
+                  <img src="${BASE_PATH}avatars/${attA.id}.webp" alt="${attA.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
                   <div class="live-player-info">
                     <span class="live-player-name">⚔️ ${attA.name}</span>
                     <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -823,7 +824,7 @@ export class RankingView {
               </div>
               <div class="live-players">
                 <div class="live-player">
-                  <img src="/biliardino-elo/avatars/${defB.id}.webp" alt="${defB.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
+                  <img src="${BASE_PATH}avatars/${defB.id}.webp" alt="${defB.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
                   <div class="live-player-info">
                     <span class="live-player-name">🛡️ ${defB.name}</span>
                     <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -833,7 +834,7 @@ export class RankingView {
                   </div>
                 </div>
                 <div class="live-player">
-                  <img src="/biliardino-elo/avatars/${attB.id}.webp" alt="${attB.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
+                  <img src="${BASE_PATH}avatars/${attB.id}.webp" alt="${attB.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
                   <div class="live-player-info">
                     <span class="live-player-name">⚔️ ${attB.name}</span>
                     <div style="display:flex;align-items:center;gap:0.5rem;">

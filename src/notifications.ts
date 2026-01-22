@@ -1,5 +1,5 @@
 import styles from '../styles/notifications.module.css';
-import { API_BASE_URL, VAPID_PUBLIC_KEY } from './config/env.config';
+import { API_BASE_URL, BASE_PATH, VAPID_PUBLIC_KEY } from './config/env.config';
 import BANNER_TEMPLATE from './notification-banner.html?raw';
 import { getAllPlayers } from './services/player.service';
 import { getRegisteredPlayerName } from './utils/notification-status.util';
@@ -213,7 +213,7 @@ async function updateButtonState(): Promise<void> {
   } else if (playerId) {
     // Notifiche permesse e utente selezionato - mostra avatar
     if (avatarImg) {
-      avatarImg.src = `/biliardino-elo/avatars/${playerId}.webp`;
+      avatarImg.src = `${BASE_PATH}avatars/${playerId}.webp`;
     }
 
     tooltipText += playerId ? ` - Utente: ${getRegisteredPlayerName()}` : ' - Nessun utente selezionato';

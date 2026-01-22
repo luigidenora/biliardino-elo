@@ -1,0 +1,21 @@
+name: Scheduled Notifications
+
+on:
+  schedule:
+    # 10:58 e 15:58 (UTC) - Broadcast notifiche
+    # Nota: GitHub Actions usa UTC, quindi adatta per il tuo timezone
+    # Per Italia (CET/CEST): sottrai 1-2 ore
+    - cron: '58 9 * * *'   # 9:58 UTC = 10:58/11:58 IT
+    - cron: '58 14 * * *'  # 14:58 UTC = 15:58/16:58 IT
+  
+  # Permetti attivazione manuale per testing
+  workflow_dispatch:
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Cron Handler
+        run: |
+          curl -X GET "${{ secrets.VERCEL_API_URL }}/api/cron-handler" \
+            -H "Content-Type: application/json"

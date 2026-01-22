@@ -5,6 +5,7 @@ import { addMatch } from '@/services/match.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { BASE_PATH } from '../config/env.config';
 import { findBestMatch, IMatchProposal } from '../services/matchmaking.service';
 import { getAllPlayers, getPlayerById, getPlayerByName } from '../services/player.service';
 
@@ -532,7 +533,7 @@ export class MatchmakingView {
           <div class="match-player-grid">
             <div class="match-player-avatar">
               <img 
-                src="/biliardino-elo/avatars/${player1.id}.webp" 
+                src="${BASE_PATH}avatars/${player1.id}.webp" 
                 alt="${player1.name}"
                 class="match-avatar-img"
                 onerror="this.src='${fallbackAvatar}'"
@@ -549,7 +550,7 @@ export class MatchmakingView {
           <div class="match-player-grid">
             <div class="match-player-avatar">
               <img 
-                src="/biliardino-elo/avatars/${player2.id}.webp" 
+                src="${BASE_PATH}avatars/${player2.id}.webp" 
                 alt="${player2.name}"
                 class="match-avatar-img"
                 onerror="this.src='${fallbackAvatar}'"

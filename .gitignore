@@ -30,4 +30,3 @@ Thumbs.db
 # Vercel deployment files
 .vercel
 .env*.local
-vercel.json
