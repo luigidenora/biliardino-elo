@@ -1,6 +1,7 @@
 import { list } from '@vercel/blob';
 import { kv } from '@vercel/kv';
 import webpush from 'web-push';
+import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 webpush.setVapidDetails(
   'mailto:info@biliardino.app',
@@ -9,6 +10,9 @@ webpush.setVapidDetails(
 );
 
 export default async function handler(req, res) {
+  setCorsHeaders(res);
+  if (handleCorsPreFlight(req, res)) return;
+
   try {
     const { matchTime } = req.query;
 

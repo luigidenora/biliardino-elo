@@ -1,4 +1,5 @@
 import { list, put } from '@vercel/blob';
+import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 function generateId(endpoint) {
   const base = endpoint.slice(-30).replace(/[^a-zA-Z0-9]/g, '');
@@ -7,6 +8,8 @@ function generateId(endpoint) {
 }
 
 export default async function handler(req, res) {
+  setCorsHeaders(res);
+  if (handleCorsPreFlight(req, res)) return;
   if (req.method === 'POST') {
     try {
       const { subscription, playerId, playerName } = req.body;

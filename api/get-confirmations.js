@@ -1,6 +1,9 @@
 import { kv } from '@vercel/kv';
+import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 export default async function handler(req, res) {
+  setCorsHeaders(res);
+  if (handleCorsPreFlight(req, res)) return;
   try {
     const { time } = req.query;
 

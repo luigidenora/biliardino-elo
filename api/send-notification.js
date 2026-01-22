@@ -1,5 +1,6 @@
 import { list } from '@vercel/blob';
 import webpush from 'web-push';
+import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 // Verifica che le variabili d'ambiente siano configurate
 if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
@@ -29,6 +30,9 @@ webpush.setVapidDetails(
  * }
  */
 export default async function handler(req, res) {
+  setCorsHeaders(res);
+  if (handleCorsPreFlight(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
