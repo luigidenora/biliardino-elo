@@ -37,9 +37,9 @@ export type Diversity = { teammate: number; opponent: number };
 
 const config: IMatchmakingConfig = {
   matchBalanceWeight: 0.3,
-  teamBalanceWeight: 0.2,
+  teamBalanceWeight: 0.15,
   priorityWeight: 0.15,
-  diversityWeight: 0.35,
+  diversityWeight: 0.4,
   randomness: 0.1
 };
 
