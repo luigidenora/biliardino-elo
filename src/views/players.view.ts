@@ -504,8 +504,22 @@ export class PlayersView {
       return { ...point, x, y };
     });
 
+    // Calculate moving average (10 matches window)
+    const movingAverageValues = PlayersView.calculateMovingAverage(values, 10);
+    const movingAveragePoints = movingAverageValues.map((value, index) => {
+      const x = padding + (index / Math.max(movingAverageValues.length - 1, 1)) * (width - padding * 2);
+      const y = height - padding - ((value - tickMin) / range) * (height - padding * 2);
+      return { x, y };
+    });
+
+    // Calculate linear regression (trend line)
+    const regressionPoints = PlayersView.calculateLinearRegression(values, padding, height, tickMin, range, width);
+
     const path = PlayersView.createSmoothPath(points);
     const areaPath = `${path} L ${points.at(-1)?.x ?? padding} ${height - padding} L ${points[0]?.x ?? padding} ${height - padding} Z`;
+
+    const movingAveragePath = PlayersView.createSmoothPath(movingAveragePoints);
+    const regressionPath = PlayersView.createLinePath(regressionPoints);
 
     const labelStep = Math.max(1, Math.ceil(progression.length / 8));
     const labels = points.map((p, idx) => {
@@ -526,6 +540,11 @@ export class PlayersView {
         <span>Max: ${Math.round(max)}</span>
         <span>Ultimo: ${Math.round(values[values.length - 1])}</span>
       </div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-color" style="background-color: #4a5568;"></span>Andamento reale</span>
+        <span class="legend-item"><span class="legend-color" style="background-color: #f59e0b;"></span>Media mobile (10)</span>
+        <span class="legend-item"><span class="legend-color" style="background-color: #10b981;"></span>Trend generale</span>
+      </div>
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Andamento ELO nel tempo">
         <defs>
           <linearGradient id="eloGradient" x1="0" y1="0" x2="0" y2="1">
@@ -540,6 +559,8 @@ export class PlayersView {
         ${PlayersView.renderYTicks(tickMin, tickMax, yStep, height, padding, width)}
         <path d="${areaPath}" class="chart-area" />
         <path d="${path}" class="chart-line" />
+        <path d="${movingAveragePath}" class="chart-trend" style="stroke: #f59e0b; stroke-width: 2; fill: none;" />
+        <path d="${regressionPath}" class="chart-regression" style="stroke: #10b981; stroke-width: 2.5; fill: none; stroke-dasharray: 5,5;" />
         ${circles}
         ${labels}
         <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis" />
@@ -590,6 +611,64 @@ export class PlayersView {
     }
 
     return progression;
+  }
+
+  /**
+   * Calculate moving average with given window size.
+   */
+  private static calculateMovingAverage(values: number[], windowSize: number): number[] {
+    if (values.length === 0) return [];
+
+    const result: number[] = [];
+
+    // Initial values before we have enough data
+    for (let i = 0; i < values.length; i++) {
+      const start = Math.max(0, i - windowSize + 1);
+      const window = values.slice(start, i + 1);
+      const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
+      result.push(avg);
+    }
+
+    return result;
+  }
+
+  /**
+   * Calculate linear regression (trend line).
+   */
+  private static calculateLinearRegression(values: number[], padding: number, height: number, tickMin: number, range: number, width: number): { x: number; y: number }[] {
+    if (values.length < 2) return [];
+
+    const n = values.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+    for (let i = 0; i < n; i++) {
+      sumX += i;
+      sumY += values[i];
+      sumXY += i * values[i];
+      sumX2 += i * i;
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    return [
+      {
+        x: padding,
+        y: height - padding - ((intercept - tickMin) / range) * (height - padding * 2)
+      },
+      {
+        x: width - padding,
+        y: height - padding - (((slope * (n - 1) + intercept) - tickMin) / range) * (height - padding * 2)
+      }
+    ];
+  }
+
+  /**
+   * Create a path from two points (for regression line).
+   */
+  private static createLinePath(points: { x: number; y: number }[]): string {
+    if (points.length < 2) return '';
+    return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)} ${points[1].y.toFixed(2)}`;
   }
 
   /**
