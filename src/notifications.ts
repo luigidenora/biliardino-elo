@@ -261,7 +261,8 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
 
     }).catch((err) => {
-      console.error('Service Worker non pronto', err);
+      alert('Errore durante la registrazione delle notifiche. ' + err.body?.message || err.message || err);
+      console.error('Service Worker non pronto', err.body?.message || err.message || err);
       throw err;
     }).finally(() => {
       updateButtonState();
