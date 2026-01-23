@@ -191,7 +191,7 @@ async function updateButtonState(): Promise<void> {
   const notificationIcon = button.querySelector(`.${styles.notificationUserIcon}`) as HTMLElement;
   const allowed = Notification.permission === 'granted';
 
-  var tooltipText = allowed ? 'Notifiche abilitate' : 'Abilita notifiche';
+  var tooltipText = allowed ? 'Seleziona Giocatore' : 'Abilita notifiche';
   const playerId = localStorage.getItem('biliardino_player_id');
   // Default - icona campanello standard
   if (notificationIcon) notificationIcon.innerHTML = `
@@ -228,7 +228,7 @@ async function updateButtonState(): Promise<void> {
       // No subscription salvata - notifiche offline
       button.classList.add(styles.inactive);
       button.classList.remove(styles.active);
-      tooltipText = 'Nessuna subscription';
+      tooltipText = 'Errori nella subscription riprova';
     }
   }
 
