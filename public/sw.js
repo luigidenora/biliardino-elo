@@ -72,55 +72,69 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {};
-
-  const title = data.title || 'CAlcio Balilla';
-  const options = {
-    body: data.body || 'Hai una nuova notifica!',
-    icon: '/biliardino-elo/icons/icon-192.jpg',
-    badge: '/biliardino-elo/icons/icon-192-maskable.png',
-    data: {
-      url: data.url || '/biliardino-elo/',
-      actionData: data.actionData || {}
-    },
-    tag: data.tag || 'default',
-    requireInteraction: data.requireInteraction || false,
-    actions: data.actions || []
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  const urlToOpen = event.notification.data?.url || '/biliardino-elo/';
-  const action = event.action;
-
-  // Handle action buttons
-  if (action) {
-    console.log('Notification action clicked:', action);
-
-    // You can handle different actions here
-    if (action === 'accept') {
-      // Handle accept action
-      event.waitUntil(
-        clients.openWindow(urlToOpen + '?action=accept')
-      );
-    } else if (action === 'ignore') {
-      // Handle ignore action - just close notification
-      console.log('User ignored notification');
-    } else {
-      // Handle other custom actions
-      event.waitUntil(
-        clients.openWindow(urlToOpen + '?action=' + action)
-      );
-    }
-  } else {
-    // Default click behavior (no action button clicked)
-    event.waitUntil(
-      clients.openWindow(urlToOpen)
-    );
+self.addEventListener('push', async (event) => {
+  let title, options;
+  try {
+    ({ notification } = event.data.json());
+    options = notification || {};
+    title = notification.title;
+  } catch (exception) {
+    /* DEBUG SU IPHONE  */ alert('Push event data parsing error: ' + exception.message);
   }
+  try {
+    await self.registration.showNotification(title, options);
+  } catch (e) {
+    /* DEBUG SU IPHONE  */ alert('Notification display error: ' + e.message);
+  }
+
+  // const data = event.data?.json() || {};
+
+  // const title = data.title || 'CAlcio Balilla';
+  // const options = {
+  //   body: data.body || 'Hai una nuova notifica!',
+  //   icon: '/biliardino-elo/icons/icon-192.jpg',
+  //   badge: '/biliardino-elo/icons/icon-192-maskable.png',
+  //   data: {
+  //     url: data.url || '/biliardino-elo/',
+  //     actionData: data.actionData || {}
+  //   },
+  //   tag: data.tag || 'default',
+  //   requireInteraction: data.requireInteraction || false,
+  //   actions: data.actions || []
+  // };
+
+  // event.waitUntil(self.registration.showNotification(title, options));
 });
+
+// self.addEventListener('notificationclick', (event) => {
+//   event.notification.close();
+
+//   const urlToOpen = event.notification.data?.url || '/biliardino-elo/';
+//   const action = event.action;
+
+//   // Handle action buttons
+//   if (action) {
+//     console.log('Notification action clicked:', action);
+
+//     // You can handle different actions here
+//     if (action === 'accept') {
+//       // Handle accept action
+//       event.waitUntil(
+//         clients.openWindow(urlToOpen + '?action=accept')
+//       );
+//     } else if (action === 'ignore') {
+//       // Handle ignore action - just close notification
+//       console.log('User ignored notification');
+//     } else {
+//       // Handle other custom actions
+//       event.waitUntil(
+//         clients.openWindow(urlToOpen + '?action=' + action)
+//       );
+//     }
+//   } else {
+//     // Default click behavior (no action button clicked)
+//     event.waitUntil(
+//       clients.openWindow(urlToOpen)
+//     );
+//   }
+// });
