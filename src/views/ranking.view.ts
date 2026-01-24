@@ -516,8 +516,8 @@ export class RankingView {
           <div class="stat-label">Miglior Coppia</div>
           <div class="stat-value-group">
             ${bestPair.delta === -Infinity
-        ? '<div class="stat-empty">-</div>'
-        : `
+              ? '<div class="stat-empty">-</div>'
+              : `
               <div class="stat-pair-names">
                 <div>${bestPair.player1}</div>
                 <div class="pair-separator">+</div>
@@ -534,8 +534,8 @@ export class RankingView {
           <div class="stat-label">Peggior Coppia</div>
           <div class="stat-value-group">
             ${worstPair.delta === Infinity
-        ? '<div class="stat-empty">-</div>'
-        : `
+              ? '<div class="stat-empty">-</div>'
+              : `
               <div class="stat-pair-names">
                 <div>${worstPair.player1}</div>
                 <div class="pair-separator">+</div>

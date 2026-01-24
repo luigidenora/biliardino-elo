@@ -19,7 +19,7 @@ webpush.setVapidDetails(
 
 /**
  * API per inviare broadcast a tutti gli utenti registrati
- * 
+ *
  * POST /api/send-broadcast
  * Body: {
  *   matchTime: string (es: "14:30"),
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     // Verifica configurazione
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       console.error('BLOB_READ_WRITE_TOKEN non configurato');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Configurazione server incompleta',
         details: 'BLOB_READ_WRITE_TOKEN mancante'
       });
@@ -114,16 +114,16 @@ export default async function handler(req, res) {
     }
 
     console.log(`✅ Broadcast completato: ${sent}/${validSubscriptions.length} inviati (Match: ${matchTime})`);
-    
-    return res.status(200).json({ 
-      sent, 
-      failed, 
-      total: validSubscriptions.length, 
-      matchTime 
+
+    return res.status(200).json({
+      sent,
+      failed,
+      total: validSubscriptions.length,
+      matchTime
     });
   } catch (err) {
     console.error('Errore broadcast:', err);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Errore invio broadcast',
       details: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined

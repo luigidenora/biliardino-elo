@@ -13,13 +13,13 @@ export function initNotification(): void {
 // Timer registry for auto-collapse of expanded button
 const collapseTimers = new Map<HTMLElement, number>();
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   return new Uint8Array(
     atob(base64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
+      .split('')
+      .map(c => c.charCodeAt(0))
   );
 }
 /**
@@ -97,7 +97,7 @@ function createNotificationButton(): HTMLElement {
       collapseInlineSelect(button);
       return;
     }
-    const playerName = players.find((p) => p.id === playerId)?.name || '';
+    const playerName = players.find(p => p.id === playerId)?.name || '';
     try {
       await subscribeAndSave(playerId, playerName);
       collapseInlineSelect(button);
@@ -127,7 +127,9 @@ function createNotificationButton(): HTMLElement {
   avatar.alt = 'Avatar Utente';
   avatar.setAttribute('data-player-avatar', 'true');
   const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
-  avatar.addEventListener('error', () => { avatar.src = fallbackAvatar; });
+  avatar.addEventListener('error', () => {
+    avatar.src = fallbackAvatar;
+  });
 
   // Icona notifiche (SVG)
   const notificationIcon = document.createElement('span');
@@ -166,9 +168,10 @@ function toggleInlineSelect(button: HTMLElement): void {
     // Try to open the native picker
     try {
       select.click();
-    } catch { }
+    } catch {
+      // Ignore errors
+    }
   });
-
 }
 
 function collapseInlineSelect(button: HTMLElement): void {
@@ -191,7 +194,7 @@ async function updateButtonState(): Promise<void> {
   const notificationIcon = button.querySelector(`.${styles.notificationUserIcon}`) as HTMLElement;
   const allowed = Notification.permission === 'granted';
 
-  var tooltipText = allowed ? 'Seleziona Giocatore' : 'Abilita notifiche';
+  let tooltipText = allowed ? 'Seleziona Giocatore' : 'Abilita notifiche';
   const playerId = localStorage.getItem('biliardino_player_id');
   // Default - icona campanello standard
   if (notificationIcon) notificationIcon.innerHTML = `
@@ -232,60 +235,82 @@ async function updateButtonState(): Promise<void> {
     }
   }
 
-  button.setAttribute('data-tooltip', tooltipText)
+  button.setAttribute('data-tooltip', tooltipText);
 }
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
-  if ("serviceWorker" in navigator) {
-    localStorage.setItem('biliardino_player_id', String(playerId));
-    localStorage.setItem('biliardino_player_name', playerName);
-    navigator.serviceWorker.ready.then(async (reg) => {
-      const existingSub = await reg.pushManager.getSubscription();
-      const subscription = existingSub || await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service workers are not supported.');
+  }
 
-      const body = { subscription, playerId, playerName };
+  try {
+    // Wait for service worker to be ready
+    const reg = await navigator.serviceWorker.ready;
+
+    // Get or create push subscription
+    const existingSub = await reg.pushManager.getSubscription();
+    const subscription = existingSub || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    // Send subscription to server with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
       const response = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ subscription, playerId, playerName }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`Errore API: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Errore API: ${response.status} ${response.statusText}`);
       }
 
-      console.log('Subscription salvata con successo');
+      // Only save to localStorage after successful API call
+      localStorage.setItem('biliardino_player_id', String(playerId));
+      localStorage.setItem('biliardino_player_name', playerName);
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
 
-    }).catch((err) => {
-      alert('Errore durante la registrazione delle notifiche. ' + err.body?.message || err.message || err);
-      console.error('Service Worker non pronto', err.body?.message || err.message || err);
-      throw err;
-    }).finally(() => {
-      updateButtonState();
-    });
-  } else {
-    console.error("Service workers are not supported.");
-  }
+      console.log('Subscription salvata con successo');
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      throw fetchError;
+    }
+  } catch (err) {
+    // Clear localStorage on failure to maintain consistent state
+    localStorage.removeItem('biliardino_player_id');
+    localStorage.removeItem('biliardino_player_name');
+    localStorage.removeItem('biliardino_subscription');
 
+    const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto';
+    alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
+    console.error('Errore registrazione notifiche:', err);
+    throw err;
+  } finally {
+    updateButtonState();
+  }
 }
 
 /**
  * Mostra il banner di installazione PWA per iOS se applicabile
-  */
-function showIosPwaBannerIfNeeded() {
+ */
+function showIosPwaBannerIfNeeded(): void {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isInStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true;
+  const isInStandalone
+    = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as any).standalone === true;
   if (isIos) {
     if (!isInStandalone) {
-      document.getElementById("ios-pwa-install-banner")?.remove();
-      const bannerContainer = document.createElement("div");
-      bannerContainer.id = "ios-pwa-install-banner";
+      document.getElementById('ios-pwa-install-banner')?.remove();
+      const bannerContainer = document.createElement('div');
+      bannerContainer.id = 'ios-pwa-install-banner';
       bannerContainer.className = styles.iosPwaInstallBanner;
       bannerContainer.innerHTML = BANNER_TEMPLATE;
       document.body.appendChild(bannerContainer);
