@@ -43,18 +43,35 @@ export default async function handler(req, res) {
       const response = await fetch(blob.url);
       const { subscription } = await response.json();
 
-      await webpush.sendNotification(
-        subscription,
-        JSON.stringify({
+      const navigateUrl = '/';
+
+      const payload = {
+        // Declarative Web Push (Safari/WebKit)
+        web_push: 8030,
+        notification: {
           title: notificationTitle,
           body: notificationBody,
-          url: '/',
+          navigate: navigateUrl,
           icon: '/icons/icon-192.jpg',
           badge: '/icons/icon-192.jpg',
           tag: 'test',
           requireInteraction: true,
           actions: notificationActions
-        }),
+        },
+        // Imperative fallback for existing service worker handlers
+        title: notificationTitle,
+        body: notificationBody,
+        url: navigateUrl,
+        icon: '/icons/icon-192.jpg',
+        badge: '/icons/icon-192.jpg',
+        tag: 'test',
+        requireInteraction: true,
+        actions: notificationActions
+      };
+
+      await webpush.sendNotification(
+        subscription,
+        JSON.stringify(payload),
         {
           urgency: 'high'
         }

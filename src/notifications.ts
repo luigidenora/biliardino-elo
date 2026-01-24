@@ -17,6 +17,32 @@ const collapseTimers = new Map<HTMLElement, number>();
 let easterEggClickCount = 0;
 let easterEggResetTimer: number | null = null;
 
+declare global {
+  // Safari exposes pushManager on window for Declarative Web Push
+  interface Window {
+    pushManager?: PushManager;
+  }
+}
+
+// Detect Declarative Web Push support (Safari/WebKit)
+function isDeclarativePushSupported(): boolean {
+  return typeof window !== 'undefined' && 'pushManager' in window && !!window.pushManager;
+}
+
+// Normalize PushManager retrieval: use window.pushManager on WebKit, SW registration elsewhere
+async function getPushManager(): Promise<PushManager> {
+  if (isDeclarativePushSupported()) {
+    return window.pushManager as PushManager;
+  }
+
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service workers non supportati su questo browser');
+  }
+
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager;
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -249,30 +275,30 @@ async function updateButtonState(): Promise<void> {
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
    /* FOR DEBUG ON IPHONE: */  alert('Registrazione alle notifiche in corso...');
-  if (!('serviceWorker' in navigator)) {
+  const declarativeSupported = isDeclarativePushSupported();
+
+  if (!declarativeSupported && !('serviceWorker' in navigator)) {
     const errorMsg = 'Service workers non supportati su questo browser';
    /* FOR DEBUG ON IPHONE: */ alert(errorMsg);
     throw new Error(errorMsg);
-  } else {
-    /* FOR DEBUG ON IPHONE: */   alert('Service workers supportati su questo browser');
   }
+  /* FOR DEBUG ON IPHONE: */   alert(declarativeSupported ? 'Declarative Web Push disponibile' : 'Service workers supportati su questo browser');
 
   // Save player selection immediately to differentiate selection vs subscription failure
   localStorage.setItem('biliardino_player_id', String(playerId));
   localStorage.setItem('biliardino_player_name', playerName);
 
   try {
-    // Wait for service worker to be ready
-    const reg = await navigator.serviceWorker.ready;
-    /* FOR DEBUG ON IPHONE: */   alert('Service worker pronto');
+    const pushManager = await getPushManager();
+    /* FOR DEBUG ON IPHONE: */   alert(declarativeSupported ? 'PushManager (window) pronto' : 'Service worker pronto');
 
     if (!VAPID_PUBLIC_KEY) {
       throw new Error('Chiave VAPID mancante, contattare lo sviluppatore');
     }
   /* FOR DEBUG ON IPHONE: */   alert('Chiave VAPID presente');
     // Get or create push subscription
-    const existingSub = await reg.pushManager.getSubscription();
-    const subscription = existingSub || await reg.pushManager.subscribe({
+    const existingSub = await pushManager.getSubscription();
+    const subscription = existingSub || await pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
