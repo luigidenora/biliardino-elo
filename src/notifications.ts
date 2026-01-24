@@ -231,7 +231,7 @@ async function updateButtonState(): Promise<void> {
       // No subscription salvata - notifiche offline
       button.classList.add(styles.inactive);
       button.classList.remove(styles.active);
-      tooltipText = 'Errori nella subscription riprova';
+      tooltipText = 'Errori nella subscription, riprova';
     }
   }
 
