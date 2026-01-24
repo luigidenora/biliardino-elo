@@ -2,22 +2,18 @@ name: Scheduled Notifications
 
 on:
   schedule:
-    # Notifiche alle 10:45 e 15:45 ora italiana
-    # Solo giorni lavorativi: Lunedì-Venerdì (1-5)
-    # 
-    # IMPORTANTE - Cambio ora legale:
-    # GitHub Actions usa UTC. L'Italia passa tra CET (UTC+1) e CEST (UTC+2).
-    # 
-    # Configurazione attuale (CET - ora solare, ~fine ottobre a fine marzo):
-    # - 9:45 UTC = 10:45 ora italiana
-    # - 14:45 UTC = 15:45 ora italiana
+    # ⚠️ MODALITÀ TEST: Esecuzione ogni 4 minuti
+    # TODO: Ripristinare la configurazione produzione dopo i test:
     #
-    # Per CEST (ora legale, ~fine marzo a fine ottobre), aggiornare a:
+    # Produzione (CET - ora solare, ~fine ottobre a fine marzo):
+    # - cron: '45 9 * * 1-5'   # 9:45 UTC = 10:45 IT (CET)
+    # - cron: '45 14 * * 1-5'  # 14:45 UTC = 15:45 IT (CET)
+    #
+    # Produzione (CEST - ora legale, ~fine marzo a fine ottobre):
     # - cron: '45 8 * * 1-5'   # 8:45 UTC = 10:45 IT (CEST)
     # - cron: '45 13 * * 1-5'  # 13:45 UTC = 15:45 IT (CEST)
     #
-    - cron: '45 9 * * 1-5'   # 9:45 UTC = 10:45 IT (CET)
-    - cron: '45 14 * * 1-5'  # 14:45 UTC = 15:45 IT (CET)
+    - cron: '*/4 * * * *'  # Ogni 4 minuti (TEST)
   
   # Permetti attivazione manuale per testing
   workflow_dispatch:
@@ -83,8 +79,7 @@ jobs:
           echo "   In produzione (scheduled/workflow_dispatch senza test_mode), le notifiche verranno inviate."
           echo ""
           echo "📋 Riepilogo configurazione:"
-          echo "   - Schedule: 10:45 e 15:45 ora italiana (Lun-Ven)"
-          echo "   - Cron UTC: 9:45 e 14:45 (durante CET)"
+          echo "   - Schedule: Ogni 4 minuti (MODALITÀ TEST)"
           echo "   - Endpoint: /api/send-broadcast (POST con matchTime)"
           echo ""
           echo "✅ Test completato con successo!"
