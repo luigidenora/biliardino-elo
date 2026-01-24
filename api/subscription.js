@@ -1,10 +1,10 @@
 import { list, put } from '@vercel/blob';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
-function generateId(endpoint) {
-  const base = endpoint.slice(-30).replace(/[^a-zA-Z0-9]/g, '');
-  const rand = Math.floor(Math.random() * 1e6);
-  return `biliardino-subs/${base}-${Date.now()}-${rand}.json`;
+function generateId(playerId, subscription) {
+  const deviceHash = subscription.endpoint.slice(-20).replace(/[^a-zA-Z0-9]/g, '');
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  return `${playerId}-subs/${deviceHash}-${randomSuffix}.json`;
 }
 
 export default async function handler(req, res) {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'playerId deve essere un numero' });
       }
 
-      const key = generateId(subscription.endpoint);
+      const key = generateId(playerIdNum,subscription);
       const data = {
         subscription,
         playerId: playerIdNum, // Salva come numero
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       const blob = await put(key, JSON.stringify(data), {
         access: 'public',
         token: process.env.BLOB_READ_WRITE_TOKEN,
-        contentType: 'application/json'
+        contentType: 'application/json',
       });
 
       console.log('✅ Subscription salvata:', playerName, '(ID:', playerIdNum, ')');
@@ -50,8 +50,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { blobs } = await list({
-        prefix: 'biliardino-subs/',
-        token: process.env.BLOB_READ_WRITE_TOKEN
+        prefix: `${playerIdNum}-subs/`,
+        token: process.env.BLOB_READ_WRITE_TOKEN,
       });
 
       const subscriptions = await Promise.all(

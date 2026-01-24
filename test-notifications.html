@@ -301,6 +301,13 @@
           <input type="text" id="title" value="Nuova partita disponibile" />
         </div>
         <div class="form-group">
+          <label for="playerSelect">Seleziona Giocatore</label>
+          <select id="playerSelect" onchange="updatePayloadPreview()">
+            <option value="">-- Seleziona un giocatore --</option>
+            <!-- Options will be populated here -->
+          </select>
+        </div>
+        <div class="form-group">
           <label for="body">Messaggio</label>
           <textarea id="body">Sei stato selezionato per la prossima partita. Confermi la disponibilita?</textarea>
         </div>
@@ -345,6 +352,21 @@
   </div>
 
   <script type="module">
+    import { getAllPlayers } from '/src/services/player.service.ts';
+
+    async function fetchPlayers() {
+      const players = getAllPlayers();
+      const playerSelect = document.getElementById('playerSelect');
+      players.forEach(player => {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = player.name;
+        playerSelect.appendChild(option);
+      });
+    }
+
+    fetchPlayers(); // Call the function to populate the select
+
     function updatePayloadPreview() {
       const payload = buildPayload();
       document.getElementById('payloadPreview').textContent = JSON.stringify(payload, null, 2);
@@ -368,12 +390,10 @@
         }
       });
 
-      const subscription = localStorage.getItem('biliardino_subscription');
-      const playerName = localStorage.getItem('biliardino_player_name');
+      const playerId = document.getElementById('playerSelect').value; // Get selected player ID
 
       return {
-        subscription: subscription ? JSON.parse(subscription) : null,
-        playerName: playerName || 'Test User',
+        playerId: playerId,
         title,
         body,
         actions: actions.length > 0 ? actions : undefined
@@ -417,7 +437,7 @@
         });
 
         if (!response.ok) {
-          throw new Error(response.statusText || 'Errore sconosciuto');
+          throw new Error(`${response.statusText}: ${await response.text()}`);
         }
 
         const result = await response.json();

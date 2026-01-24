@@ -1,3 +1,4 @@
+import { list } from '@vercel/blob';
 import webpush from 'web-push';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
@@ -16,13 +17,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { subscription, playerName, title, body, actions } = req.body;
+    const { playerId, title, body, actions } = req.body;
 
-    if (!subscription) {
-      return res.status(400).json({ error: 'Subscription mancante' });
-    }
-
-    const name = playerName || 'Giocatore';
+    const name = playerId || 'Giocatore';
     const notificationTitle = title || '✅ Test Notifica';
     const notificationBody = body || `Funziona! Ciao ${name} 👋`;
 
@@ -32,19 +29,37 @@ export default async function handler(req, res) {
       { action: 'ignore', title: 'Ignora', icon: '/icons/icon-192.jpg' }
     ];
 
-    await webpush.sendNotification(
-      subscription,
-      JSON.stringify({
-        title: notificationTitle,
-        body: notificationBody,
-        url: '/',
-        icon: '/icons/icon-192.jpg',
-        badge: '/icons/icon-192.jpg',
-        tag: 'test',
-        requireInteraction: true,
-        actions: notificationActions
-      })
-    );
+    const { blobs } = await list({
+      prefix: `${playerId}-subs/`,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+
+    if (blobs.length === 0) {
+      return res.status(404).json({ error: `Nessuna subscription trovata per playerId ${playerId}` });
+    }
+
+    // cicla tutte le subscription trovate e invia la notifica
+    for (const blob of blobs) {
+      const response = await fetch(blob.url);
+      const { subscription } = await response.json();
+
+      await webpush.sendNotification(
+        subscription,
+        JSON.stringify({
+          title: notificationTitle,
+          body: notificationBody,
+          url: '/',
+          icon: '/icons/icon-192.jpg',
+          badge: '/icons/icon-192.jpg',
+          tag: 'test',
+          requireInteraction: true,
+          actions: notificationActions
+        }),
+        {
+          urgency: 'high'
+        }
+      );
+    }
 
     res.status(200).json({
       success: true,
