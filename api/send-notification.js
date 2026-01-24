@@ -99,24 +99,36 @@ export default async function handler(req, res) {
 
     // Invia la notifica
     try {
-      const payload = {
-        title,
-        body,
-        url,
-        icon: '/icons/icon-192.jpg',
-        badge: '/icons/icon-192.jpg',
-        tag: `notification-${playerId}-${Date.now()}`,
-        requireInteraction
-      };
+      // Default actions if not provided
+      const notificationActions = actions && Array.isArray(actions) && actions.length > 0
+        ? actions
+        : [
+            { action: 'accept', title: 'Accetta', icon: '/icons/icon-192.jpg' },
+            { action: 'ignore', title: 'Ignora', icon: '/icons/icon-192.jpg' }
+          ];
 
-      // Add actions if provided
-      if (actions && Array.isArray(actions) && actions.length > 0) {
-        payload.actions = actions;
-      }
+      const payload = {
+        // Declarative Web Push (Safari/WebKit)
+        web_push: 8030,
+        notification: {
+          title,
+          body,
+          navigate: url,
+          icon: '/icons/icon-192.jpg',
+          badge: '/icons/icon-192.jpg',
+          tag: `notification-${playerId}-${Date.now()}`,
+          requireInteraction,
+          actions: notificationActions
+        },
+        app_badge: 1
+      };
 
       await webpush.sendNotification(
         playerSub.subscription,
-        JSON.stringify(payload)
+        JSON.stringify(payload),
+        {
+          urgency: 'high'
+        }
       );
 
       console.log(`✅ Notifica inviata al player ${playerSub.playerName} (ID: ${playerId})`);

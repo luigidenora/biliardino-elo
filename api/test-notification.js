@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     const { blobs } = await list({
       prefix: `${playerId}-subs/`,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
     if (blobs.length === 0) {
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
           requireInteraction: true,
           actions: notificationActions
         },
-        app_badge: 1,
+        app_badge: 1
         // // Imperative fallback for existing service worker handlers
         // title: notificationTitle,
         // body: notificationBody,
