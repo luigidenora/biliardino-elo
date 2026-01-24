@@ -108,18 +108,18 @@ export default async function handler(req, res) {
           ];
 
       const payload = {
-        // Declarative Web Push (Safari/WebKit)
+        // Declarative Web Push (Safari/WebKit) - iOS 18.4+ standard
         web_push: 8030,
         notification: {
           title,
           body,
-          navigate: url,
           icon: '/icons/icon-192.jpg',
           badge: '/icons/icon-192.jpg',
           tag: `notification-${playerId}-${Date.now()}`,
           requireInteraction,
           actions: notificationActions
         },
+        navigate: url,
         app_badge: 1
       };
 

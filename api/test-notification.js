@@ -46,28 +46,19 @@ export default async function handler(req, res) {
       const navigateUrl = '/';
 
       const payload = {
-        // Declarative Web Push (Safari/WebKit)
+        // Declarative Web Push (Safari/WebKit) - iOS 18.4+ standard
         web_push: 8030,
         notification: {
           title: notificationTitle,
           body: notificationBody,
-          navigate: navigateUrl,
           icon: '/icons/icon-192.jpg',
           badge: '/icons/icon-192.jpg',
           tag: 'test',
           requireInteraction: true,
           actions: notificationActions
         },
+        navigate: navigateUrl,
         app_badge: 1
-        // // Imperative fallback for existing service worker handlers
-        // title: notificationTitle,
-        // body: notificationBody,
-        // url: navigateUrl,
-        // icon: '/icons/icon-192.jpg',
-        // badge: '/icons/icon-192.jpg',
-        // tag: 'test',
-        // requireInteraction: true,
-        // actions: notificationActions
       };
 
       await webpush.sendNotification(
