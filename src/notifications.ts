@@ -13,6 +13,10 @@ export function initNotification(): void {
 // Timer registry for auto-collapse of expanded button
 const collapseTimers = new Map<HTMLElement, number>();
 
+// Easter egg counter for test notifications page access
+let easterEggClickCount = 0;
+let easterEggResetTimer: number | null = null;
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -42,6 +46,10 @@ function createNotificationHeader(): HTMLElement {
   header.appendChild(button);
   button.addEventListener('click', (e) => {
     e.preventDefault();
+
+    // Easter egg: 6 clicks to access test notifications page
+    handleEasterEggClick(button);
+
     showIosPwaBannerIfNeeded();
     if (Notification.permission === 'default') {
       Notification.requestPermission().then(() => {
@@ -240,8 +248,14 @@ async function updateButtonState(): Promise<void> {
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
   if (!('serviceWorker' in navigator)) {
-    throw new Error('Service workers are not supported.');
+    const errorMsg = 'Service workers non supportati su questo browser';
+    alert(errorMsg);
+    throw new Error(errorMsg);
   }
+
+  // Save player selection immediately to differentiate selection vs subscription failure
+  localStorage.setItem('biliardino_player_id', String(playerId));
+  localStorage.setItem('biliardino_player_name', playerName);
 
   try {
     // Wait for service worker to be ready
@@ -253,6 +267,9 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
+
+    // Display VAPID key for mobile debugging
+    console.log('VAPID_PUBLIC_KEY:', VAPID_PUBLIC_KEY);
 
     // Send subscription to server with timeout
     const controller = new AbortController();
@@ -270,31 +287,70 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Errore API: ${response.status} ${response.statusText}`);
+        const errorMsg = errorData.error || `Errore API: ${response.status} ${response.statusText}`;
+        alert(`Errore API: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
-      // Only save to localStorage after successful API call
-      localStorage.setItem('biliardino_player_id', String(playerId));
-      localStorage.setItem('biliardino_player_name', playerName);
+      // Only save subscription to localStorage after successful API call
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
 
       console.log('Subscription salvata con successo');
     } catch (fetchError) {
       clearTimeout(timeoutId);
+      const errorMsg = fetchError instanceof Error ? fetchError.message : 'Errore sconosciuto';
+      alert(`Errore di rete: ${errorMsg}`);
       throw fetchError;
     }
   } catch (err) {
-    // Clear localStorage on failure to maintain consistent state
-    localStorage.removeItem('biliardino_player_id');
-    localStorage.removeItem('biliardino_player_name');
+    // Remove only subscription on failure, keep player selection
     localStorage.removeItem('biliardino_subscription');
 
     const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto';
-    alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
+    if (!(err instanceof Error && err.message.includes('Service workers'))) {
+      // Don't show alert twice for service worker error (already shown above)
+      alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
+    }
     console.error('Errore registrazione notifiche:', err);
     throw err;
   } finally {
     updateButtonState();
+  }
+}
+
+/**
+ * Easter egg: 6 clicks on notification button to access test page
+ */
+function handleEasterEggClick(button: HTMLElement): void {
+  easterEggClickCount++;
+
+  // Reset counter after 3 seconds of inactivity
+  if (easterEggResetTimer !== null) {
+    window.clearTimeout(easterEggResetTimer);
+  }
+  easterEggResetTimer = window.setTimeout(() => {
+    easterEggClickCount = 0;
+    easterEggResetTimer = null;
+  }, 3000);
+
+  // Show progress after 3rd click
+  if (easterEggClickCount >= 3 && easterEggClickCount < 6) {
+    const remaining = 6 - easterEggClickCount;
+    button.setAttribute('data-tooltip', `${remaining} click rimanenti...`);
+  }
+
+  // Navigate to test page after 6 clicks
+  if (easterEggClickCount === 6) {
+    easterEggClickCount = 0;
+    if (easterEggResetTimer !== null) {
+      window.clearTimeout(easterEggResetTimer);
+      easterEggResetTimer = null;
+    }
+
+    const confirmNav = confirm('🎉 Easter egg sbloccato!\n\nVuoi accedere alla pagina di test delle notifiche?');
+    if (confirmNav) {
+      window.location.href = `${BASE_PATH}test-notifications.html`;
+    }
   }
 }
 
