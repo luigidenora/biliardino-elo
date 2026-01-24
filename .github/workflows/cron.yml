@@ -50,11 +50,21 @@ jobs:
           echo "📝 Commit: ${{ github.sha }}"
           echo "============================================="
 
-      - name: Trigger Vercel Cron Handler
+      - name: Send Broadcast Notification
         if: github.event_name != 'pull_request' && github.event.inputs.test_mode != 'true'
         run: |
-          echo "📢 Invio richiesta a Vercel cron handler..."
-          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.VERCEL_API_URL }}/api/cron-handler")
+          # Calcola l'orario della partita in base all'ora corrente (Roma)
+          CURRENT_HOUR=$(TZ='Europe/Rome' date '+%H')
+          if [ "$CURRENT_HOUR" -lt 12 ]; then
+            MATCH_TIME="11:00"
+          else
+            MATCH_TIME="16:00"
+          fi
+          
+          echo "📢 Invio broadcast notifica per partita delle $MATCH_TIME..."
+          response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.VERCEL_API_URL }}/api/send-broadcast" \
+            -H "Content-Type: application/json" \
+            -d "{\"matchTime\": \"$MATCH_TIME\"}")
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           echo "📥 Response code: $http_code"
@@ -63,7 +73,7 @@ jobs:
             echo "❌ Errore nella chiamata API"
             exit 1
           fi
-          echo "✅ Cron handler chiamato con successo"
+          echo "✅ Broadcast inviato con successo per partita delle $MATCH_TIME"
 
       - name: Test mode - Skip notification
         if: github.event_name == 'pull_request' || github.event.inputs.test_mode == 'true'
@@ -75,6 +85,6 @@ jobs:
           echo "📋 Riepilogo configurazione:"
           echo "   - Schedule: 10:45 e 15:45 ora italiana (Lun-Ven)"
           echo "   - Cron UTC: 9:45 e 14:45 (durante CET)"
-          echo "   - Endpoint: /api/cron-handler"
+          echo "   - Endpoint: /api/send-broadcast (POST con matchTime)"
           echo ""
           echo "✅ Test completato con successo!"
