@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { playerId, title, body, url = '/', requireInteraction = false } = req.body;
+    const { playerId, title, body, url = '/', requireInteraction = false, actions } = req.body;
 
     // Validazione input
     if (!playerId) {
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // Verifica configurazione
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       console.error('BLOB_READ_WRITE_TOKEN non configurato');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Configurazione server incompleta',
         details: 'BLOB_READ_WRITE_TOKEN mancante'
       });
@@ -99,17 +99,24 @@ export default async function handler(req, res) {
 
     // Invia la notifica
     try {
+      const payload = {
+        title,
+        body,
+        url,
+        icon: '/icons/icon-192.jpg',
+        badge: '/icons/icon-192.jpg',
+        tag: `notification-${playerId}-${Date.now()}`,
+        requireInteraction
+      };
+
+      // Add actions if provided
+      if (actions && Array.isArray(actions) && actions.length > 0) {
+        payload.actions = actions;
+      }
+
       await webpush.sendNotification(
         playerSub.subscription,
-        JSON.stringify({
-          title,
-          body,
-          url,
-          icon: '/icons/icon-192.jpg',
-          badge: '/icons/icon-192.jpg',
-          tag: `notification-${playerId}-${Date.now()}`,
-          requireInteraction
-        })
+        JSON.stringify(payload)
       );
 
       console.log(`✅ Notifica inviata al player ${playerSub.playerName} (ID: ${playerId})`);

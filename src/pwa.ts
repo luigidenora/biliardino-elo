@@ -1,4 +1,4 @@
-import { initNotification } from "./notifications";
+import { initNotification } from './notifications';
 
 const baseUrl = import.meta.env.BASE_URL || '/';
 

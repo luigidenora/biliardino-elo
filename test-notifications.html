@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="it">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test Notifiche - CAlcio Balilla</title>
+  <meta name="description" content="CA Biliardino Championship - Test Notifiche" />
+  <meta name="theme-color" content="#062c7d" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #062c7d;
+      margin-bottom: 1rem;
+      font-size: 2rem;
+    }
+
+    .nav-link {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+
+    .section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    h2 {
+      color: #062c7d;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.875rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .info-box {
+      background: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 4px;
+    }
+
+    .info-box p {
+      margin: 0.5rem 0;
+      color: #0c5460;
+    }
+
+    .actions-container {
+      border: 2px dashed #ddd;
+      padding: 1rem;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .action-item {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+      align-items: center;
+    }
+
+    .action-item input {
+      flex: 1;
+    }
+
+    .action-item button {
+      width: auto;
+      padding: 0.5rem 1rem;
+      background: #dc3545;
+    }
+
+    .add-action-btn {
+      background: #28a745;
+      margin-top: 0.5rem;
+    }
+
+    .code-block {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <a class="nav-link" href="./index.html">← Torna alla Classifica</a>
+    
+    <h1>🔔 Test Notifiche Push</h1>
+    
+    <div class="info-box">
+      <p><strong>📋 Come usare questa pagina:</strong></p>
+      <p>1. Assicurati di aver abilitato le notifiche e selezionato un giocatore nell'app principale</p>
+      <p>2. Compila i campi qui sotto per personalizzare la notifica</p>
+      <p>3. Aggiungi azioni (bottoni) alla notifica come "Accetta" o "Ignora"</p>
+      <p>4. Clicca su "Invia Notifica di Test" per ricevere la notifica</p>
+    </div>
+
+    <div class="section">
+      <h2>📝 Contenuto Notifica</h2>
+      
+      <div class="form-group">
+        <label for="title">Titolo</label>
+        <input type="text" id="title" value="🎯 Nuova Partita Disponibile!" />
+      </div>
+
+      <div class="form-group">
+        <label for="body">Messaggio</label>
+        <textarea id="body">Sei stato selezionato per la prossima partita! Confermi la tua disponibilità?</textarea>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="requireInteraction" checked />
+        <label for="requireInteraction" style="margin: 0;">Richiedi interazione (la notifica resta visibile fino a clic)</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🎬 Azioni Notifica</h2>
+      <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">
+        Aggiungi fino a 2 azioni (bottoni) che appariranno nella notifica. Ogni azione ha un ID e un titolo visibile.
+      </p>
+      
+      <div class="actions-container" id="actionsContainer">
+        <div class="action-item">
+          <input type="text" placeholder="ID azione (es: accept)" value="accept" data-field="action" />
+          <input type="text" placeholder="Titolo (es: Accetta)" value="✅ Accetta" data-field="title" />
+          <button type="button" onclick="removeAction(this)">✖</button>
+        </div>
+        <div class="action-item">
+          <input type="text" placeholder="ID azione (es: ignore)" value="ignore" data-field="action" />
+          <input type="text" placeholder="Titolo (es: Ignora)" value="❌ Ignora" data-field="title" />
+          <button type="button" onclick="removeAction(this)">✖</button>
+        </div>
+      </div>
+      
+      <button type="button" class="add-action-btn" onclick="addAction()">➕ Aggiungi Azione</button>
+      
+      <div class="info-box" style="margin-top: 1rem;">
+        <p><strong>💡 Nota:</strong> Alcune piattaforme (come Android) supportano fino a 3 azioni, mentre altre (come iOS) potrebbero non mostrare le azioni.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🚀 Invia Test</h2>
+      <button type="button" id="sendBtn" onclick="sendTestNotification()">
+        📤 Invia Notifica di Test
+      </button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="section">
+      <h2>📖 Esempio Payload</h2>
+      <p style="margin-bottom: 0.5rem; color: #666;">Questo è il JSON che verrà inviato all'API:</p>
+      <pre id="payloadPreview" class="code-block"></pre>
+    </div>
+  </div>
+
+  <script type="module">
+    function updatePayloadPreview() {
+      const payload = buildPayload();
+      document.getElementById('payloadPreview').textContent = JSON.stringify(payload, null, 2);
+    }
+
+    function buildPayload() {
+      const title = document.getElementById('title').value;
+      const body = document.getElementById('body').value;
+      const requireInteraction = document.getElementById('requireInteraction').checked;
+      
+      const actions = [];
+      document.querySelectorAll('.action-item').forEach(item => {
+        const actionId = item.querySelector('[data-field="action"]').value;
+        const actionTitle = item.querySelector('[data-field="title"]').value;
+        if (actionId && actionTitle) {
+          actions.push({
+            action: actionId,
+            title: actionTitle,
+            icon: '/icons/icon-192.jpg'
+          });
+        }
+      });
+
+      const subscription = localStorage.getItem('biliardino_subscription');
+      const playerName = localStorage.getItem('biliardino_player_name');
+
+      return {
+        subscription: subscription ? JSON.parse(subscription) : null,
+        playerName: playerName || 'Test User',
+        title,
+        body,
+        actions: actions.length > 0 ? actions : undefined
+      };
+    }
+
+    window.addAction = function() {
+      const container = document.getElementById('actionsContainer');
+      const actionItem = document.createElement('div');
+      actionItem.className = 'action-item';
+      actionItem.innerHTML = `
+        <input type="text" placeholder="ID azione" data-field="action" />
+        <input type="text" placeholder="Titolo" data-field="title" />
+        <button type="button" onclick="removeAction(this)">✖</button>
+      `;
+      container.appendChild(actionItem);
+      updatePayloadPreview();
+    };
+
+    window.removeAction = function(btn) {
+      btn.closest('.action-item').remove();
+      updatePayloadPreview();
+    };
+
+    window.sendTestNotification = async function() {
+      const sendBtn = document.getElementById('sendBtn');
+      const status = document.getElementById('status');
+      
+      sendBtn.disabled = true;
+      status.className = 'status';
+      status.textContent = '⏳ Invio in corso...';
+      status.style.display = 'block';
+
+      try {
+        const subscription = localStorage.getItem('biliardino_subscription');
+        if (!subscription) {
+          throw new Error('Nessuna subscription trovata. Abilita le notifiche prima di usare questa pagina.');
+        }
+
+        const payload = buildPayload();
+        
+        const response = await fetch('/api/test-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.details || 'Errore sconosciuto');
+        }
+
+        status.className = 'status success';
+        status.textContent = '✅ ' + result.message;
+        
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = '❌ Errore: ' + err.message;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    };
+
+    // Update preview on any input change
+    document.addEventListener('input', updatePayloadPreview);
+    document.getElementById('requireInteraction').addEventListener('change', updatePayloadPreview);
+    
+    // Initial preview
+    updatePayloadPreview();
+  </script>
+</body>
+
+</html>

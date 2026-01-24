@@ -16,7 +16,6 @@ const CORE_ASSETS = [
   './icons/icon-512-maskable.png'
 ];
 
-
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS))
@@ -81,9 +80,13 @@ self.addEventListener('push', (event) => {
     body: data.body || 'Hai una nuova notifica!',
     icon: '/biliardino-elo/icons/icon-192.jpg',
     badge: '/biliardino-elo/icons/icon-192-maskable.png',
-    data: data.url || '/biliardino-elo/',
+    data: {
+      url: data.url || '/biliardino-elo/',
+      actionData: data.actionData || {}
+    },
     tag: data.tag || 'default',
-    requireInteraction: data.requireInteraction || false
+    requireInteraction: data.requireInteraction || false,
+    actions: data.actions || []
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -91,6 +94,33 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data;
-  event.waitUntil(clients.openWindow(url));
+
+  const urlToOpen = event.notification.data?.url || '/biliardino-elo/';
+  const action = event.action;
+
+  // Handle action buttons
+  if (action) {
+    console.log('Notification action clicked:', action);
+
+    // You can handle different actions here
+    if (action === 'accept') {
+      // Handle accept action
+      event.waitUntil(
+        clients.openWindow(urlToOpen + '?action=accept')
+      );
+    } else if (action === 'ignore') {
+      // Handle ignore action - just close notification
+      console.log('User ignored notification');
+    } else {
+      // Handle other custom actions
+      event.waitUntil(
+        clients.openWindow(urlToOpen + '?action=' + action)
+      );
+    }
+  } else {
+    // Default click behavior (no action button clicked)
+    event.waitUntil(
+      clients.openWindow(urlToOpen)
+    );
+  }
 });

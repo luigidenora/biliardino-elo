@@ -13,13 +13,17 @@ export function initNotification(): void {
 // Timer registry for auto-collapse of expanded button
 const collapseTimers = new Map<HTMLElement, number>();
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+// Easter egg counter for test notifications page access
+let easterEggClickCount = 0;
+let easterEggResetTimer: number | null = null;
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   return new Uint8Array(
     atob(base64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
+      .split('')
+      .map(c => c.charCodeAt(0))
   );
 }
 /**
@@ -42,6 +46,10 @@ function createNotificationHeader(): HTMLElement {
   header.appendChild(button);
   button.addEventListener('click', (e) => {
     e.preventDefault();
+
+    // Easter egg: 6 clicks to access test notifications page
+    handleEasterEggClick(button);
+
     showIosPwaBannerIfNeeded();
     if (Notification.permission === 'default') {
       Notification.requestPermission().then(() => {
@@ -97,7 +105,7 @@ function createNotificationButton(): HTMLElement {
       collapseInlineSelect(button);
       return;
     }
-    const playerName = players.find((p) => p.id === playerId)?.name || '';
+    const playerName = players.find(p => p.id === playerId)?.name || '';
     try {
       await subscribeAndSave(playerId, playerName);
       collapseInlineSelect(button);
@@ -127,7 +135,9 @@ function createNotificationButton(): HTMLElement {
   avatar.alt = 'Avatar Utente';
   avatar.setAttribute('data-player-avatar', 'true');
   const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
-  avatar.addEventListener('error', () => { avatar.src = fallbackAvatar; });
+  avatar.addEventListener('error', () => {
+    avatar.src = fallbackAvatar;
+  });
 
   // Icona notifiche (SVG)
   const notificationIcon = document.createElement('span');
@@ -166,9 +176,10 @@ function toggleInlineSelect(button: HTMLElement): void {
     // Try to open the native picker
     try {
       select.click();
-    } catch { }
+    } catch {
+      // Ignore errors
+    }
   });
-
 }
 
 function collapseInlineSelect(button: HTMLElement): void {
@@ -191,7 +202,7 @@ async function updateButtonState(): Promise<void> {
   const notificationIcon = button.querySelector(`.${styles.notificationUserIcon}`) as HTMLElement;
   const allowed = Notification.permission === 'granted';
 
-  var tooltipText = allowed ? 'Seleziona Giocatore' : 'Abilita notifiche';
+  let tooltipText = allowed ? 'Seleziona Giocatore' : 'Abilita notifiche';
   const playerId = localStorage.getItem('biliardino_player_id');
   // Default - icona campanello standard
   if (notificationIcon) notificationIcon.innerHTML = `
@@ -228,64 +239,132 @@ async function updateButtonState(): Promise<void> {
       // No subscription salvata - notifiche offline
       button.classList.add(styles.inactive);
       button.classList.remove(styles.active);
-      tooltipText = 'Errori nella subscription riprova';
+      tooltipText = 'Errori nella subscription, riprova';
     }
   }
 
-  button.setAttribute('data-tooltip', tooltipText)
+  button.setAttribute('data-tooltip', tooltipText);
 }
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
-  if ("serviceWorker" in navigator) {
-    localStorage.setItem('biliardino_player_id', String(playerId));
-    localStorage.setItem('biliardino_player_name', playerName);
-    navigator.serviceWorker.ready.then(async (reg) => {
-      const existingSub = await reg.pushManager.getSubscription();
-      const subscription = existingSub || await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+  if (!('serviceWorker' in navigator)) {
+    const errorMsg = 'Service workers non supportati su questo browser';
+    alert(errorMsg);
+    throw new Error(errorMsg);
+  }
 
-      const body = { subscription, playerId, playerName };
+  // Save player selection immediately to differentiate selection vs subscription failure
+  localStorage.setItem('biliardino_player_id', String(playerId));
+  localStorage.setItem('biliardino_player_name', playerName);
+
+  try {
+    // Wait for service worker to be ready
+    const reg = await navigator.serviceWorker.ready;
+
+    // Get or create push subscription
+    const existingSub = await reg.pushManager.getSubscription();
+    const subscription = existingSub || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    // Display VAPID key for mobile debugging
+    console.log('VAPID_PUBLIC_KEY:', VAPID_PUBLIC_KEY);
+
+    // Send subscription to server with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
       const response = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ subscription, playerId, playerName }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`Errore API: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error || `Errore API: ${response.status} ${response.statusText}`;
+        alert(`Errore API: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
-      console.log('Subscription salvata con successo');
+      // Only save subscription to localStorage after successful API call
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
 
-    }).catch((err) => {
-      alert('Errore durante la registrazione delle notifiche. ' + err.body?.message || err.message || err);
-      console.error('Service Worker non pronto', err.body?.message || err.message || err);
-      throw err;
-    }).finally(() => {
-      updateButtonState();
-    });
-  } else {
-    console.error("Service workers are not supported.");
+      console.log('Subscription salvata con successo');
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      const errorMsg = fetchError instanceof Error ? fetchError.message : 'Errore sconosciuto';
+      alert(`Errore di rete: ${errorMsg}`);
+      throw fetchError;
+    }
+  } catch (err) {
+    // Remove only subscription on failure, keep player selection
+    localStorage.removeItem('biliardino_subscription');
+
+    const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto';
+    if (!(err instanceof Error && err.message.includes('Service workers'))) {
+      // Don't show alert twice for service worker error (already shown above)
+      alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
+    }
+    console.error('Errore registrazione notifiche:', err);
+    throw err;
+  } finally {
+    updateButtonState();
+  }
+}
+
+/**
+ * Easter egg: 6 clicks on notification button to access test page
+ */
+function handleEasterEggClick(button: HTMLElement): void {
+  easterEggClickCount++;
+
+  // Reset counter after 3 seconds of inactivity
+  if (easterEggResetTimer !== null) {
+    window.clearTimeout(easterEggResetTimer);
+  }
+  easterEggResetTimer = window.setTimeout(() => {
+    easterEggClickCount = 0;
+    easterEggResetTimer = null;
+  }, 3000);
+
+  // Show progress after 3rd click
+  if (easterEggClickCount >= 3 && easterEggClickCount < 6) {
+    const remaining = 6 - easterEggClickCount;
+    button.setAttribute('data-tooltip', `${remaining} click rimanenti...`);
   }
 
+  // Navigate to test page after 6 clicks
+  if (easterEggClickCount === 6) {
+    easterEggClickCount = 0;
+    if (easterEggResetTimer !== null) {
+      window.clearTimeout(easterEggResetTimer);
+      easterEggResetTimer = null;
+    }
+
+    // Navigate directly without confirmation
+    window.location.href = `${BASE_PATH}test-notifications.html`;
+  }
 }
 
 /**
  * Mostra il banner di installazione PWA per iOS se applicabile
-  */
-function showIosPwaBannerIfNeeded() {
+ */
+function showIosPwaBannerIfNeeded(): void {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isInStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true;
+  const isInStandalone
+    = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as any).standalone === true;
   if (isIos) {
     if (!isInStandalone) {
-      document.getElementById("ios-pwa-install-banner")?.remove();
-      const bannerContainer = document.createElement("div");
-      bannerContainer.id = "ios-pwa-install-banner";
+      document.getElementById('ios-pwa-install-banner')?.remove();
+      const bannerContainer = document.createElement('div');
+      bannerContainer.id = 'ios-pwa-install-banner';
       bannerContainer.className = styles.iosPwaInstallBanner;
       bannerContainer.innerHTML = BANNER_TEMPLATE;
       document.body.appendChild(bannerContainer);

@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { subscription, playerName, title, body } = req.body;
+    const { subscription, playerName, title, body, actions } = req.body;
 
     if (!subscription) {
       return res.status(400).json({ error: 'Subscription mancante' });
@@ -25,6 +25,12 @@ export default async function handler(req, res) {
     const name = playerName || 'Giocatore';
     const notificationTitle = title || '✅ Test Notifica';
     const notificationBody = body || `Funziona! Ciao ${name} 👋`;
+
+    // Default actions if not provided
+    const notificationActions = actions || [
+      { action: 'accept', title: 'Accetta', icon: '/icons/icon-192.jpg' },
+      { action: 'ignore', title: 'Ignora', icon: '/icons/icon-192.jpg' }
+    ];
 
     await webpush.sendNotification(
       subscription,
@@ -35,7 +41,8 @@ export default async function handler(req, res) {
         icon: '/icons/icon-192.jpg',
         badge: '/icons/icon-192.jpg',
         tag: 'test',
-        requireInteraction: false
+        requireInteraction: true,
+        actions: notificationActions
       })
     );
 
