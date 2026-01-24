@@ -17,14 +17,15 @@ const collapseTimers = new Map<HTMLElement, number>();
 let easterEggClickCount = 0;
 let easterEggResetTimer: number | null = null;
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  return new Uint8Array(
-    atob(base64)
-      .split('')
-      .map(c => c.charCodeAt(0))
-  );
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 /**
  * Crea e gestisce il pulsante delle notifiche nell'header
@@ -261,15 +262,16 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
     // Wait for service worker to be ready
     const reg = await navigator.serviceWorker.ready;
 
+    if (!VAPID_PUBLIC_KEY) {
+      throw new Error('Chiave VAPID mancante, contattare lo sviluppatore');
+    }
+
     // Get or create push subscription
     const existingSub = await reg.pushManager.getSubscription();
     const subscription = existingSub || await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
-
-    // Display VAPID key for mobile debugging
-    console.log('VAPID_PUBLIC_KEY:', VAPID_PUBLIC_KEY);
 
     // Send subscription to server with timeout
     const controller = new AbortController();
@@ -288,18 +290,14 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error || `Errore API: ${response.status} ${response.statusText}`;
-        alert(`Errore API: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
       // Only save subscription to localStorage after successful API call
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
 
-      console.log('Subscription salvata con successo');
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      const errorMsg = fetchError instanceof Error ? fetchError.message : 'Errore sconosciuto';
-      alert(`Errore di rete: ${errorMsg}`);
       throw fetchError;
     }
   } catch (err) {
@@ -307,10 +305,8 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
     localStorage.removeItem('biliardino_subscription');
 
     const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto';
-    if (!(err instanceof Error && err.message.includes('Service workers'))) {
-      // Don't show alert twice for service worker error (already shown above)
-      alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
-    }
+    // Don't show alert twice for service worker error (already shown above)
+    alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
     console.error('Errore registrazione notifiche:', err);
     throw err;
   } finally {
@@ -356,7 +352,6 @@ function handleEasterEggClick(button: HTMLElement): void {
  * Mostra il banner di installazione PWA per iOS se applicabile
  */
 function showIosPwaBannerIfNeeded(): void {
-  alert(navigator.userAgent);
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone
     = window.matchMedia('(display-mode: standalone)').matches
