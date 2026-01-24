@@ -347,10 +347,8 @@ function handleEasterEggClick(button: HTMLElement): void {
       easterEggResetTimer = null;
     }
 
-    const confirmNav = confirm('🎉 Easter egg sbloccato!\n\nVuoi accedere alla pagina di test delle notifiche?');
-    if (confirmNav) {
-      window.location.href = `${BASE_PATH}test-notifications.html`;
-    }
+    // Navigate directly without confirmation
+    window.location.href = `${BASE_PATH}test-notifications.html`;
   }
 }
 
