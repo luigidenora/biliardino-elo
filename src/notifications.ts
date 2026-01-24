@@ -356,10 +356,11 @@ function handleEasterEggClick(button: HTMLElement): void {
  * Mostra il banner di installazione PWA per iOS se applicabile
  */
 function showIosPwaBannerIfNeeded(): void {
+  alert(navigator.userAgent);
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone
     = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as any).standalone === true;
+    || (window.navigator as any).standalone === true;
   if (isIos) {
     if (!isInStandalone) {
       document.getElementById('ios-pwa-install-banner')?.remove();
