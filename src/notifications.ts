@@ -248,10 +248,13 @@ async function updateButtonState(): Promise<void> {
 }
 
 async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
+   /* FOR DEBUG ON IPHONE: */  alert('Registrazione alle notifiche in corso...');
   if (!('serviceWorker' in navigator)) {
     const errorMsg = 'Service workers non supportati su questo browser';
-    alert(errorMsg);
+   /* FOR DEBUG ON IPHONE: */ alert(errorMsg);
     throw new Error(errorMsg);
+  } else {
+    /* FOR DEBUG ON IPHONE: */   alert('Service workers supportati su questo browser');
   }
 
   // Save player selection immediately to differentiate selection vs subscription failure
@@ -261,22 +264,23 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
   try {
     // Wait for service worker to be ready
     const reg = await navigator.serviceWorker.ready;
+    /* FOR DEBUG ON IPHONE: */   alert('Service worker pronto');
 
     if (!VAPID_PUBLIC_KEY) {
       throw new Error('Chiave VAPID mancante, contattare lo sviluppatore');
     }
-
+  /* FOR DEBUG ON IPHONE: */   alert('Chiave VAPID presente');
     // Get or create push subscription
     const existingSub = await reg.pushManager.getSubscription();
     const subscription = existingSub || await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
-
+  /* FOR DEBUG ON IPHONE: */  alert('Subscription ottenuta');
     // Send subscription to server with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
+  /* FOR DEBUG ON IPHONE: */  alert('Invio subscription al server');
     try {
       const response = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'POST',
@@ -284,14 +288,16 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
         body: JSON.stringify({ subscription, playerId, playerName }),
         signal: controller.signal
       });
-
+  /* FOR DEBUG ON IPHONE: */  alert('Risposta ricevuta dal server');
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+          /* FOR DEBUG ON IPHONE: */ alert('Errore nella risposta del server');
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error || `Errore API: ${response.status} ${response.statusText}`;
         throw new Error(errorMsg);
       }
+  /* FOR DEBUG ON IPHONE: */  alert('Subscription registrata con successo');
 
       // Only save subscription to localStorage after successful API call
       localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
@@ -301,6 +307,7 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
       throw fetchError;
     }
   } catch (err) {
+      /* FOR DEBUG ON IPHONE: */ alert('Errore durante la registrazione delle notifiche');
     // Remove only subscription on failure, keep player selection
     localStorage.removeItem('biliardino_subscription');
 
@@ -310,6 +317,7 @@ async function subscribeAndSave(playerId: number, playerName: string): Promise<v
     console.error('Errore registrazione notifiche:', err);
     throw err;
   } finally {
+      /* FOR DEBUG ON IPHONE: */ alert('Aggiornamento stato pulsante notifiche');
     updateButtonState();
   }
 }
