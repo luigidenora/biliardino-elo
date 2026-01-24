@@ -3,7 +3,7 @@ import webpush from 'web-push';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 // Verifica che le variabili d'ambiente siano configurate
-if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+if (!process.env.VITE_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
   console.error('ERRORE: VAPID keys non configurate nelle variabili d\'ambiente');
 }
 
@@ -13,7 +13,7 @@ if (!process.env.BLOB_READ_WRITE_TOKEN) {
 
 webpush.setVapidDetails(
   'mailto:info@biliardino.app',
-  process.env.VAPID_PUBLIC_KEY,
+  process.env.VITE_VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
 

@@ -6,13 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Test Notifiche - CAlcio Balilla</title>
   <meta name="description" content="CA Biliardino Championship - Test Notifiche" />
-  <meta name="theme-color" content="#062c7d" />
+  <meta name="theme-color" content="#0b0e14" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
   <link rel="apple-touch-icon" href="./icons/icon-192.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
   <style>
     * {
       margin: 0;
@@ -21,91 +22,118 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+      background: #0b0e14;
+      color: #e8e8ed;
       min-height: 100vh;
-      padding: 2rem;
-      color: #333;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 16px;
-      padding: 2rem;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 960px;
+      background: #0f131a;
+      border: 1px solid #1f2530;
+      border-radius: 14px;
+      padding: 1.75rem;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
     }
 
     h1 {
-      color: #062c7d;
-      margin-bottom: 1rem;
-      font-size: 2rem;
+      color: #f6f7fb;
+      font-size: 1.6rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
     }
 
     .nav-link {
-      display: inline-block;
-      margin-bottom: 1rem;
-      color: #667eea;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: #c4c9d4;
       text-decoration: none;
       font-weight: 500;
+      font-size: 0.95rem;
+      width: fit-content;
     }
 
     .nav-link:hover {
-      text-decoration: underline;
+      color: #e8e8ed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      width: 100%;
     }
 
     .section {
-      margin-bottom: 2rem;
-      padding: 1.5rem;
-      background: #f8f9fa;
-      border-radius: 8px;
+      padding: 1.1rem;
+      background: #111722;
+      border: 1px solid #1f2530;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
     }
 
     h2 {
-      color: #062c7d;
-      margin-bottom: 1rem;
-      font-size: 1.5rem;
+      color: #e8e8ed;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
     }
 
     .form-group {
-      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
     }
 
     label {
-      display: block;
-      margin-bottom: 0.5rem;
       font-weight: 500;
-      color: #555;
+      color: #c4c9d4;
+      font-size: 0.95rem;
     }
 
     input,
     textarea,
     select {
       width: 100%;
-      padding: 0.75rem;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
+      padding: 0.75rem 0.85rem;
+      border: 1px solid #1f2530;
+      border-radius: 10px;
       font-family: inherit;
       font-size: 1rem;
+      background: #0c1018;
+      color: #f6f7fb;
     }
 
     input:focus,
     textarea:focus,
     select:focus {
       outline: none;
-      border-color: #667eea;
+      border-color: #4da1ff;
+      box-shadow: 0 0 0 3px rgba(77, 161, 255, 0.15);
     }
 
     textarea {
       resize: vertical;
-      min-height: 80px;
+      min-height: 96px;
     }
 
     .checkbox-group {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
     }
 
     .checkbox-group input[type="checkbox"] {
@@ -113,21 +141,21 @@
     }
 
     button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: linear-gradient(90deg, #1f8aed, #6366f1);
+      color: #f6f7fb;
       border: none;
-      padding: 0.875rem 1.5rem;
-      border-radius: 8px;
+      padding: 0.9rem 1.2rem;
+      border-radius: 10px;
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
       width: 100%;
     }
 
     button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(28, 100, 242, 0.25);
     }
 
     button:active {
@@ -143,42 +171,41 @@
     .status {
       margin-top: 1rem;
       padding: 1rem;
-      border-radius: 8px;
+      border-radius: 10px;
       display: none;
     }
 
     .status.success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
+      background: rgba(46, 204, 113, 0.12);
+      color: #8ff0c9;
+      border: 1px solid rgba(46, 204, 113, 0.35);
       display: block;
     }
 
     .status.error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
+      background: rgba(255, 99, 132, 0.12);
+      color: #ffb3c2;
+      border: 1px solid rgba(255, 99, 132, 0.35);
       display: block;
     }
 
     .info-box {
-      background: #e7f3ff;
-      border-left: 4px solid #2196F3;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      border-radius: 4px;
+      background: #0c1018;
+      border: 1px solid #1f2530;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      color: #c4c9d4;
     }
 
     .info-box p {
-      margin: 0.5rem 0;
-      color: #0c5460;
+      margin: 0.35rem 0;
     }
 
     .actions-container {
-      border: 2px dashed #ddd;
-      padding: 1rem;
-      border-radius: 8px;
-      background: white;
+      border: 1px dashed #2b3240;
+      padding: 0.85rem;
+      border-radius: 10px;
+      background: #0c1018;
     }
 
     .action-item {
@@ -194,99 +221,126 @@
 
     .action-item button {
       width: auto;
-      padding: 0.5rem 1rem;
-      background: #dc3545;
+      padding: 0.5rem 0.9rem;
+      background: #1f2530;
+      border: 1px solid #2f3746;
     }
 
     .add-action-btn {
-      background: #28a745;
+      background: #1f8aed;
       margin-top: 0.5rem;
     }
 
     .code-block {
-      background: #2d2d2d;
-      color: #f8f8f2;
+      background: #0c1018;
+      color: #c8d1e0;
       padding: 1rem;
-      border-radius: 8px;
+      border-radius: 10px;
       overflow-x: auto;
-      font-family: 'Courier New', monospace;
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
+      font-family: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+      border: 1px solid #1f2530;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.75rem;
+      background: #121725;
+      border: 1px solid #1f2530;
+      border-radius: 999px;
+      color: #c4c9d4;
+      font-size: 0.9rem;
+      width: fit-content;
+    }
+
+    .section small {
+      color: #8a90a3;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 1rem;
+      }
+
+      .container {
+        padding: 1.25rem;
+      }
+
+      h1 {
+        font-size: 1.35rem;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <a class="nav-link" href="./index.html">← Torna alla Classifica</a>
-    
-    <h1>🔔 Test Notifiche Push</h1>
-    
+    <a class="nav-link" href="./index.html">
+      <span>←</span>
+      <span>Torna alla Classifica</span>
+    </a>
+
+    <h1>
+      <span>Test notifiche push</span>
+      <span class="pill">Sandbox</span>
+    </h1>
+
     <div class="info-box">
-      <p><strong>📋 Come usare questa pagina:</strong></p>
-      <p>1. Assicurati di aver abilitato le notifiche e selezionato un giocatore nell'app principale</p>
-      <p>2. Compila i campi qui sotto per personalizzare la notifica</p>
-      <p>3. Aggiungi azioni (bottoni) alla notifica come "Accetta" o "Ignora"</p>
-      <p>4. Clicca su "Invia Notifica di Test" per ricevere la notifica</p>
+      <p>Abilita le notifiche nell'app principale, poi personalizza titolo, body e azioni prima di inviare il test.</p>
+      <p>Le azioni sono utili per percorsi come "accetta" o "ignora"; non tutte le piattaforme le mostrano.</p>
     </div>
 
-    <div class="section">
-      <h2>📝 Contenuto Notifica</h2>
-      
-      <div class="form-group">
-        <label for="title">Titolo</label>
-        <input type="text" id="title" value="🎯 Nuova Partita Disponibile!" />
-      </div>
-
-      <div class="form-group">
-        <label for="body">Messaggio</label>
-        <textarea id="body">Sei stato selezionato per la prossima partita! Confermi la tua disponibilità?</textarea>
-      </div>
-
-      <div class="checkbox-group">
-        <input type="checkbox" id="requireInteraction" checked />
-        <label for="requireInteraction" style="margin: 0;">Richiedi interazione (la notifica resta visibile fino a clic)</label>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>🎬 Azioni Notifica</h2>
-      <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">
-        Aggiungi fino a 2 azioni (bottoni) che appariranno nella notifica. Ogni azione ha un ID e un titolo visibile.
-      </p>
-      
-      <div class="actions-container" id="actionsContainer">
-        <div class="action-item">
-          <input type="text" placeholder="ID azione (es: accept)" value="accept" data-field="action" />
-          <input type="text" placeholder="Titolo (es: Accetta)" value="✅ Accetta" data-field="title" />
-          <button type="button" onclick="removeAction(this)">✖</button>
+    <div class="grid">
+      <div class="section">
+        <h2>Contenuto</h2>
+        <div class="form-group">
+          <label for="title">Titolo</label>
+          <input type="text" id="title" value="Nuova partita disponibile" />
         </div>
-        <div class="action-item">
-          <input type="text" placeholder="ID azione (es: ignore)" value="ignore" data-field="action" />
-          <input type="text" placeholder="Titolo (es: Ignora)" value="❌ Ignora" data-field="title" />
-          <button type="button" onclick="removeAction(this)">✖</button>
+        <div class="form-group">
+          <label for="body">Messaggio</label>
+          <textarea id="body">Sei stato selezionato per la prossima partita. Confermi la disponibilita?</textarea>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="requireInteraction" checked />
+          <label for="requireInteraction" style="margin: 0;">Richiedi interazione (sticky)</label>
         </div>
       </div>
-      
-      <button type="button" class="add-action-btn" onclick="addAction()">➕ Aggiungi Azione</button>
-      
-      <div class="info-box" style="margin-top: 1rem;">
-        <p><strong>💡 Nota:</strong> Alcune piattaforme (come Android) supportano fino a 3 azioni, mentre altre (come iOS) potrebbero non mostrare le azioni.</p>
+
+      <div class="section">
+        <h2>Azioni</h2>
+        <small>Aggiungi fino a 2 azioni; servono ID stabili per gestire i click lato service worker.</small>
+        <div class="actions-container" id="actionsContainer">
+          <div class="action-item">
+            <input type="text" placeholder="ID azione (es: accept)" value="accept" data-field="action" />
+            <input type="text" placeholder="Titolo (es: Accetta)" value="Accetta" data-field="title" />
+            <button type="button" onclick="removeAction(this)">✖</button>
+          </div>
+          <div class="action-item">
+            <input type="text" placeholder="ID azione (es: ignore)" value="ignore" data-field="action" />
+            <input type="text" placeholder="Titolo (es: Ignora)" value="Ignora" data-field="title" />
+            <button type="button" onclick="removeAction(this)">✖</button>
+          </div>
+        </div>
+        <button type="button" class="add-action-btn" onclick="addAction()">Aggiungi azione</button>
       </div>
     </div>
 
-    <div class="section">
-      <h2>🚀 Invia Test</h2>
-      <button type="button" id="sendBtn" onclick="sendTestNotification()">
-        📤 Invia Notifica di Test
-      </button>
-      <div id="status" class="status"></div>
-    </div>
+    <div class="grid">
+      <div class="section">
+        <h2>Invio</h2>
+        <button type="button" id="sendBtn" onclick="sendTestNotification()">Invia notifica di test</button>
+        <div id="status" class="status"></div>
+      </div>
 
-    <div class="section">
-      <h2>📖 Esempio Payload</h2>
-      <p style="margin-bottom: 0.5rem; color: #666;">Questo è il JSON che verrà inviato all'API:</p>
-      <pre id="payloadPreview" class="code-block"></pre>
+      <div class="section">
+        <h2>Payload</h2>
+        <small>Preview del JSON inviato all'endpoint.</small>
+        <pre id="payloadPreview" class="code-block"></pre>
+      </div>
     </div>
   </div>
 
@@ -300,7 +354,7 @@
       const title = document.getElementById('title').value;
       const body = document.getElementById('body').value;
       const requireInteraction = document.getElementById('requireInteraction').checked;
-      
+
       const actions = [];
       document.querySelectorAll('.action-item').forEach(item => {
         const actionId = item.querySelector('[data-field="action"]').value;
@@ -326,7 +380,7 @@
       };
     }
 
-    window.addAction = function() {
+    window.addAction = function () {
       const container = document.getElementById('actionsContainer');
       const actionItem = document.createElement('div');
       actionItem.className = 'action-item';
@@ -339,43 +393,39 @@
       updatePayloadPreview();
     };
 
-    window.removeAction = function(btn) {
+    window.removeAction = function (btn) {
       btn.closest('.action-item').remove();
       updatePayloadPreview();
     };
 
-    window.sendTestNotification = async function() {
+    window.sendTestNotification = async function () {
       const sendBtn = document.getElementById('sendBtn');
       const status = document.getElementById('status');
-      
+
       sendBtn.disabled = true;
       status.className = 'status';
       status.textContent = '⏳ Invio in corso...';
       status.style.display = 'block';
 
       try {
-        const subscription = localStorage.getItem('biliardino_subscription');
-        if (!subscription) {
-          throw new Error('Nessuna subscription trovata. Abilita le notifiche prima di usare questa pagina.');
-        }
-
         const payload = buildPayload();
-        
-        const response = await fetch('/api/test-notification', {
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/test-notification`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
+        if (!response.ok) {
+          throw new Error(response.statusText || 'Errore sconosciuto');
+        }
+
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.details || 'Errore sconosciuto');
-        }
 
         status.className = 'status success';
         status.textContent = '✅ ' + result.message;
-        
+
       } catch (err) {
         status.className = 'status error';
         status.textContent = '❌ Errore: ' + err.message;
@@ -387,7 +437,7 @@
     // Update preview on any input change
     document.addEventListener('input', updatePayloadPreview);
     document.getElementById('requireInteraction').addEventListener('change', updatePayloadPreview);
-    
+
     // Initial preview
     updatePayloadPreview();
   </script>

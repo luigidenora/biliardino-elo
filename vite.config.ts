@@ -15,7 +15,8 @@ export default defineConfig(config => ({
         players: path.resolve(__dirname, 'players.html'),
         add: path.resolve(__dirname, 'add.html'),
         matchmaking: path.resolve(__dirname, 'matchmaking.html'),
-        confirm: path.resolve(__dirname, 'confirm.html')
+        confirm: path.resolve(__dirname, 'confirm.html'),
+        'test-notifications': path.resolve(__dirname, 'test-notifications.html')
       },
       output: {
         // Keep Firebase in a single shared chunk so it is cached across pages.

@@ -3,7 +3,7 @@ import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 webpush.setVapidDetails(
   'mailto:info@biliardino.app',
-  process.env.VAPID_PUBLIC_KEY,
+  process.env.VITE_VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
 

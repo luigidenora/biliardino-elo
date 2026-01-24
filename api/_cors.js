@@ -4,7 +4,7 @@
  */
 export function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', 'https://luigidenora.github.io'); // Or specify: 'https://f-molinari.github.io'
+  res.setHeader('Access-Control-Allow-Origin', process.env.ACCESS_CONTROL_ALLOW_ORIGIN); // Or specify: 'https://f-molinari.github.io'
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
