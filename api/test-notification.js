@@ -106,8 +106,7 @@ export default async function handler(req, res) {
         subscription,
         JSON.stringify(payload),
         {
-          urgency: 'high',
-          TTL
+          headers: { 'Content-Type': 'application/json' },
         }
       );
     }
