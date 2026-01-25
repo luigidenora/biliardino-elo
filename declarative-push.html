@@ -845,25 +845,21 @@
       const hasPushManagerClass = 'PushManager' in window;
       log(`[PushManager] window.PushManager: ${hasPushManagerClass ? 'SI' : 'NO'}`, hasPushManagerClass ? 'info' : 'error');
 
-      // Check navigator.pushManager existence (Safari/iOS)
-      const hasNavigatorPushManager = 'pushManager' in navigator;
-      log(`[PushManager] navigator.pushManager exists: ${hasNavigatorPushManager ? 'SI' : 'NO'}`, 'info');
-
       // iOS/Safari FIRST: try navigator.pushManager directly
-      if (hasNavigatorPushManager && navigator.pushManager) {
+      if (hasPushManagerClass) {
         log('[PushManager] navigator.pushManager trovato!', 'success');
 
         // Check if it has subscribe method
-        const hasSubscribe = typeof navigator.pushManager.subscribe === 'function';
+        const hasSubscribe = typeof window.pushManager.subscribe === 'function';
         log(`[PushManager] navigator.pushManager.subscribe: ${hasSubscribe ? 'SI' : 'NO'}`, hasSubscribe ? 'success' : 'info');
 
         // Check if it has getSubscription method
-        const hasGetSubscription = typeof navigator.pushManager.getSubscription === 'function';
+        const hasGetSubscription = typeof window.pushManager.getSubscription === 'function';
         log(`[PushManager] navigator.pushManager.getSubscription: ${hasGetSubscription ? 'SI' : 'NO'}`, hasGetSubscription ? 'success' : 'info');
 
         if (hasSubscribe) {
           log('[PushManager] ✓ Uso navigator.pushManager diretto (iOS/Safari - no SW)', 'success');
-          return { pushManager: navigator.pushManager, mode: 'declarative' };
+          return { pushManager: window.pushManager, mode: 'declarative' };
         } else {
           log('[PushManager] navigator.pushManager esiste ma senza subscribe, provo SW...', 'info');
         }
