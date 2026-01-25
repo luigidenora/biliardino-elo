@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'playerId deve essere un numero' });
       }
 
-      const key = generateId(playerIdNum,subscription);
+      const key = generateId(playerIdNum, subscription);
       const data = {
         subscription,
         playerId: playerIdNum, // Salva come numero
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       const blob = await put(key, JSON.stringify(data), {
         access: 'public',
         token: process.env.BLOB_READ_WRITE_TOKEN,
-        contentType: 'application/json',
+        contentType: 'application/json'
       });
 
       console.log('✅ Subscription salvata:', playerName, '(ID:', playerIdNum, ')');
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     try {
       const { blobs } = await list({
         prefix: `${playerIdNum}-subs/`,
-        token: process.env.BLOB_READ_WRITE_TOKEN,
+        token: process.env.BLOB_READ_WRITE_TOKEN
       });
 
       const subscriptions = await Promise.all(
