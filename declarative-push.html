@@ -754,7 +754,7 @@
     }
 
     // Ensure service worker is registered and ready (with timeout)
-    async function ensureServiceWorker(timeoutMs = 10000) {
+    async function ensureServiceWorker(timeoutMs = 30000) {
       log('[SW] Inizio verifica Service Worker...', 'info');
 
       if (!('serviceWorker' in navigator)) {

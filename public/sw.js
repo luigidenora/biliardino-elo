@@ -17,18 +17,22 @@ const CORE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  console.log('[Service Worker] Installato');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] Attivo');
   event.waitUntil(
     caches
       .keys()
       .then(keys =>
         Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
       )
+      .then(() => clients.claim())
   );
 });
 
