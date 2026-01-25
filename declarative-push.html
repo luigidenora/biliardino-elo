@@ -795,6 +795,18 @@
       log(`[SW] URL: ${swUrl}`, 'info');
       log(`[SW] Scope: ${baseUrl}`, 'info');
 
+      // Pre-flight check: make sure sw.js is reachable
+      try {
+        const res = await fetch(swUrl, { method: 'GET' });
+        log(`[SW] Preflight sw.js status: ${res.status}`, res.ok ? 'info' : 'error');
+        if (!res.ok) {
+          throw new Error(`sw.js non raggiungibile (HTTP ${res.status})`);
+        }
+      } catch (fetchErr) {
+        log(`[SW] ERRORE fetch sw.js: ${fetchErr.message}`, 'error');
+        throw fetchErr;
+      }
+
       try {
         const reg = await navigator.serviceWorker.register(swUrl, { scope: baseUrl });
         log(`[SW] Registrazione completata!`, 'success');
@@ -963,63 +975,139 @@
       subscribeBtn.disabled = true;
       statusDiv.className = 'status visible info';
       statusDiv.textContent = '⏳ Registrazione in corso...';
-      log(`Inizio registrazione per ${playerName} (ID: ${playerId})`, 'info');
+      log(`[Subscribe] Inizio registrazione per ${playerName} (ID: ${playerId})`, 'info');
 
       try {
         // 1. Check browser support
-        if (!('PushManager' in window) && !isDeclarativePushSupported()) {
-          throw new Error('Push API non supportata');
+        log('[Subscribe] 1️⃣ Check browser support...', 'info');
+        const hasPM = 'PushManager' in window;
+        const hasDeclarative = isDeclarativePushSupported();
+        log(`[Subscribe]   - window.PushManager: ${hasPM}`, 'info');
+        log(`[Subscribe]   - Declarative Push: ${hasDeclarative}`, 'info');
+
+        if (!hasPM && !hasDeclarative) {
+          throw new Error('Push API non supportata su questo browser');
         }
-        log('Browser supportato ✓', 'success');
+        log('[Subscribe] 1️⃣ Browser supportato ✓', 'success');
 
         // 2. Request notification permission
-        log('Richiesta permesso notifiche...', 'info');
+        log('[Subscribe] 2️⃣ Richiesta permesso notifiche...', 'info');
+        log('[Subscribe]   - Calling Notification.requestPermission()...', 'info');
         const permission = await Notification.requestPermission();
+        log(`[Subscribe]   - Risultato: "${permission}"`, 'info');
+
         if (permission !== 'granted') {
           throw new Error(`Permesso notifiche negato: ${permission}`);
         }
-        log('Permesso concesso ✓', 'success');
+        log('[Subscribe] 2️⃣ Permesso concesso ✓', 'success');
 
         // 3. Get PushManager (handles both iOS and Android)
-        const { pushManager, mode } = await getPushManager();
-        log(`Push mode: ${mode}`, 'info');
+        log('[Subscribe] 3️⃣ Calling getPushManager()...', 'info');
+        const startPM = Date.now();
+        let pushManagerResult;
+
+        try {
+          pushManagerResult = await getPushManager();
+        } catch (pmErr) {
+          const elapsed = Date.now() - startPM;
+          log(`[Subscribe] 3️⃣ getPushManager() fallito dopo ${elapsed}ms`, 'error');
+          log(`[Subscribe]   - Errore: ${pmErr.message}`, 'error');
+          throw pmErr;
+        }
+
+        const elapsed = Date.now() - startPM;
+        log(`[Subscribe] 3️⃣ getPushManager() riuscito in ${elapsed}ms`, 'success');
+        log(`[Subscribe]   - Mode: ${pushManagerResult.mode}`, 'info');
+        log(`[Subscribe]   - pushManager type: ${typeof pushManagerResult.pushManager}`, 'info');
+
+        const { pushManager, mode } = pushManagerResult;
 
         // 4. Get or create subscription
-        log('Controllo subscription esistente...', 'info');
-        let subscription = await pushManager.getSubscription();
+        log('[Subscribe] 4️⃣ Controllo subscription esistente...', 'info');
+        log('[Subscribe]   - Calling pushManager.getSubscription()...', 'info');
+
+        const startGetSub = Date.now();
+        let subscription;
+
+        try {
+          subscription = await pushManager.getSubscription();
+        } catch (getSubErr) {
+          const elapsed = Date.now() - startGetSub;
+          log(`[Subscribe] 4️⃣ getSubscription() fallito dopo ${elapsed}ms`, 'error');
+          log(`[Subscribe]   - Errore: ${getSubErr.message}`, 'error');
+          throw getSubErr;
+        }
+
+        const elapsedGetSub = Date.now() - startGetSub;
+        log(`[Subscribe]   - Completato in ${elapsedGetSub}ms`, 'info');
+        log(`[Subscribe]   - Subscription esistente: ${subscription ? 'SI' : 'NO'}`, subscription ? 'success' : 'info');
 
         if (!subscription) {
-          log('Creo nuova subscription...', 'info');
+          log('[Subscribe] 4️⃣ Creo nuova subscription...', 'info');
+
           if (!VAPID_PUBLIC_KEY) {
             throw new Error('VAPID_PUBLIC_KEY non configurata');
           }
-          subscription = await pushManager.subscribe({
+          log(`[Subscribe]   - VAPID_PUBLIC_KEY presente ✓`, 'info');
+
+          const subscribeOptions = {
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-          });
-          log('Subscription creata ✓');
+          };
+          log(`[Subscribe]   - Calling pushManager.subscribe()...`, 'info');
+
+          const startSubscribe = Date.now();
+
+          try {
+            subscription = await pushManager.subscribe(subscribeOptions);
+          } catch (subErr) {
+            const elapsed = Date.now() - startSubscribe;
+            log(`[Subscribe] 4️⃣ subscribe() fallito dopo ${elapsed}ms`, 'error');
+            log(`[Subscribe]   - Errore: ${subErr.message}`, 'error');
+            log(`[Subscribe]   - Stack: ${subErr.stack}`, 'error');
+            throw subErr;
+          }
+
+          const elapsedSubscribe = Date.now() - startSubscribe;
+          log(`[Subscribe]   - Subscription creata in ${elapsedSubscribe}ms ✓`, 'success');
         } else {
-          log('Subscription esistente trovata ✓', 'success');
+          log('[Subscribe] 4️⃣ Subscription esistente trovata ✓', 'success');
         }
 
-        log(`Endpoint: ${subscription.endpoint.substring(0, 60)}...`, 'info');
+        log(`[Subscribe]   - Endpoint: ${subscription.endpoint.substring(0, 60)}...`, 'info');
 
         // 5. Save to server
-        log('Invio al server...', 'info');
+        log('[Subscribe] 5️⃣ Invio subscription al server...', 'info');
         const apiUrl = `${API_BASE_URL}/subscription`;
-        log(`URL: ${apiUrl}`);
+        log(`[Subscribe]   - URL: ${apiUrl}`, 'info');
 
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subscription: subscription.toJSON(),
-            playerId: Number(playerId),
-            playerName: playerName
-          })
-        });
+        const payload = {
+          subscription: subscription.toJSON(),
+          playerId: Number(playerId),
+          playerName: playerName
+        };
+        log(`[Subscribe]   - Payload size: ${JSON.stringify(payload).length} bytes`, 'info');
+        log(`[Subscribe]   - Calling fetch()...`, 'info');
 
-        log(`Risposta HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+        const startFetch = Date.now();
+        let response;
+
+        try {
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch (fetchErr) {
+          const elapsed = Date.now() - startFetch;
+          log(`[Subscribe] 5️⃣ fetch fallito dopo ${elapsed}ms`, 'error');
+          log(`[Subscribe]   - Errore: ${fetchErr.message}`, 'error');
+          throw fetchErr;
+        }
+
+        const elapsedFetch = Date.now() - startFetch;
+        log(`[Subscribe]   - Risposta ricevuta in ${elapsedFetch}ms`, 'info');
+        log(`[Subscribe]   - HTTP Status: ${response.status}`, response.ok ? 'success' : 'error');
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -1027,21 +1115,26 @@
         }
 
         const result = await response.json();
-        log(`Salvata: ${JSON.stringify(result)}`, 'success');
+        log(`[Subscribe] 5️⃣ Server response: ${JSON.stringify(result)}`, 'success');
 
         // 6. Save locally
+        log('[Subscribe] 6️⃣ Salvo in localStorage...', 'info');
         localStorage.setItem('biliardino_player_id', String(playerId));
         localStorage.setItem('biliardino_player_name', playerName);
         localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
+        log('[Subscribe] 6️⃣ Salvato in localStorage ✓', 'success');
 
         statusDiv.className = 'status visible success';
         statusDiv.innerHTML = `✅ Notifiche attive per <strong>${playerName}</strong>`;
-        log('Registrazione completata ✓', 'success');
+        log('[Subscribe] ✓✓✓ REGISTRAZIONE COMPLETATA ✓✓✓', 'success');
 
         await checkBrowserStatus();
 
       } catch (err) {
-        log(`ERRORE: ${err.message}`, 'error');
+        log(`[Subscribe] ❌ ERRORE: ${err.message}`, 'error');
+        if (err.stack) {
+          log(`[Subscribe] Stack: ${err.stack}`, 'error');
+        }
         statusDiv.className = 'status visible error';
         statusDiv.textContent = `❌ ${err.message}`;
       } finally {
