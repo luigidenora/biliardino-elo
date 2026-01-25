@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="it">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notifiche Push Dichiarative - CAlcio Balilla</title>
+  <meta name="description" content="CA Biliardino Championship - Test Notifiche Push Dichiarative (W3C Standard)" />
+  <meta name="theme-color" content="#0b0e14" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+      background: #0b0e14;
+      color: #e8e8ed;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: #c4c9d4;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      width: fit-content;
+    }
+
+    .nav-link:hover {
+      color: #e8e8ed;
+    }
+
+    h1 {
+      color: #f6f7fb;
+      font-size: 1.6rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.75rem;
+      background: #121725;
+      border: 1px solid #1f2530;
+      border-radius: 999px;
+      color: #c4c9d4;
+      font-size: 0.85rem;
+      width: fit-content;
+    }
+
+    .pill.success {
+      background: rgba(46, 204, 113, 0.12);
+      border-color: rgba(46, 204, 113, 0.35);
+      color: #8ff0c9;
+    }
+
+    .pill.warning {
+      background: rgba(255, 193, 7, 0.12);
+      border-color: rgba(255, 193, 7, 0.35);
+      color: #ffd54f;
+    }
+
+    .pill.error {
+      background: rgba(255, 99, 132, 0.12);
+      border-color: rgba(255, 99, 132, 0.35);
+      color: #ffb3c2;
+    }
+
+    .info-box {
+      background: #0c1018;
+      border: 1px solid #1f2530;
+      padding: 1rem;
+      border-radius: 12px;
+      color: #c4c9d4;
+      line-height: 1.6;
+    }
+
+    .info-box a {
+      color: #4da1ff;
+    }
+
+    .info-box code {
+      background: #1a1f2e;
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .section {
+      padding: 1.25rem;
+      background: #111722;
+      border: 1px solid #1f2530;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    h2 {
+      color: #e8e8ed;
+      font-size: 1.1rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: #c4c9d4;
+      font-size: 0.95rem;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.75rem 0.85rem;
+      border: 1px solid #1f2530;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      background: #0c1018;
+      color: #f6f7fb;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #4da1ff;
+      box-shadow: 0 0 0 3px rgba(77, 161, 255, 0.15);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 500px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    button {
+      background: linear-gradient(90deg, #1f8aed, #6366f1);
+      color: #f6f7fb;
+      border: none;
+      padding: 0.9rem 1.2rem;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      width: 100%;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(28, 100, 242, 0.25);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: #1f2530;
+      border: 1px solid #2f3746;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: #2a3040;
+      box-shadow: none;
+    }
+
+    .status {
+      padding: 1rem;
+      border-radius: 10px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status.success {
+      background: rgba(46, 204, 113, 0.12);
+      color: #8ff0c9;
+      border: 1px solid rgba(46, 204, 113, 0.35);
+    }
+
+    .status.error {
+      background: rgba(255, 99, 132, 0.12);
+      color: #ffb3c2;
+      border: 1px solid rgba(255, 99, 132, 0.35);
+    }
+
+    .status.info {
+      background: rgba(77, 161, 255, 0.12);
+      color: #a8d4ff;
+      border: 1px solid rgba(77, 161, 255, 0.35);
+    }
+
+    .code-block {
+      background: #0c1018;
+      color: #c8d1e0;
+      padding: 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+      font-size: 0.85rem;
+      border: 1px solid #1f2530;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: #0c1018;
+      border-radius: 8px;
+      border: 1px solid #1f2530;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1f2530;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .step-indicator.complete .step-number {
+      background: rgba(46, 204, 113, 0.3);
+      color: #8ff0c9;
+    }
+
+    .step-indicator.active .step-number {
+      background: rgba(77, 161, 255, 0.3);
+      color: #a8d4ff;
+    }
+
+    .step-text {
+      flex: 1;
+    }
+
+    .debug-log {
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+    }
+
+    .debug-entry {
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #1a1f2e;
+    }
+
+    .debug-entry:last-child {
+      border-bottom: none;
+    }
+
+    .debug-time {
+      color: #6b7280;
+      margin-right: 0.5rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <a class="nav-link" href="./index.html">
+      <span>←</span>
+      <span>Torna alla Classifica</span>
+    </a>
+
+    <h1>
+      <span>🔔 Push Dichiarativo</span>
+      <span class="pill" id="statusPill">W3C Standard</span>
+    </h1>
+
+    <div class="info-box">
+      <p>
+        <strong>Declarative Web Push</strong> secondo la specifica 
+        <a href="https://github.com/nickmasu/nickmasu/wiki/Declarative-Web-Push" target="_blank">WebKit</a>.
+      </p>
+      <p style="margin-top: 0.5rem;">
+        Il formato dichiarativo (<code>Content-Type: application/notification+json</code>) permette 
+        di visualizzare notifiche su Safari/iOS senza l'intervento del service worker, utilizzando 
+        direttamente il <code>navigator.pushManager</code> esposto da WebKit.
+      </p>
+      <p style="margin-top: 0.5rem;">
+        Campi richiesti: <code>title</code>, <code>default_action_url</code>. 
+        Opzionali: <code>options</code>, <code>mutable</code>, <code>app_badge</code>.
+      </p>
+    </div>
+
+    <!-- Step 1: Check Support -->
+    <div class="section">
+      <h2>📋 Stato del Browser</h2>
+      
+      <div class="step-indicator" id="step1">
+        <div class="step-number">1</div>
+        <div class="step-text">Verifica supporto Push API</div>
+      </div>
+      
+      <div class="step-indicator" id="step2">
+        <div class="step-number">2</div>
+        <div class="step-text">Verifica <code>navigator.pushManager</code> (Declarative Push)</div>
+      </div>
+      
+      <div class="step-indicator" id="step3">
+        <div class="step-number">3</div>
+        <div class="step-text">Verifica permesso notifiche</div>
+      </div>
+      
+      <div class="step-indicator" id="step4">
+        <div class="step-number">4</div>
+        <div class="step-text">Verifica subscription attiva</div>
+      </div>
+      
+      <button type="button" id="checkStatusBtn" onclick="checkBrowserStatus()">
+        🔍 Verifica Stato Browser
+      </button>
+      
+      <div id="browserStatus" class="status"></div>
+    </div>
+
+    <!-- Step 2: Subscribe -->
+    <div class="section">
+      <h2>✅ Registrazione Push</h2>
+      
+      <div class="form-group">
+        <label for="playerSelect">Seleziona Giocatore</label>
+        <select id="playerSelect">
+          <option value="">-- Seleziona un giocatore --</option>
+        </select>
+      </div>
+      
+      <button type="button" id="subscribeBtn" onclick="subscribeToPush()">
+        🔔 Attiva Notifiche Push
+      </button>
+      
+      <div id="subscribeStatus" class="status"></div>
+    </div>
+
+    <!-- Step 3: Test Notification -->
+    <div class="section">
+      <h2>📨 Invia Notifica di Test</h2>
+      
+      <div class="form-group">
+        <label for="notifTitle">Titolo</label>
+        <input type="text" id="notifTitle" value="🎮 Nuova Partita!" />
+      </div>
+      
+      <div class="form-group">
+        <label for="notifBody">Messaggio</label>
+        <textarea id="notifBody">Sei stato selezionato per la prossima partita. Confermi la disponibilità?</textarea>
+      </div>
+      
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="notifNavigate">Navigate URL</label>
+          <input type="text" id="notifNavigate" value="/matchmaking.html" />
+        </div>
+        <div class="form-group">
+          <label for="notifLang">Lingua</label>
+          <input type="text" id="notifLang" value="it-IT" />
+        </div>
+      </div>
+      
+      <button type="button" id="sendTestBtn" onclick="sendTestNotification()">
+        📤 Invia Notifica Dichiarativa
+      </button>
+      
+      <div id="sendStatus" class="status"></div>
+    </div>
+
+    <!-- Payload Preview -->
+    <div class="section">
+      <h2>📄 Payload WebKit</h2>
+      <p style="color: #8a90a3; font-size: 0.9rem; margin-bottom: 0.5rem;">
+        Formato conforme a <code>Content-Type: application/notification+json</code>
+      </p>
+      <pre id="payloadPreview" class="code-block"></pre>
+    </div>
+
+    <!-- Debug Log -->
+    <div class="section">
+      <h2>🐛 Debug Log</h2>
+      <div id="debugLog" class="code-block debug-log">
+        <div class="debug-entry"><span class="debug-time">[--:--:--]</span> Inizializzazione...</div>
+      </div>
+      <button type="button" class="secondary" onclick="clearDebugLog()">🗑️ Pulisci Log</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getAllPlayers } from '/src/services/player.service.ts';
+    
+    // VAPID key from environment
+    const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+    
+    // Debug logging
+    function log(message, type = 'info') {
+      const debugLog = document.getElementById('debugLog');
+      const time = new Date().toLocaleTimeString('it-IT');
+      const entry = document.createElement('div');
+      entry.className = 'debug-entry';
+      entry.innerHTML = `<span class="debug-time">[${time}]</span> ${message}`;
+      debugLog.appendChild(entry);
+      debugLog.scrollTop = debugLog.scrollHeight;
+      console.log(`[DeclarativePush] ${message}`);
+    }
+    
+    window.clearDebugLog = function() {
+      const debugLog = document.getElementById('debugLog');
+      debugLog.innerHTML = '<div class="debug-entry"><span class="debug-time">[--:--:--]</span> Log pulito</div>';
+    };
+    
+    // Utility: Convert VAPID key to Uint8Array
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+    
+    // Check if Declarative Web Push is supported (navigator.pushManager)
+    // WebKit/Safari exposes pushManager on navigator for declarative push
+    function isDeclarativePushSupported() {
+      return typeof navigator !== 'undefined' && 'pushManager' in navigator && !!navigator.pushManager;
+    }
+    
+    // Check if traditional SW-based push is supported
+    function isServiceWorkerPushSupported() {
+      return 'serviceWorker' in navigator && 'PushManager' in window;
+    }
+    
+    // Get the appropriate PushManager
+    async function getPushManager() {
+      if (isDeclarativePushSupported()) {
+        log('Usando navigator.pushManager (Declarative Web Push - WebKit)');
+        return navigator.pushManager;
+      }
+      
+      if (isServiceWorkerPushSupported()) {
+        log('Usando Service Worker pushManager (legacy)');
+        const reg = await navigator.serviceWorker.ready;
+        return reg.pushManager;
+      }
+      
+      throw new Error('Push API non supportata su questo browser');
+    }
+    
+    // Update step indicator
+    function updateStep(stepId, status) {
+      const step = document.getElementById(stepId);
+      step.classList.remove('complete', 'active');
+      if (status === 'complete') {
+        step.classList.add('complete');
+      } else if (status === 'active') {
+        step.classList.add('active');
+      }
+    }
+    
+    // Check browser status
+    window.checkBrowserStatus = async function() {
+      const statusDiv = document.getElementById('browserStatus');
+      const statusPill = document.getElementById('statusPill');
+      
+      statusDiv.className = 'status visible info';
+      statusDiv.textContent = '⏳ Verifica in corso...';
+      
+      const results = [];
+      
+      // Step 1: Push API support
+      updateStep('step1', 'active');
+      const hasPushAPI = 'PushManager' in window || isDeclarativePushSupported();
+      updateStep('step1', hasPushAPI ? 'complete' : '');
+      results.push(`Push API: ${hasPushAPI ? '✅ Supportata' : '❌ Non supportata'}`);
+      log(`Push API supportata: ${hasPushAPI}`);
+      
+      // Step 2: Declarative Push (window.pushManager)
+      updateStep('step2', 'active');
+      const hasDeclarative = isDeclarativePushSupported();
+      updateStep('step2', hasDeclarative ? 'complete' : '');
+      results.push(`Declarative Push (window.pushManager): ${hasDeclarative ? '✅ Disponibile' : '⚠️ Non disponibile (userà Service Worker)'}`);
+      log(`Declarative Push (window.pushManager): ${hasDeclarative}`);
+      
+      // Step 3: Notification permission
+      updateStep('step3', 'active');
+      let permissionStatus = 'default';
+      if ('Notification' in window) {
+        permissionStatus = Notification.permission;
+      }
+      updateStep('step3', permissionStatus === 'granted' ? 'complete' : '');
+      results.push(`Permesso notifiche: ${permissionStatus === 'granted' ? '✅ Concesso' : permissionStatus === 'denied' ? '❌ Negato' : '⚠️ Non richiesto'}`);
+      log(`Permesso notifiche: ${permissionStatus}`);
+      
+      // Step 4: Active subscription
+      updateStep('step4', 'active');
+      let hasSubscription = false;
+      try {
+        const pm = await getPushManager();
+        const sub = await pm.getSubscription();
+        hasSubscription = !!sub;
+        log(`Subscription trovata: ${hasSubscription}`);
+        if (sub) {
+          log(`Endpoint: ${sub.endpoint.substring(0, 50)}...`);
+        }
+      } catch (err) {
+        log(`Errore verifica subscription: ${err.message}`);
+      }
+      updateStep('step4', hasSubscription ? 'complete' : '');
+      results.push(`Subscription: ${hasSubscription ? '✅ Attiva' : '⚠️ Non attiva'}`);
+      
+      // Update status
+      const allGood = hasPushAPI && permissionStatus === 'granted' && hasSubscription;
+      statusDiv.className = `status visible ${allGood ? 'success' : 'info'}`;
+      statusDiv.innerHTML = results.join('<br>');
+      
+      // Update pill
+      if (hasDeclarative) {
+        statusPill.className = 'pill success';
+        statusPill.textContent = '✓ Safari/WebKit';
+      } else if (hasPushAPI) {
+        statusPill.className = 'pill warning';
+        statusPill.textContent = '⚡ Service Worker';
+      } else {
+        statusPill.className = 'pill error';
+        statusPill.textContent = '✗ Non supportato';
+      }
+      
+      // Additional info
+      log(`User Agent: ${navigator.userAgent}`);
+      log(`Standalone mode: ${window.matchMedia('(display-mode: standalone)').matches}`);
+    };
+    
+    // Subscribe to push notifications
+    window.subscribeToPush = async function() {
+      const statusDiv = document.getElementById('subscribeStatus');
+      const playerSelect = document.getElementById('playerSelect');
+      const subscribeBtn = document.getElementById('subscribeBtn');
+      
+      const playerId = playerSelect.value;
+      const playerName = playerSelect.options[playerSelect.selectedIndex]?.text;
+      
+      if (!playerId) {
+        statusDiv.className = 'status visible error';
+        statusDiv.textContent = '❌ Seleziona un giocatore';
+        return;
+      }
+      
+      subscribeBtn.disabled = true;
+      statusDiv.className = 'status visible info';
+      statusDiv.textContent = '⏳ Registrazione in corso...';
+      log(`Inizio registrazione per ${playerName} (ID: ${playerId})`);
+      
+      try {
+        // Step 1: Request notification permission
+        log('Richiesta permesso notifiche...');
+        const permission = await Notification.requestPermission();
+        log(`Permesso notifiche: ${permission}`);
+        
+        if (permission !== 'granted') {
+          throw new Error(`Permesso notifiche: ${permission}`);
+        }
+        
+        // Step 2: Get PushManager
+        const pushManager = await getPushManager();
+        log('PushManager ottenuto');
+        
+        // Step 3: Check for existing subscription
+        let subscription = await pushManager.getSubscription();
+        log(`Subscription esistente: ${!!subscription}`);
+        
+        // Step 4: Create new subscription if needed
+        if (!subscription) {
+          log('Creazione nuova subscription...');
+          if (!VAPID_PUBLIC_KEY) {
+            throw new Error('VAPID_PUBLIC_KEY non configurata');
+          }
+          
+          subscription = await pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+          log('Nuova subscription creata');
+        }
+        
+        log(`Endpoint: ${subscription.endpoint.substring(0, 60)}...`);
+        
+        // Step 5: Save to server
+        log('Invio subscription al server...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(`${API_BASE_URL}/subscription`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            playerId: Number(playerId),
+            playerName
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        log(`Subscription salvata: ${JSON.stringify(result)}`);
+        
+        // Save to localStorage
+        localStorage.setItem('biliardino_player_id', String(playerId));
+        localStorage.setItem('biliardino_player_name', playerName);
+        localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
+        
+        statusDiv.className = 'status visible success';
+        statusDiv.innerHTML = `✅ Notifiche attive per <strong>${playerName}</strong>`;
+        
+        // Refresh status
+        await checkBrowserStatus();
+        
+      } catch (err) {
+        log(`Errore: ${err.message}`);
+        statusDiv.className = 'status visible error';
+        statusDiv.textContent = `❌ Errore: ${err.message}`;
+      } finally {
+        subscribeBtn.disabled = false;
+      }
+    };
+    
+    // Build WebKit compliant declarative push payload
+    function buildPayload() {
+      const title = document.getElementById('notifTitle').value || 'Notifica';
+      const body = document.getElementById('notifBody').value || '';
+      const defaultActionUrl = document.getElementById('notifNavigate').value || '/';
+      const lang = document.getElementById('notifLang').value || 'it-IT';
+      const playerId = document.getElementById('playerSelect').value;
+      
+      // WebKit Declarative Web Push format
+      // See: https://github.com/nickmasu/nickmasu/wiki/Declarative-Web-Push
+      return {
+        playerId: playerId || undefined,
+        // Required fields
+        title,
+        default_action_url: defaultActionUrl,
+        // Optional options object (NotificationOptions)
+        options: {
+          body,
+          lang,
+          dir: 'ltr',
+          icon: '/icons/icon-192.jpg',
+          badge: '/icons/icon-192-maskable.png',
+          tag: `declarative-${Date.now()}`,
+          requireInteraction: true,
+          // Actions must have 'url' property per WebKit spec
+          actions: [
+            {
+              action: 'accept',
+              title: '✅ Accetta',
+              url: defaultActionUrl
+            },
+            {
+              action: 'ignore', 
+              title: '❌ Ignora',
+              url: '/'
+            }
+          ]
+        },
+        // Optional: mutable allows SW to transform notification
+        mutable: false,
+        // Optional: app badge count
+        app_badge: 1
+      };
+    }
+    
+    // Update payload preview
+    function updatePayloadPreview() {
+      const payload = buildPayload();
+      document.getElementById('payloadPreview').textContent = JSON.stringify(payload, null, 2);
+    }
+    
+    // Send test notification
+    window.sendTestNotification = async function() {
+      const statusDiv = document.getElementById('sendStatus');
+      const sendBtn = document.getElementById('sendTestBtn');
+      const playerSelect = document.getElementById('playerSelect');
+      
+      const playerId = playerSelect.value;
+      
+      if (!playerId) {
+        statusDiv.className = 'status visible error';
+        statusDiv.textContent = '❌ Seleziona un giocatore';
+        return;
+      }
+      
+      sendBtn.disabled = true;
+      statusDiv.className = 'status visible info';
+      statusDiv.textContent = '⏳ Invio notifica...';
+      log('Invio notifica dichiarativa di test...');
+      
+      try {
+        const payload = buildPayload();
+        log(`Payload: ${JSON.stringify(payload)}`);
+        
+        const response = await fetch(`${API_BASE_URL}/declarative-push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        log(`Risposta: ${JSON.stringify(result)}`);
+        
+        statusDiv.className = 'status visible success';
+        statusDiv.textContent = `✅ ${result.message || 'Notifica inviata!'}`;
+        
+      } catch (err) {
+        log(`Errore: ${err.message}`);
+        statusDiv.className = 'status visible error';
+        statusDiv.textContent = `❌ Errore: ${err.message}`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    };
+    
+    // Initialize
+    async function init() {
+      log('Pagina inizializzata');
+      
+      // Load players
+      try {
+        const players = getAllPlayers();
+        const playerSelect = document.getElementById('playerSelect');
+        
+        players.sort((a, b) => a.name.localeCompare(b.name)).forEach(player => {
+          const option = document.createElement('option');
+          option.value = player.id;
+          option.textContent = player.name;
+          playerSelect.appendChild(option);
+        });
+        
+        // Pre-select if saved
+        const savedId = localStorage.getItem('biliardino_player_id');
+        if (savedId) {
+          playerSelect.value = savedId;
+        }
+        
+        log(`Caricati ${players.length} giocatori`);
+      } catch (err) {
+        log(`Errore caricamento giocatori: ${err.message}`);
+      }
+      
+      // Update payload preview on input
+      document.addEventListener('input', updatePayloadPreview);
+      updatePayloadPreview();
+      
+      // Auto-check browser status
+      await checkBrowserStatus();
+    }
+    
+    init();
+  </script>
+</body>
+
+</html>
