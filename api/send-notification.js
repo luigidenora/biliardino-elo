@@ -99,8 +99,16 @@ export default async function handler(req, res) {
 
     // Invia la notifica
     try {
-      // Rileva se endpoint è Apple
-      const isAppleEndpoint = playerSub.subscription.endpoint.includes('push.apple.com');
+      // Rileva se endpoint è Apple usando URL parsing sicuro
+      let isAppleEndpoint = false;
+      try {
+        const endpointUrl = new URL(playerSub.subscription.endpoint);
+        isAppleEndpoint = endpointUrl.hostname === 'web.push.apple.com' || 
+                         endpointUrl.hostname.endsWith('.push.apple.com');
+      } catch (err) {
+        // Se l'endpoint non è un URL valido, considera non-Apple
+        isAppleEndpoint = false;
+      }
 
       if (isAppleEndpoint) {
         // Usa formato Declarative Web Push per iOS
