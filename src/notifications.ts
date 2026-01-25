@@ -23,30 +23,32 @@ let easterEggClickCount = 0;
 let easterEggResetTimer: number | null = null;
 
 declare global {
-  // Safari/WebKit exposes pushManager on navigator for Declarative Web Push
-  interface Navigator {
+  // Safari/WebKit exposes pushManager on window for Declarative Web Push (iOS 18.4+)
+  interface Window {
     pushManager?: PushManager;
   }
 }
 
 // Detect Declarative Web Push support (Safari/WebKit)
-// WebKit exposes pushManager on navigator, not window
+// WebKit exposes pushManager on window, not navigator (per WebKit paper)
 function isDeclarativePushSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'pushManager' in navigator && !!navigator.pushManager;
+  return typeof window !== 'undefined' && 'pushManager' in window && !!window.pushManager;
 }
 
-// Normalize PushManager retrieval: use navigator.pushManager on WebKit, SW registration elsewhere
+// Normalize PushManager retrieval: use window.pushManager on WebKit, SW registration elsewhere
 async function getPushManager(): Promise<PushManager> {
-  if (isDeclarativePushSupported()) {
-    return navigator.pushManager as PushManager;
+  // Priorità a window.pushManager (Declarative Web Push - iOS 18.4+)
+  if (typeof window !== 'undefined' && 'pushManager' in window && window.pushManager) {
+    return window.pushManager;
   }
-
-  if (('serviceWorker' in navigator)) {
+  
+  // Fallback a ServiceWorker pushManager
+  if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.ready;
     return reg.pushManager;
-  } else {
-    throw new Error('Service workers non supportati su questo browser');
   }
+  
+  throw new Error('PushManager non disponibile');
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
