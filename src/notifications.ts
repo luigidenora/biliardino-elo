@@ -41,13 +41,13 @@ async function getPushManager(): Promise<PushManager> {
   if (typeof window !== 'undefined' && 'pushManager' in window && window.pushManager) {
     return window.pushManager;
   }
-  
+
   // Fallback a ServiceWorker pushManager
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.ready;
     return reg.pushManager;
   }
-  
+
   throw new Error('PushManager non disponibile');
 }
 

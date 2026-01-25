@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     try {
       // Rileva se endpoint è Apple
       const isAppleEndpoint = playerSub.subscription.endpoint.includes('push.apple.com');
-      
+
       if (isAppleEndpoint) {
         // Usa formato Declarative Web Push per iOS
         const payload = {
@@ -109,14 +109,14 @@ export default async function handler(req, res) {
           notification: {
             title,
             body,
-            navigate: url,  // DENTRO notification per iOS
+            navigate: url, // DENTRO notification per iOS
             icon: '/icons/icon-192.jpg',
             badge: '/icons/icon-192-maskable.png',
             silent: false,
-            app_badge: "1"  // Stringa, non numero
+            app_badge: '1' // Stringa, non numero
           }
         };
-        
+
         await webpush.sendNotification(
           playerSub.subscription,
           JSON.stringify(payload),
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
       } else {
         // Usa formato semplice per altri browser (gestito da SW)
         const payload = { title, body, url };
-        
+
         await webpush.sendNotification(
           playerSub.subscription,
           JSON.stringify(payload),

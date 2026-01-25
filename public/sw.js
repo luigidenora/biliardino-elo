@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 const CACHE_NAME = 'CAlcio-Balilla-v1';
 const CORE_ASSETS = [
   './',
@@ -25,7 +26,7 @@ self.addEventListener('install', (event) => {
         console.log('[Service Worker] Cache completata, attivazione...');
         return self.skipWaiting();
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('[Service Worker] ERRORE installazione:', err);
         throw err; // Let installation fail visibly
       })
@@ -44,7 +45,7 @@ self.addEventListener('activate', (event) => {
         console.log('[Service Worker] Cache pulita, assumo controllo...');
         return clients.claim();
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('[Service Worker] ERRORE attivazione:', err);
         throw err;
       })
@@ -99,19 +100,18 @@ function toAbsoluteUrl(url) {
   }
 }
 
-self.addEventListener("push", (event) => {
+self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
-  
+
   let title, body, navigateUrl;
-  
+
   // Formato Declarative Web Push (iOS con navigate in notification)
   if (data.web_push === 8030 && data.notification) {
     title = data.notification.title || 'Notifica';
     body = data.notification.body || '';
     navigateUrl = data.notification.navigate || '/';
-  } 
-  // Formato semplice
-  else {
+  } else {
+    // Formato semplice
     title = data.title || 'Notifica';
     body = data.body || '';
     navigateUrl = data.url || data.navigate || '/';
@@ -147,7 +147,9 @@ self.addEventListener('notificationclick', (event) => {
             client.navigate(targetUrl);
             return;
           }
-        } catch (_) { }
+        } catch (_) {
+          // Ignore URL parsing errors
+        }
       }
       await clients.openWindow(targetUrl);
     })()

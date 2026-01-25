@@ -106,7 +106,7 @@ export default async function handler(req, res) {
         subscription,
         JSON.stringify(payload),
         {
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' }
         }
       );
     }
