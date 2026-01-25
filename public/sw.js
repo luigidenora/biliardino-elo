@@ -73,9 +73,11 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', async (event) => {
-  let title, options;
+  let title, options, fullData;
   try {
-    ({ notification } = event.data.json());
+    fullData = event.data.json();
+    /* DEBUG SU IPHONE  */ alert('Push received: ' + JSON.stringify(fullData));
+    ({ notification } = fullData);
     options = notification || {};
     title = notification.title;
   } catch (exception) {
@@ -83,6 +85,7 @@ self.addEventListener('push', async (event) => {
   }
   try {
     await self.registration.showNotification(title, options);
+    /* DEBUG SU IPHONE  */ alert('Notification displayed successfully');
   } catch (e) {
     /* DEBUG SU IPHONE  */ alert('Notification display error: ' + e.message);
   }
