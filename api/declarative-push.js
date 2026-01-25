@@ -174,8 +174,8 @@ export default async function handler(req, res) {
           payload.mutable = mutable;
         }
 
-        // app_badge is optional
-        if (typeof app_badge === 'number' && Number.isInteger(app_badge) && app_badge >= 0) {
+        // app_badge is optional, limit to reasonable range (0-999)
+        if (typeof app_badge === 'number' && Number.isInteger(app_badge) && app_badge >= 0 && app_badge <= 999) {
           payload.app_badge = app_badge;
         }
 

@@ -544,8 +544,8 @@
       updateStep('step2', 'active');
       const hasDeclarative = isDeclarativePushSupported();
       updateStep('step2', hasDeclarative ? 'complete' : '');
-      results.push(`Declarative Push (window.pushManager): ${hasDeclarative ? '✅ Disponibile' : '⚠️ Non disponibile (userà Service Worker)'}`);
-      log(`Declarative Push (window.pushManager): ${hasDeclarative}`);
+      results.push(`Declarative Push (navigator.pushManager): ${hasDeclarative ? '✅ Disponibile' : '⚠️ Non disponibile (userà Service Worker)'}`);
+      log(`Declarative Push (navigator.pushManager): ${hasDeclarative}`);
       
       // Step 3: Notification permission
       updateStep('step3', 'active');
