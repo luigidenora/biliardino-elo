@@ -31,3 +31,6 @@ Thumbs.db
 # Vercel deployment files
 .vercel
 .env*.local
+
+# Test files
+test-ios-modal.html
