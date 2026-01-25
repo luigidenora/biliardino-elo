@@ -825,6 +825,7 @@
     }
 
     // Get PushManager - works on both iOS (direct) and Android (via SW)
+    // iOS FIRST: try navigator.pushManager directly, fallback to SW
     async function getPushManager() {
       log('[PushManager] Inizio rilevamento...', 'info');
 
@@ -832,21 +833,35 @@
       const hasPushManagerClass = 'PushManager' in window;
       log(`[PushManager] window.PushManager: ${hasPushManagerClass ? 'SI' : 'NO'}`, hasPushManagerClass ? 'info' : 'error');
 
-      // Check navigator.pushManager (Safari/iOS Declarative Push)
-      log('[PushManager] Controllo Declarative Push (Safari/iOS)...', 'info');
-      const isDeclarative = isDeclarativePushSupported();
+      // Check navigator.pushManager existence (Safari/iOS)
+      const hasNavigatorPushManager = 'pushManager' in navigator;
+      log(`[PushManager] navigator.pushManager exists: ${hasNavigatorPushManager ? 'SI' : 'NO'}`, 'info');
 
-      if (isDeclarative) {
-        log('[PushManager] ✓ Declarative Push disponibile!', 'success');
-        log('[PushManager] Uso navigator.pushManager diretto (no SW richiesto)', 'success');
-        return { pushManager: navigator.pushManager, mode: 'declarative' };
+      // iOS/Safari FIRST: try navigator.pushManager directly
+      if (hasNavigatorPushManager && navigator.pushManager) {
+        log('[PushManager] navigator.pushManager trovato!', 'success');
+
+        // Check if it has subscribe method
+        const hasSubscribe = typeof navigator.pushManager.subscribe === 'function';
+        log(`[PushManager] navigator.pushManager.subscribe: ${hasSubscribe ? 'SI' : 'NO'}`, hasSubscribe ? 'success' : 'info');
+
+        // Check if it has getSubscription method
+        const hasGetSubscription = typeof navigator.pushManager.getSubscription === 'function';
+        log(`[PushManager] navigator.pushManager.getSubscription: ${hasGetSubscription ? 'SI' : 'NO'}`, hasGetSubscription ? 'success' : 'info');
+
+        if (hasSubscribe) {
+          log('[PushManager] ✓ Uso navigator.pushManager diretto (iOS/Safari - no SW)', 'success');
+          return { pushManager: navigator.pushManager, mode: 'declarative' };
+        } else {
+          log('[PushManager] navigator.pushManager esiste ma senza subscribe, provo SW...', 'info');
+        }
       }
 
-      log('[PushManager] Declarative Push non disponibile, provo via SW...', 'info');
+      log('[PushManager] Fallback: provo via Service Worker...', 'info');
 
-      // Android/Chrome: use service worker's pushManager
+      // Fallback: Android/Chrome via service worker
       if (!hasPushManagerClass) {
-        log('[PushManager] ERRORE: Push API non supportata', 'error');
+        log('[PushManager] ERRORE: Push API non supportata (no window.PushManager)', 'error');
         throw new Error('Push API non supportata');
       }
 
