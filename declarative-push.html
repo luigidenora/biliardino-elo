@@ -613,6 +613,7 @@
         <div class="debug-entry"><span class="debug-time">[--:--:--]</span> Inizializzazione...</div>
       </div>
       <button type="button" class="secondary" onclick="clearDebugLog()">🗑️ Pulisci Log</button>
+      <button type="button" class="secondary" onclick="debugPushManager()">🔍 Debug PushManager</button>
     </div>
 
     <!-- Floating debug for mobile / quick glance -->
@@ -719,6 +720,21 @@
       if (mobileDebugBody) {
         mobileDebugBody.style.display = debugCollapsed ? 'none' : 'grid';
       }
+    };
+
+    // Debug PushManager info
+    window.debugPushManager = function () {
+      const info = {
+        'window.pushManager': typeof window.pushManager !== 'undefined' ? 'available' : 'not available',
+        'navigator.pushManager': typeof navigator.pushManager !== 'undefined' ? 'available' : 'not available',
+        'serviceWorker': 'serviceWorker' in navigator ? 'available' : 'not available',
+        'iOS version': navigator.userAgent.match(/OS (\d+_\d+)/)?.[1]?.replace('_', '.') || 'N/A',
+        'standalone mode': window.navigator.standalone === true ? 'yes' : 'no',
+        'Notification permission': Notification.permission
+      };
+      log('🔍 DEBUG PushManager:', 'info');
+      log(JSON.stringify(info, null, 2), 'info');
+      alert(JSON.stringify(info, null, 2));
     };
 
     // Convert VAPID key to Uint8Array

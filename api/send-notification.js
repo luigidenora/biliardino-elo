@@ -99,45 +99,60 @@ export default async function handler(req, res) {
 
     // Invia la notifica
     try {
-      // Default actions if not provided
-      const notificationActions = actions && Array.isArray(actions) && actions.length > 0
-        ? actions
-        : [
-            { action: 'accept', title: 'Accetta', icon: '/icons/icon-192.jpg' },
-            { action: 'ignore', title: 'Ignora', icon: '/icons/icon-192.jpg' }
-          ];
+      // Rileva se endpoint è Apple usando URL parsing sicuro
+      let isAppleEndpoint = false;
+      try {
+        const endpointUrl = new URL(playerSub.subscription.endpoint);
+        isAppleEndpoint = endpointUrl.hostname === 'web.push.apple.com' || 
+                         endpointUrl.hostname.endsWith('.push.apple.com');
+      } catch (err) {
+        // Se l'endpoint non è un URL valido, considera non-Apple
+        isAppleEndpoint = false;
+      }
 
-      const payload = {
-        // Declarative Web Push (Safari/WebKit) - iOS 18.4+ standard
-        web_push: 8030,
-        notification: {
-          title,
-          body,
-          icon: '/icons/icon-192.jpg',
-          badge: '/icons/icon-192.jpg',
-          tag: `notification-${playerId}-${Date.now()}`,
-          requireInteraction,
-          actions: notificationActions
-        },
-        navigate: url,
-        app_badge: 1
-      };
+      if (isAppleEndpoint) {
+        // Usa formato Declarative Web Push per iOS
+        const payload = {
+          web_push: 8030,
+          notification: {
+            title,
+            body,
+            navigate: url, // DENTRO notification per iOS
+            icon: '/icons/icon-192.jpg',
+            badge: '/icons/icon-192-maskable.png',
+            silent: false,
+            app_badge: '1' // Stringa, non numero
+          }
+        };
 
-      await webpush.sendNotification(
-        playerSub.subscription,
-        JSON.stringify(payload),
-        {
-          urgency: 'high'
-        }
-      );
+        await webpush.sendNotification(
+          playerSub.subscription,
+          JSON.stringify(payload),
+          {
+            urgency: 'high'
+          }
+        );
+      } else {
+        // Usa formato semplice per altri browser (gestito da SW)
+        const payload = { title, body, url };
 
-      console.log(`✅ Notifica inviata al player ${playerSub.playerName} (ID: ${playerId})`);
+        await webpush.sendNotification(
+          playerSub.subscription,
+          JSON.stringify(payload),
+          {
+            urgency: 'high'
+          }
+        );
+      }
+
+      console.log(`✅ Notifica inviata al player ${playerSub.playerName} (ID: ${playerId}) - Formato: ${isAppleEndpoint ? 'Declarative (iOS)' : 'Simple (SW)'}`);
 
       return res.status(200).json({
         success: true,
         message: `Notifica inviata a ${playerSub.playerName}`,
         playerId,
-        playerName: playerSub.playerName
+        playerName: playerSub.playerName,
+        format: isAppleEndpoint ? 'declarative' : 'simple'
       });
     } catch (sendErr) {
       console.error('Errore invio notifica:', sendErr);
