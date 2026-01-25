@@ -733,6 +733,73 @@
       return outputArray;
     }
 
+    // Timeout helper
+    function withTimeout(promise, ms, errorMessage) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(errorMessage)), ms))
+      ]);
+    }
+
+    // Check if Safari/WebKit Declarative Push is available (navigator.pushManager without SW)
+    function isDeclarativePushSupported() {
+      // Safari 16+ exposes pushManager directly on navigator
+      return 'pushManager' in navigator && typeof navigator.pushManager?.subscribe === 'function';
+    }
+
+    // Ensure service worker is registered and ready (with timeout)
+    async function ensureServiceWorker(timeoutMs = 10000) {
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Worker non supportato');
+      }
+
+      // Check if there's already an active registration
+      const existingReg = await navigator.serviceWorker.getRegistration();
+      if (existingReg?.active) {
+        log('SW già registrato e attivo ✓', 'success');
+        return existingReg;
+      }
+
+      // Register the service worker
+      log('Registro Service Worker...', 'info');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      try {
+        const reg = await navigator.serviceWorker.register(`${baseUrl}sw.js`, { scope: baseUrl });
+        log(`SW registrato (stato: ${reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'unknown'})`, 'info');
+      } catch (regErr) {
+        log(`Errore registrazione SW: ${regErr.message}`, 'error');
+        throw regErr;
+      }
+
+      // Wait for ready with timeout
+      log(`Attendo SW ready (timeout ${timeoutMs / 1000}s)...`, 'info');
+      const registration = await withTimeout(
+        navigator.serviceWorker.ready,
+        timeoutMs,
+        `Service Worker non pronto dopo ${timeoutMs / 1000}s. Ricarica la pagina.`
+      );
+      log('SW ready ✓', 'success');
+      return registration;
+    }
+
+    // Get PushManager - works on both iOS (direct) and Android (via SW)
+    async function getPushManager() {
+      // Safari/iOS: use navigator.pushManager directly (Declarative Web Push)
+      if (isDeclarativePushSupported()) {
+        log('Uso navigator.pushManager (Safari/iOS) ✓', 'success');
+        return { pushManager: navigator.pushManager, mode: 'declarative' };
+      }
+
+      // Android/Chrome: use service worker's pushManager
+      if (!('PushManager' in window)) {
+        throw new Error('Push API non supportata');
+      }
+
+      const registration = await ensureServiceWorker();
+      log('Uso SW pushManager (Android/Chrome) ✓', 'success');
+      return { pushManager: registration.pushManager, mode: 'standard' };
+    }
+
     // Update step indicator UI
     function updateStep(stepId, status) {
       const step = document.getElementById(stepId);
@@ -774,10 +841,13 @@
       // Step 4: Subscription
       updateStep('step4', 'active');
       let hasSubscription = false;
-      if (hasSW && hasPushAPI) {
+      let pushMode = 'none';
+      if (hasPushAPI) {
         try {
-          const reg = await navigator.serviceWorker.ready;
-          const sub = await reg.pushManager.getSubscription();
+          const { pushManager, mode } = await getPushManager();
+          pushMode = mode;
+          log(`Push mode: ${mode}`, 'info');
+          const sub = await pushManager.getSubscription();
           hasSubscription = !!sub;
           if (sub) log(`Endpoint: ${sub.endpoint.substring(0, 50)}...`);
         } catch (e) {
@@ -817,10 +887,7 @@
 
       try {
         // 1. Check browser support
-        if (!('serviceWorker' in navigator)) {
-          throw new Error('Service Worker non supportato');
-        }
-        if (!('PushManager' in window)) {
+        if (!('PushManager' in window) && !isDeclarativePushSupported()) {
           throw new Error('Push API non supportata');
         }
         log('Browser supportato ✓', 'success');
@@ -833,21 +900,20 @@
         }
         log('Permesso concesso ✓', 'success');
 
-        // 3. Wait for service worker
-        log('Attendo Service Worker...', 'info');
-        const registration = await navigator.serviceWorker.ready;
-        log('Service Worker pronto ✓', 'success');
+        // 3. Get PushManager (handles both iOS and Android)
+        const { pushManager, mode } = await getPushManager();
+        log(`Push mode: ${mode}`, 'info');
 
         // 4. Get or create subscription
         log('Controllo subscription esistente...', 'info');
-        let subscription = await registration.pushManager.getSubscription();
+        let subscription = await pushManager.getSubscription();
 
         if (!subscription) {
           log('Creo nuova subscription...', 'info');
           if (!VAPID_PUBLIC_KEY) {
             throw new Error('VAPID_PUBLIC_KEY non configurata');
           }
-          subscription = await registration.pushManager.subscribe({
+          subscription = await pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
           });
