@@ -35,12 +35,13 @@ async function getPushManager(): Promise<PushManager> {
     return window.pushManager as PushManager;
   }
 
-  if (!('serviceWorker' in navigator)) {
+  if (('serviceWorker' in navigator)) {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager;
+  } else {
     throw new Error('Service workers non supportati su questo browser');
   }
 
-  const reg = await navigator.serviceWorker.ready;
-  return reg.pushManager;
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
