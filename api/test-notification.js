@@ -98,7 +98,6 @@ export default async function handler(req, res) {
       if (validActions.length) notification.actions = validActions;
 
       const payload = {
-        web_push: 8030,
         notification
       };
       if (typeof mutable === 'boolean') payload.mutable = mutable;
@@ -107,7 +106,8 @@ export default async function handler(req, res) {
         subscription,
         JSON.stringify(payload),
         {
-          urgency: 'high'
+          urgency: 'high',
+          TTL
         }
       );
     }
