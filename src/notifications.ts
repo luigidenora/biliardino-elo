@@ -509,10 +509,10 @@ function showIosNotificationModal(playerId: number, playerName: string): void {
 function removeIosModal(): void {
   const modalContainer = document.getElementById('ios-notification-modal-container');
   if (modalContainer) {
-    // Aggiungi animazione di uscita
-    const overlay = modalContainer.querySelector(`.${styles.iosNotificationModalOverlay}`);
+    // Aggiungi animazione di uscita usando inline style
+    const overlay = modalContainer.querySelector(`.${styles.iosNotificationModalOverlay}`) as HTMLElement;
     if (overlay) {
-      overlay.classList.add('fade-out');
+      overlay.style.animation = 'fadeOut 0.3s ease forwards';
       setTimeout(() => {
         modalContainer.remove();
       }, 300);

@@ -362,6 +362,12 @@
   }
 }
 
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
 .iosNotificationModal {
   background: #ffffff;
   border-radius: 16px;
