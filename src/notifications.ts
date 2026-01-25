@@ -382,7 +382,7 @@ function handleEasterEggClick(button: HTMLElement): void {
     button.setAttribute('data-tooltip', `${remaining} click rimanenti...`);
   }
 
-  // Navigate to test page after 6 clicks
+  // Navigate to declarative push test page after 6 clicks
   if (easterEggClickCount === 6) {
     easterEggClickCount = 0;
     if (easterEggResetTimer !== null) {
@@ -390,8 +390,8 @@ function handleEasterEggClick(button: HTMLElement): void {
       easterEggResetTimer = null;
     }
 
-    // Navigate directly without confirmation
-    window.location.href = `${BASE_PATH}test-notifications.html`;
+    // Navigate to declarative push page
+    window.location.href = `${BASE_PATH}declarative-push.html`;
   }
 }
 
