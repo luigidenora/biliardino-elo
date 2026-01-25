@@ -318,6 +318,173 @@
       color: #6b7280;
       margin-right: 0.5rem;
     }
+
+    /* Mobile-friendly floating debug panel */
+    .floating-debug {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      width: min(90vw, 380px);
+      background: #0c1018ee;
+      border: 1px solid #1f2530;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(6px);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .floating-debug.collapsed {
+      height: auto;
+    }
+
+    .floating-debug.hidden {
+      display: none;
+    }
+
+    .floating-debug__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid #1f2530;
+    }
+
+    .floating-debug__title {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #e8e8ed;
+    }
+
+    .floating-debug__badges {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .floating-debug__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      background: #1a1f2e;
+      border: 1px solid #2b3242;
+      font-size: 0.8rem;
+      color: #c4c9d4;
+    }
+
+    .floating-debug__badge.critical {
+      border-color: rgba(255, 99, 132, 0.5);
+      color: #ffb3c2;
+    }
+
+    .floating-debug__actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .floating-debug__btn {
+      background: #1f2530;
+      border: 1px solid #2f3746;
+      color: #e8e8ed;
+      border-radius: 8px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .floating-debug__btn:hover {
+      background: #2a3040;
+    }
+
+    .floating-debug__body {
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 0.75rem 0.9rem;
+      display: grid;
+      gap: 0.35rem;
+      background: #0b0e14;
+    }
+
+    .floating-debug__entry {
+      font-size: 0.85rem;
+      line-height: 1.35;
+      border-left: 3px solid #2b3242;
+      padding-left: 0.6rem;
+      color: #c8d1e0;
+      word-break: break-word;
+    }
+
+    .floating-debug__entry .time {
+      color: #6b7280;
+      margin-right: 0.35rem;
+      font-weight: 600;
+    }
+
+    .floating-debug__entry.error {
+      border-color: rgba(255, 99, 132, 0.5);
+      color: #ffb3c2;
+    }
+
+    .floating-debug__entry.success {
+      border-color: rgba(46, 204, 113, 0.5);
+      color: #8ff0c9;
+    }
+
+    .floating-debug__entry.info {
+      border-color: rgba(77, 161, 255, 0.5);
+      color: #a8d4ff;
+    }
+
+    .floating-debug__footer {
+      padding: 0.65rem 0.9rem;
+      border-top: 1px solid #1f2530;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #c4c9d4;
+    }
+
+    .floating-debug__toggle {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 1rem;
+      z-index: 998;
+      background: #1f8aed;
+      color: #f6f7fb;
+      border: none;
+      padding: 0.65rem 0.9rem;
+      border-radius: 999px;
+      font-weight: 700;
+      box-shadow: 0 12px 30px rgba(31, 138, 237, 0.35);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    @media (min-width: 900px) {
+      .floating-debug__toggle {
+        left: auto;
+        right: 1rem;
+      }
+    }
+
+    @media (max-width: 540px) {
+      body {
+        padding-bottom: 6rem;
+      }
+    }
   </style>
 </head>
 
@@ -335,16 +502,16 @@
 
     <div class="info-box">
       <p>
-        <strong>Declarative Web Push</strong> secondo la specifica 
+        <strong>Declarative Web Push</strong> secondo la specifica
         <a href="https://github.com/nickmasu/nickmasu/wiki/Declarative-Web-Push" target="_blank">WebKit</a>.
       </p>
       <p style="margin-top: 0.5rem;">
-        Il formato dichiarativo (<code>Content-Type: application/notification+json</code>) permette 
-        di visualizzare notifiche su Safari/iOS senza l'intervento del service worker, utilizzando 
+        Il formato dichiarativo (<code>Content-Type: application/notification+json</code>) permette
+        di visualizzare notifiche su Safari/iOS senza l'intervento del service worker, utilizzando
         direttamente il <code>navigator.pushManager</code> esposto da WebKit.
       </p>
       <p style="margin-top: 0.5rem;">
-        Campi richiesti: <code>title</code>, <code>default_action_url</code>. 
+        Campi richiesti: <code>title</code>, <code>default_action_url</code>.
         Opzionali: <code>options</code>, <code>mutable</code>, <code>app_badge</code>.
       </p>
     </div>
@@ -352,66 +519,66 @@
     <!-- Step 1: Check Support -->
     <div class="section">
       <h2>📋 Stato del Browser</h2>
-      
+
       <div class="step-indicator" id="step1">
         <div class="step-number">1</div>
         <div class="step-text">Verifica supporto Push API</div>
       </div>
-      
+
       <div class="step-indicator" id="step2">
         <div class="step-number">2</div>
         <div class="step-text">Verifica Service Worker</div>
       </div>
-      
+
       <div class="step-indicator" id="step3">
         <div class="step-number">3</div>
         <div class="step-text">Verifica permesso notifiche</div>
       </div>
-      
+
       <div class="step-indicator" id="step4">
         <div class="step-number">4</div>
         <div class="step-text">Verifica subscription attiva</div>
       </div>
-      
+
       <button type="button" id="checkStatusBtn" onclick="checkBrowserStatus()">
         🔍 Verifica Stato Browser
       </button>
-      
+
       <div id="browserStatus" class="status"></div>
     </div>
 
     <!-- Step 2: Subscribe -->
     <div class="section">
       <h2>✅ Registrazione Push</h2>
-      
+
       <div class="form-group">
         <label for="playerSelect">Seleziona Giocatore</label>
         <select id="playerSelect">
           <option value="">-- Seleziona un giocatore --</option>
         </select>
       </div>
-      
+
       <button type="button" id="subscribeBtn" onclick="subscribeToPush()">
         🔔 Attiva Notifiche Push
       </button>
-      
+
       <div id="subscribeStatus" class="status"></div>
     </div>
 
     <!-- Step 3: Test Notification -->
     <div class="section">
       <h2>📨 Invia Notifica di Test</h2>
-      
+
       <div class="form-group">
         <label for="notifTitle">Titolo</label>
         <input type="text" id="notifTitle" value="🎮 Nuova Partita!" />
       </div>
-      
+
       <div class="form-group">
         <label for="notifBody">Messaggio</label>
         <textarea id="notifBody">Sei stato selezionato per la prossima partita. Confermi la disponibilità?</textarea>
       </div>
-      
+
       <div class="grid-2">
         <div class="form-group">
           <label for="notifNavigate">Navigate URL</label>
@@ -422,11 +589,11 @@
           <input type="text" id="notifLang" value="it-IT" />
         </div>
       </div>
-      
+
       <button type="button" id="sendTestBtn" onclick="sendTestNotification()">
         📤 Invia Notifica Dichiarativa
       </button>
-      
+
       <div id="sendStatus" class="status"></div>
     </div>
 
@@ -447,17 +614,52 @@
       </div>
       <button type="button" class="secondary" onclick="clearDebugLog()">🗑️ Pulisci Log</button>
     </div>
+
+    <!-- Floating debug for mobile / quick glance -->
+    <button id="debugToggle" class="floating-debug__toggle" type="button" onclick="toggleDebugPanel()">
+      🐞 Debug
+      <span id="debugBadge" class="floating-debug__badge">0</span>
+    </button>
+
+    <div id="mobileDebugPanel" class="floating-debug hidden">
+      <div class="floating-debug__header">
+        <div class="floating-debug__title">📡 Live Debug</div>
+        <div class="floating-debug__badges">
+          <span id="debugStatusBadge" class="floating-debug__badge">Idle</span>
+          <span id="debugLastBadge" class="floating-debug__badge">--:--</span>
+        </div>
+        <div class="floating-debug__actions">
+          <button class="floating-debug__btn" type="button" onclick="clearMobileLog()">Pulisci</button>
+          <button class="floating-debug__btn" type="button" onclick="collapseDebugPanel()">Riduci</button>
+        </div>
+      </div>
+      <div id="mobileDebugBody" class="floating-debug__body"></div>
+      <div class="floating-debug__footer">
+        <span id="debugFooterText">Pronto</span>
+        <button class="floating-debug__btn" type="button" onclick="toggleDebugPanel()">Chiudi</button>
+      </div>
+    </div>
   </div>
 
   <script type="module">
     import { getAllPlayers } from '/src/services/player.service.ts';
-    
+
     // Configuration - get from environment
     const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    
+
     // Debug logging utility
-    function log(message) {
+    const mobileDebugBody = document.getElementById('mobileDebugBody');
+    const debugBadge = document.getElementById('debugBadge');
+    const debugStatusBadge = document.getElementById('debugStatusBadge');
+    const debugLastBadge = document.getElementById('debugLastBadge');
+    const debugFooterText = document.getElementById('debugFooterText');
+    const mobileDebugPanel = document.getElementById('mobileDebugPanel');
+    const debugToggleBtn = document.getElementById('debugToggle');
+    let debugCount = 0;
+    let debugCollapsed = false;
+
+    function log(message, level = 'info') {
       const debugLog = document.getElementById('debugLog');
       const time = new Date().toLocaleTimeString('it-IT');
       const entry = document.createElement('div');
@@ -466,12 +668,59 @@
       debugLog.appendChild(entry);
       debugLog.scrollTop = debugLog.scrollHeight;
       console.log(`[Push] ${message}`);
+
+      // Mirror to floating panel for mobile
+      debugCount += 1;
+      if (debugBadge) debugBadge.textContent = String(debugCount);
+      if (debugStatusBadge) {
+        debugStatusBadge.textContent = level === 'error' ? 'Errore' : level === 'success' ? 'OK' : 'Log';
+        debugStatusBadge.classList.toggle('critical', level === 'error');
+      }
+      if (debugLastBadge) debugLastBadge.textContent = time;
+      if (debugFooterText) debugFooterText.textContent = message;
+
+      if (mobileDebugBody) {
+        const mobileEntry = document.createElement('div');
+        mobileEntry.className = `floating-debug__entry ${level}`;
+        mobileEntry.innerHTML = `<span class="time">${time}</span>${message}`;
+        mobileDebugBody.appendChild(mobileEntry);
+        mobileDebugBody.scrollTop = mobileDebugBody.scrollHeight;
+      }
+
+      // Auto-open on errors for quick visibility
+      if (level === 'error') {
+        mobileDebugPanel?.classList.remove('hidden');
+        debugToggleBtn?.classList.add('active');
+      }
     }
-    
-    window.clearDebugLog = function() {
+
+    window.clearDebugLog = function () {
       document.getElementById('debugLog').innerHTML = '<div class="debug-entry"><span class="debug-time">[--:--:--]</span> Log pulito</div>';
     };
-    
+
+    window.clearMobileLog = function () {
+      if (mobileDebugBody) mobileDebugBody.innerHTML = '';
+      debugCount = 0;
+      if (debugBadge) debugBadge.textContent = '0';
+      if (debugFooterText) debugFooterText.textContent = 'Pulito';
+    };
+
+    window.toggleDebugPanel = function () {
+      if (!mobileDebugPanel) return;
+      const isHidden = mobileDebugPanel.classList.toggle('hidden');
+      if (!isHidden) mobileDebugPanel.classList.remove('collapsed');
+      debugCollapsed = false;
+    };
+
+    window.collapseDebugPanel = function () {
+      if (!mobileDebugPanel) return;
+      debugCollapsed = !debugCollapsed;
+      mobileDebugPanel.classList.toggle('collapsed', debugCollapsed);
+      if (mobileDebugBody) {
+        mobileDebugBody.style.display = debugCollapsed ? 'none' : 'grid';
+      }
+    };
+
     // Convert VAPID key to Uint8Array
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -483,7 +732,7 @@
       }
       return outputArray;
     }
-    
+
     // Update step indicator UI
     function updateStep(stepId, status) {
       const step = document.getElementById(stepId);
@@ -491,37 +740,37 @@
       if (status === 'complete') step.classList.add('complete');
       else if (status === 'active') step.classList.add('active');
     }
-    
+
     // Check browser status
-    window.checkBrowserStatus = async function() {
+    window.checkBrowserStatus = async function () {
       const statusDiv = document.getElementById('browserStatus');
       const statusPill = document.getElementById('statusPill');
       statusDiv.className = 'status visible info';
       statusDiv.textContent = '⏳ Verifica in corso...';
-      
+
       const results = [];
-      
+
       // Step 1: Push API
       updateStep('step1', 'active');
       const hasPushAPI = 'PushManager' in window;
       updateStep('step1', hasPushAPI ? 'complete' : '');
       results.push(`Push API: ${hasPushAPI ? '✅' : '❌'}`);
       log(`Push API: ${hasPushAPI}`);
-      
+
       // Step 2: Service Worker
       updateStep('step2', 'active');
       const hasSW = 'serviceWorker' in navigator;
       updateStep('step2', hasSW ? 'complete' : '');
       results.push(`Service Worker: ${hasSW ? '✅' : '❌'}`);
       log(`Service Worker: ${hasSW}`);
-      
+
       // Step 3: Notification permission
       updateStep('step3', 'active');
       const permission = 'Notification' in window ? Notification.permission : 'unsupported';
       updateStep('step3', permission === 'granted' ? 'complete' : '');
       results.push(`Permesso: ${permission === 'granted' ? '✅' : permission === 'denied' ? '❌' : '⚠️'} ${permission}`);
       log(`Permesso notifiche: ${permission}`);
-      
+
       // Step 4: Subscription
       updateStep('step4', 'active');
       let hasSubscription = false;
@@ -532,40 +781,40 @@
           hasSubscription = !!sub;
           if (sub) log(`Endpoint: ${sub.endpoint.substring(0, 50)}...`);
         } catch (e) {
-          log(`Errore verifica subscription: ${e.message}`);
+          log(`Errore verifica subscription: ${e.message}`, 'error');
         }
       }
       updateStep('step4', hasSubscription ? 'complete' : '');
       results.push(`Subscription: ${hasSubscription ? '✅' : '⚠️'}`);
-      
+
       statusDiv.className = `status visible ${hasSubscription && permission === 'granted' ? 'success' : 'info'}`;
       statusDiv.innerHTML = results.join(' | ');
-      
+
       statusPill.className = hasPushAPI ? 'pill success' : 'pill error';
       statusPill.textContent = hasPushAPI ? '✓ Supportato' : '✗ Non supportato';
     };
-    
+
     // Subscribe to push notifications - SIMPLE LINEAR FLOW
-    window.subscribeToPush = async function() {
+    window.subscribeToPush = async function () {
       const statusDiv = document.getElementById('subscribeStatus');
       const playerSelect = document.getElementById('playerSelect');
       const subscribeBtn = document.getElementById('subscribeBtn');
-      
+
       const playerId = playerSelect.value;
       const playerName = playerSelect.options[playerSelect.selectedIndex]?.text;
-      
+
       // Validation
       if (!playerId) {
         statusDiv.className = 'status visible error';
         statusDiv.textContent = '❌ Seleziona un giocatore';
         return;
       }
-      
+
       subscribeBtn.disabled = true;
       statusDiv.className = 'status visible info';
       statusDiv.textContent = '⏳ Registrazione in corso...';
-      log(`Inizio registrazione per ${playerName} (ID: ${playerId})`);
-      
+      log(`Inizio registrazione per ${playerName} (ID: ${playerId})`, 'info');
+
       try {
         // 1. Check browser support
         if (!('serviceWorker' in navigator)) {
@@ -574,27 +823,27 @@
         if (!('PushManager' in window)) {
           throw new Error('Push API non supportata');
         }
-        log('Browser supportato ✓');
-        
+        log('Browser supportato ✓', 'success');
+
         // 2. Request notification permission
-        log('Richiesta permesso notifiche...');
+        log('Richiesta permesso notifiche...', 'info');
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
           throw new Error(`Permesso notifiche negato: ${permission}`);
         }
-        log('Permesso concesso ✓');
-        
+        log('Permesso concesso ✓', 'success');
+
         // 3. Wait for service worker
-        log('Attendo Service Worker...');
+        log('Attendo Service Worker...', 'info');
         const registration = await navigator.serviceWorker.ready;
-        log('Service Worker pronto ✓');
-        
+        log('Service Worker pronto ✓', 'success');
+
         // 4. Get or create subscription
-        log('Controllo subscription esistente...');
+        log('Controllo subscription esistente...', 'info');
         let subscription = await registration.pushManager.getSubscription();
-        
+
         if (!subscription) {
-          log('Creo nuova subscription...');
+          log('Creo nuova subscription...', 'info');
           if (!VAPID_PUBLIC_KEY) {
             throw new Error('VAPID_PUBLIC_KEY non configurata');
           }
@@ -604,16 +853,16 @@
           });
           log('Subscription creata ✓');
         } else {
-          log('Subscription esistente trovata ✓');
+          log('Subscription esistente trovata ✓', 'success');
         }
-        
-        log(`Endpoint: ${subscription.endpoint.substring(0, 60)}...`);
-        
+
+        log(`Endpoint: ${subscription.endpoint.substring(0, 60)}...`, 'info');
+
         // 5. Save to server
-        log('Invio al server...');
+        log('Invio al server...', 'info');
         const apiUrl = `${API_BASE_URL}/subscription`;
         log(`URL: ${apiUrl}`);
-        
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -623,37 +872,37 @@
             playerName: playerName
           })
         });
-        
-        log(`Risposta HTTP: ${response.status}`);
-        
+
+        log(`Risposta HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `HTTP ${response.status}`);
         }
-        
+
         const result = await response.json();
-        log(`Salvata: ${JSON.stringify(result)}`);
-        
+        log(`Salvata: ${JSON.stringify(result)}`, 'success');
+
         // 6. Save locally
         localStorage.setItem('biliardino_player_id', String(playerId));
         localStorage.setItem('biliardino_player_name', playerName);
         localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
-        
+
         statusDiv.className = 'status visible success';
         statusDiv.innerHTML = `✅ Notifiche attive per <strong>${playerName}</strong>`;
-        log('Registrazione completata ✓');
-        
+        log('Registrazione completata ✓', 'success');
+
         await checkBrowserStatus();
-        
+
       } catch (err) {
-        log(`ERRORE: ${err.message}`);
+        log(`ERRORE: ${err.message}`, 'error');
         statusDiv.className = 'status visible error';
         statusDiv.textContent = `❌ ${err.message}`;
       } finally {
         subscribeBtn.disabled = false;
       }
     };
-    
+
     // Build notification payload
     function buildPayload() {
       const title = document.getElementById('notifTitle').value || 'Notifica';
@@ -661,7 +910,7 @@
       const defaultActionUrl = document.getElementById('notifNavigate').value || '/';
       const lang = document.getElementById('notifLang').value || 'it-IT';
       const playerId = document.getElementById('playerSelect').value;
-      
+
       return {
         playerId: playerId || undefined,
         title: title,
@@ -683,70 +932,70 @@
         app_badge: 1
       };
     }
-    
+
     // Update payload preview
     function updatePayloadPreview() {
       document.getElementById('payloadPreview').textContent = JSON.stringify(buildPayload(), null, 2);
     }
-    
+
     // Send test notification
-    window.sendTestNotification = async function() {
+    window.sendTestNotification = async function () {
       const statusDiv = document.getElementById('sendStatus');
       const sendBtn = document.getElementById('sendTestBtn');
       const playerId = document.getElementById('playerSelect').value;
-      
+
       if (!playerId) {
         statusDiv.className = 'status visible error';
         statusDiv.textContent = '❌ Seleziona un giocatore';
         return;
       }
-      
+
       sendBtn.disabled = true;
       statusDiv.className = 'status visible info';
       statusDiv.textContent = '⏳ Invio notifica...';
-      log('Invio notifica di test...');
-      
+      log('Invio notifica di test...', 'info');
+
       try {
         const payload = buildPayload();
-        log(`Payload: ${JSON.stringify(payload)}`);
-        
+        log(`Payload: ${JSON.stringify(payload)}`, 'info');
+
         const apiUrl = `${API_BASE_URL}/declarative-push`;
         log(`URL: ${apiUrl}`);
-        
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        
-        log(`Risposta HTTP: ${response.status}`);
-        
+
+        log(`Risposta HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `HTTP ${response.status}`);
         }
-        
+
         const result = await response.json();
-        log(`Risposta: ${JSON.stringify(result)}`);
-        
+        log(`Risposta: ${JSON.stringify(result)}`, 'success');
+
         statusDiv.className = 'status visible success';
         statusDiv.textContent = `✅ ${result.message || 'Notifica inviata!'}`;
-        
+
       } catch (err) {
-        log(`ERRORE: ${err.message}`);
+        log(`ERRORE: ${err.message}`, 'error');
         statusDiv.className = 'status visible error';
         statusDiv.textContent = `❌ ${err.message}`;
       } finally {
         sendBtn.disabled = false;
       }
     };
-    
+
     // Initialize page
     async function init() {
       log('Pagina inizializzata');
       log(`VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY ? 'presente' : 'MANCANTE'}`);
       log(`API_BASE_URL: ${API_BASE_URL || 'MANCANTE'}`);
-      
+
       // Load players
       try {
         const players = getAllPlayers();
@@ -757,21 +1006,21 @@
           option.textContent = player.name;
           playerSelect.appendChild(option);
         });
-        
+
         const savedId = localStorage.getItem('biliardino_player_id');
         if (savedId) playerSelect.value = savedId;
-        
+
         log(`Caricati ${players.length} giocatori`);
       } catch (err) {
         log(`Errore caricamento giocatori: ${err.message}`);
       }
-      
+
       document.addEventListener('input', updatePayloadPreview);
       updatePayloadPreview();
-      
+
       await checkBrowserStatus();
     }
-    
+
     init();
   </script>
 </body>
