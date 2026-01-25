@@ -211,6 +211,38 @@ h1 {
   color: #6e5a3f;
 }
 
+/* Notification settings link */
+.notification-settings-link {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+a.notification-btn {
+  color: white;
+  padding: 0.7rem 1.8rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2);
+}
+
+a.notification-btn:hover {
+  background: linear-gradient(135deg, #0056CC 0%, #003D99 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 28px rgba(0, 122, 255, 0.35);
+  border: 1px solid rgba(0, 122, 255, 0.5);
+}
+
 a.play-btn {
   color: white;
   padding: 0.8rem 2.5rem;
