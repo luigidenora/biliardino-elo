@@ -17,17 +17,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { playerId, title, body, actions } = req.body;
+    const {
+      playerId,
+      title,
+      body,
+      actions,
+      navigate,
+      dir,
+      lang,
+      tag,
+      image,
+      icon,
+      badge,
+      vibrate,
+      timestamp,
+      renotify,
+      silent,
+      requireInteraction,
+      data,
+      mutable
+    } = req.body;
 
     const name = playerId || 'Giocatore';
     const notificationTitle = title || '✅ Test Notifica';
     const notificationBody = body || `Funziona! Ciao ${name} 👋`;
 
-    // Default actions if not provided
-    const notificationActions = actions || [
-      { action: 'accept', title: 'Accetta', icon: '/icons/icon-192.jpg' },
-      { action: 'ignore', title: 'Ignora', icon: '/icons/icon-192.jpg' }
-    ];
+    // (actions defaulting handled per-subscription below)
 
     const { blobs } = await list({
       prefix: `${playerId}-subs/`,
@@ -43,23 +58,50 @@ export default async function handler(req, res) {
       const response = await fetch(blob.url);
       const { subscription } = await response.json();
 
-      const navigateUrl = '/';
+      const notificationNavigate = (typeof navigate === 'string' && navigate) ? navigate : '/';
+
+      const notification = {
+        title: notificationTitle,
+        navigate: notificationNavigate
+      };
+
+      if (typeof dir === 'string' && ['auto', 'ltr', 'rtl'].includes(dir)) notification.dir = dir;
+      if (typeof lang === 'string') notification.lang = lang;
+      if (typeof notificationBody === 'string') notification.body = notificationBody;
+      if (typeof tag === 'string') notification.tag = tag;
+      if (typeof image === 'string') notification.image = image;
+      if (typeof icon === 'string') notification.icon = icon;
+      if (typeof badge === 'string') notification.badge = badge;
+      if (Array.isArray(vibrate) && vibrate.every(v => Number.isInteger(v) && v >= 0 && v <= 0xFFFFFFFF)) notification.vibrate = vibrate;
+      if (typeof timestamp === 'number' && Number.isFinite(timestamp) && timestamp >= 0) notification.timestamp = Math.floor(timestamp);
+      if (typeof renotify === 'boolean') notification.renotify = renotify;
+      if (typeof silent === 'boolean') notification.silent = silent;
+      if (typeof requireInteraction === 'boolean') notification.requireInteraction = requireInteraction;
+      if (data !== undefined) notification.data = data;
+
+      const defaultActions = [
+        { action: 'accept', title: 'Accetta', icon: '/icons/icon-192.jpg', navigate: notificationNavigate },
+        { action: 'ignore', title: 'Ignora', icon: '/icons/icon-192.jpg', navigate: notificationNavigate }
+      ];
+
+      const sourceActions = Array.isArray(actions) ? actions : defaultActions;
+      const validActions = [];
+      for (const a of sourceActions) {
+        const hasAction = typeof a?.action === 'string' && a.action;
+        const hasTitle = typeof a?.title === 'string' && a.title;
+        const nav = typeof a?.navigate === 'string' && a.navigate ? a.navigate : notificationNavigate;
+        if (!hasAction || !hasTitle || !nav) continue;
+        const actionObj = { action: a.action, title: a.title, navigate: nav };
+        if (typeof a.icon === 'string') actionObj.icon = a.icon;
+        validActions.push(actionObj);
+      }
+      if (validActions.length) notification.actions = validActions;
 
       const payload = {
-        // Declarative Web Push (Safari/WebKit) - iOS 18.4+ standard
         web_push: 8030,
-        notification: {
-          title: notificationTitle,
-          body: notificationBody,
-          icon: '/icons/icon-192.jpg',
-          badge: '/icons/icon-192.jpg',
-          tag: 'test',
-          requireInteraction: true,
-          actions: notificationActions
-        },
-        navigate: navigateUrl,
-        app_badge: 1
+        notification
       };
+      if (typeof mutable === 'boolean') payload.mutable = mutable;
 
       await webpush.sendNotification(
         subscription,

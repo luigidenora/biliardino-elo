@@ -72,72 +72,84 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-self.addEventListener('push', async (event) => {
-  let title, options, fullData;
+function toAbsoluteUrl(url) {
   try {
-    fullData = event.data.json();
-    /* DEBUG SU IPHONE  */ alert('Push received: ' + JSON.stringify(fullData));
-    ({ notification } = fullData);
-    options = notification || {};
-    title = notification.title;
-  } catch (exception) {
-    /* DEBUG SU IPHONE  */ alert('Push event data parsing error: ' + exception.message);
+    return new URL(url, self.location.origin).toString();
+  } catch (_) {
+    return self.location.origin + '/';
   }
-  try {
+}
+
+self.addEventListener('push', (event) => {
+  const show = async () => {
+    let data;
+    try {
+      data = event.data ? event.data.json() : null;
+    } catch (_) {
+      data = null;
+    }
+
+    // Support both declarative payload wrapper and mutable direct notification
+    const isDeclarative = data && data.web_push === 8030 && data.notification;
+    const notif = isDeclarative ? data.notification : data;
+
+    // Build NotificationOptions and carry navigate(s) via data for click handling
+    let title = 'Notifica';
+    let options = {};
+    if (notif && typeof notif === 'object' && typeof notif.title === 'string') {
+      title = notif.title;
+      options = { ...notif };
+      delete options.title;
+
+      const navigate = typeof notif.navigate === 'string' ? notif.navigate : '/';
+      const absNavigate = toAbsoluteUrl(navigate);
+      options.data = { ...(options.data || {}), navigate: absNavigate };
+
+      if (Array.isArray(notif.actions)) {
+        const actionNavigations = {};
+        options.actions = notif.actions
+          .filter(a => a && typeof a.action === 'string' && typeof a.title === 'string')
+          .map(a => {
+            const icon = typeof a.icon === 'string' ? a.icon : undefined;
+            const act = { action: a.action, title: a.title };
+            if (icon) act.icon = icon;
+            // store per-action navigate for click handler
+            const nav = typeof a.navigate === 'string' ? a.navigate : navigate;
+            actionNavigations[a.action] = toAbsoluteUrl(nav);
+            return act;
+          });
+        options.data.actionNavigations = actionNavigations;
+      }
+    }
+
     await self.registration.showNotification(title, options);
-    /* DEBUG SU IPHONE  */ alert('Notification displayed successfully');
-  } catch (e) {
-    /* DEBUG SU IPHONE  */ alert('Notification display error: ' + e.message);
-  }
-
-  // const data = event.data?.json() || {};
-
-  // const title = data.title || 'CAlcio Balilla';
-  // const options = {
-  //   body: data.body || 'Hai una nuova notifica!',
-  //   icon: '/biliardino-elo/icons/icon-192.jpg',
-  //   badge: '/biliardino-elo/icons/icon-192-maskable.png',
-  //   data: {
-  //     url: data.url || '/biliardino-elo/',
-  //     actionData: data.actionData || {}
-  //   },
-  //   tag: data.tag || 'default',
-  //   requireInteraction: data.requireInteraction || false,
-  //   actions: data.actions || []
-  // };
-
-  // event.waitUntil(self.registration.showNotification(title, options));
+  };
+  event.waitUntil(show());
 });
 
-// self.addEventListener('notificationclick', (event) => {
-//   event.notification.close();
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const action = event.action;
+  const data = event.notification.data || {};
+  const actionNavs = data.actionNavigations || {};
+  const fallbackNav = data.navigate || '/';
+  const targetUrl = toAbsoluteUrl(action ? (actionNavs[action] || fallbackNav) : fallbackNav);
 
-//   const urlToOpen = event.notification.data?.url || '/biliardino-elo/';
-//   const action = event.action;
-
-//   // Handle action buttons
-//   if (action) {
-//     console.log('Notification action clicked:', action);
-
-//     // You can handle different actions here
-//     if (action === 'accept') {
-//       // Handle accept action
-//       event.waitUntil(
-//         clients.openWindow(urlToOpen + '?action=accept')
-//       );
-//     } else if (action === 'ignore') {
-//       // Handle ignore action - just close notification
-//       console.log('User ignored notification');
-//     } else {
-//       // Handle other custom actions
-//       event.waitUntil(
-//         clients.openWindow(urlToOpen + '?action=' + action)
-//       );
-//     }
-//   } else {
-//     // Default click behavior (no action button clicked)
-//     event.waitUntil(
-//       clients.openWindow(urlToOpen)
-//     );
-//   }
-// });
+  event.waitUntil(
+    (async () => {
+      const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of allClients) {
+        // If a client is already open on our origin, navigate it
+        try {
+          const url = new URL(client.url);
+          if (url.origin === self.location.origin) {
+            client.focus();
+            client.navigate(targetUrl);
+            return;
+          }
+        } catch (_) { }
+      }
+      await clients.openWindow(targetUrl);
+    })()
+  );
+});

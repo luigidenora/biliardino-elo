@@ -301,6 +301,10 @@
           <input type="text" id="title" value="Nuova partita disponibile" />
         </div>
         <div class="form-group">
+          <label for="navigate">Navigate URL</label>
+          <input type="text" id="navigate" value="/" placeholder="/matchmaking.html" />
+        </div>
+        <div class="form-group">
           <label for="playerSelect">Seleziona Giocatore</label>
           <select id="playerSelect" onchange="updatePayloadPreview()">
             <option value="">-- Seleziona un giocatore --</option>
@@ -311,9 +315,71 @@
           <label for="body">Messaggio</label>
           <textarea id="body">Sei stato selezionato per la prossima partita. Confermi la disponibilita?</textarea>
         </div>
+        <div class="grid">
+          <div class="form-group">
+            <label for="dir">Direzione testo</label>
+            <select id="dir">
+              <option value="">(default)</option>
+              <option value="auto">auto</option>
+              <option value="ltr">ltr</option>
+              <option value="rtl">rtl</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="lang">Lingua (es: it-IT)</label>
+            <input type="text" id="lang" placeholder="it-IT" />
+          </div>
+          <div class="form-group">
+            <label for="tag">Tag</label>
+            <input type="text" id="tag" placeholder="matchmaking" />
+          </div>
+        </div>
+        <div class="grid">
+          <div class="form-group">
+            <label for="icon">Icon</label>
+            <input type="text" id="icon" placeholder="/icons/icon-192.jpg" value="/icons/icon-192.jpg" />
+          </div>
+          <div class="form-group">
+            <label for="badge">Badge</label>
+            <input type="text" id="badge" placeholder="/icons/icon-192-maskable.png"
+              value="/icons/icon-192-maskable.png" />
+          </div>
+          <div class="form-group">
+            <label for="image">Image</label>
+            <input type="text" id="image" placeholder="https://.../image.jpg" />
+          </div>
+        </div>
         <div class="checkbox-group">
           <input type="checkbox" id="requireInteraction" checked />
           <label for="requireInteraction" style="margin: 0;">Richiedi interazione (sticky)</label>
+        </div>
+        <div class="grid">
+          <div class="checkbox-group">
+            <input type="checkbox" id="renotify" />
+            <label for="renotify" style="margin: 0;">Renotify</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="silent" />
+            <label for="silent" style="margin: 0;">Silenziosa</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="mutable" />
+            <label for="mutable" style="margin: 0;">Mutable (invia anche evento push)</label>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="form-group">
+            <label for="vibrate">Vibrate pattern (comma)</label>
+            <input type="text" id="vibrate" placeholder="100,50,100" />
+          </div>
+          <div class="form-group">
+            <label for="timestamp">Timestamp (ms epoch)</label>
+            <input type="number" id="timestamp" placeholder="Date.now()" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="data">Data (JSON qualsiasi)</label>
+          <textarea id="data" placeholder='{"foo":"bar"}'></textarea>
         </div>
       </div>
 
@@ -324,11 +390,15 @@
           <div class="action-item">
             <input type="text" placeholder="ID azione (es: accept)" value="accept" data-field="action" />
             <input type="text" placeholder="Titolo (es: Accetta)" value="Accetta" data-field="title" />
+            <input type="text" placeholder="Navigate URL (opzionale)" value="/matchmaking.html" data-field="navigate" />
+            <input type="text" placeholder="Icon URL (opzionale)" value="/icons/icon-192.jpg" data-field="icon" />
             <button type="button" onclick="removeAction(this)">✖</button>
           </div>
           <div class="action-item">
             <input type="text" placeholder="ID azione (es: ignore)" value="ignore" data-field="action" />
             <input type="text" placeholder="Titolo (es: Ignora)" value="Ignora" data-field="title" />
+            <input type="text" placeholder="Navigate URL (opzionale)" value="/" data-field="navigate" />
+            <input type="text" placeholder="Icon URL (opzionale)" value="/icons/icon-192.jpg" data-field="icon" />
             <button type="button" onclick="removeAction(this)">✖</button>
           </div>
         </div>
@@ -374,29 +444,77 @@
 
     function buildPayload() {
       const title = document.getElementById('title').value;
+      const navigate = document.getElementById('navigate').value || '/';
       const body = document.getElementById('body').value;
       const requireInteraction = document.getElementById('requireInteraction').checked;
+      const dir = document.getElementById('dir').value;
+      const lang = document.getElementById('lang').value;
+      const tag = document.getElementById('tag').value;
+      const icon = document.getElementById('icon').value;
+      const badge = document.getElementById('badge').value;
+      const image = document.getElementById('image').value;
+      const renotify = document.getElementById('renotify').checked;
+      const silent = document.getElementById('silent').checked;
+      const mutable = document.getElementById('mutable').checked;
+      const vibrateRaw = document.getElementById('vibrate').value;
+      const timestampRaw = document.getElementById('timestamp').value;
+      const dataRaw = document.getElementById('data').value;
 
       const actions = [];
       document.querySelectorAll('.action-item').forEach(item => {
         const actionId = item.querySelector('[data-field="action"]').value;
         const actionTitle = item.querySelector('[data-field="title"]').value;
+        const actionNavigate = item.querySelector('[data-field="navigate"]')?.value;
+        const actionIcon = item.querySelector('[data-field="icon"]')?.value;
         if (actionId && actionTitle) {
-          actions.push({
-            action: actionId,
-            title: actionTitle,
-            icon: '/icons/icon-192.jpg'
-          });
+          const a = { action: actionId, title: actionTitle };
+          if (actionNavigate) a.navigate = actionNavigate;
+          if (actionIcon) a.icon = actionIcon;
+          actions.push(a);
         }
       });
 
       const playerId = document.getElementById('playerSelect').value; // Get selected player ID
 
+      // parse vibrate
+      let vibrate;
+      if (vibrateRaw && typeof vibrateRaw === 'string') {
+        const arr = vibrateRaw.split(/[,\s]+/).filter(Boolean).map(n => Number(n)).filter(n => Number.isInteger(n) && n >= 0);
+        if (arr.length) vibrate = arr;
+      }
+
+      // parse timestamp
+      let timestamp = undefined;
+      if (timestampRaw) {
+        const t = Number(timestampRaw);
+        if (Number.isFinite(t) && t >= 0) timestamp = Math.floor(t);
+      }
+
+      // parse data JSON if possible; otherwise send as string
+      let data;
+      if (dataRaw) {
+        try { data = JSON.parse(dataRaw); } catch { data = dataRaw; }
+      }
+
       return {
-        playerId: playerId,
+        playerId,
         title,
+        navigate,
         body,
-        actions: actions.length > 0 ? actions : undefined
+        dir: dir || undefined,
+        lang: lang || undefined,
+        tag: tag || undefined,
+        icon: icon || undefined,
+        badge: badge || undefined,
+        image: image || undefined,
+        vibrate,
+        timestamp,
+        renotify,
+        silent,
+        requireInteraction,
+        data,
+        actions: actions.length > 0 ? actions : undefined,
+        mutable
       };
     }
 
@@ -407,6 +525,8 @@
       actionItem.innerHTML = `
         <input type="text" placeholder="ID azione" data-field="action" />
         <input type="text" placeholder="Titolo" data-field="title" />
+        <input type="text" placeholder="Navigate URL (opzionale)" data-field="navigate" />
+        <input type="text" placeholder="Icon URL (opzionale)" value="/icons/icon-192.jpg" data-field="icon" />
         <button type="button" onclick="removeAction(this)">✖</button>
       `;
       container.appendChild(actionItem);
