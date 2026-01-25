@@ -7,9 +7,37 @@ import { getRegisteredPlayerName } from './utils/notification-status.util';
  * Inizializza il servizio di notifiche push
  */
 export function initNotification(): void {
+  subscribeToDeclarativePushIfSupported().catch(err => {
+    alert('Errore durante la sottoscrizione a Declarative Web Push: ' + (err instanceof Error ? err.message : 'Errore sconosciuto'));
+  });
   initNotificationButton();
 }
 
+
+async function subscribeToDeclarativePushIfSupported(): Promise<void> {
+  if (!isDeclarativePushSupported()) {
+    return;
+  }
+
+  alert('Browser con supporto a Declarative Web Push rilevato. Procedura di sottoscrizione in corso...');
+
+  try {
+    if (!VAPID_PUBLIC_KEY) {
+      throw new Error('Chiave VAPID mancante, contattare lo sviluppatore');
+    }
+    const pushManager = await getPushManager();
+    const existingSub = await pushManager.getSubscription();
+    if (!existingSub) {
+      await pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      alert('Sottoscrizione a Declarative Web Push completata con successo.');
+    }
+  } catch (err) {
+    throw err;
+  }
+}
 // Timer registry for auto-collapse of expanded button
 const collapseTimers = new Map<HTMLElement, number>();
 
