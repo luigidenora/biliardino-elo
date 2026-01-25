@@ -11,34 +11,7 @@ import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
  *
  * @see https://github.com/nickmasu/nickmasu/wiki/Declarative-Web-Push
  * @see https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/
- *
- * Key requirements:
- * - Content-Type: application/notification+json
- * - JSON structure with title, options, default_action_url
- * - Actions use 'url' property (not 'navigate')
- *
- * Payload format:
- * {
- *   "title": "Notification title",
- *   "options": {
- *     "body": "...",
- *     "icon": "...",
- *     "badge": "...",
- *     "tag": "...",
- *     "lang": "it-IT",
- *     "dir": "ltr",
- *     "silent": false,
- *     "requireInteraction": true,
- *     "data": {...},
- *     "actions": [
- *       { "action": "id", "title": "Label", "url": "/path" }
- *     ]
- *   },
- *   "default_action_url": "/path",
- *   "mutable": false,
- *   "app_badge": 1
- * }
- */
+  */
 
 // Verify environment configuration
 if (!process.env.VITE_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
@@ -156,29 +129,20 @@ export default async function handler(req, res) {
           console.warn(`Subscription mancante nel blob ${blob.pathname}`);
           continue;
         }
-
-        // WebKit Declarative Web Push payload
-        // See: https://github.com/nickmasu/nickmasu/wiki/Declarative-Web-Push
         const payload = {
-          title,
-          default_action_url
+          web_push: 8030,
+          notification: {
+            title,
+            body: builtOptions.body || '',
+            icon: builtOptions.icon || '/icons/icon-192.jpg',
+            badge: builtOptions.badge || '/icons/icon-192.jpg',
+            navigate: default_action_url,
+            lang: builtOptions.lang || 'it-IT',
+            dir: 'ltr',
+            silent: false,
+            app_badge: String(app_badge || 1)
+          }
         };
-
-        // Add options if we have any
-        if (Object.keys(builtOptions).length > 0) {
-          payload.options = builtOptions;
-        }
-
-        // mutable is optional, defaults to false (immutable)
-        if (typeof mutable === 'boolean') {
-          payload.mutable = mutable;
-        }
-
-        // app_badge is optional, limit to reasonable range (0-999)
-        if (typeof app_badge === 'number' && Number.isInteger(app_badge) && app_badge >= 0 && app_badge <= 999) {
-          payload.app_badge = app_badge;
-        }
-
         // Send with Content-Type: application/notification+json
         // This signals to Safari/WebKit that this is a declarative push
         await webpush.sendNotification(
