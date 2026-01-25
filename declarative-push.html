@@ -726,7 +726,7 @@
     window.debugPushManager = function () {
       const info = {
         'window.pushManager': typeof window.pushManager !== 'undefined' ? 'available' : 'not available',
-        'navigator.pushManager': typeof navigator.pushManager !== 'undefined' ? 'available' : 'not available', 
+        'navigator.pushManager': typeof navigator.pushManager !== 'undefined' ? 'available' : 'not available',
         'serviceWorker': 'serviceWorker' in navigator ? 'available' : 'not available',
         'iOS version': navigator.userAgent.match(/OS (\d+_\d+)/)?.[1]?.replace('_', '.') || 'N/A',
         'standalone mode': window.navigator.standalone === true ? 'yes' : 'no',

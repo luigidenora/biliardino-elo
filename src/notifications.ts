@@ -42,7 +42,7 @@ async function getPushManager(): Promise<PushManager> {
     return window.pushManager;
   }
 
-  // Fallback a ServiceWorker pushManager
+  // Fallback al ServiceWorker pushManager
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.ready;
     return reg.pushManager;
