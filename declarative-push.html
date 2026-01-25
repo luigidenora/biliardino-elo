@@ -744,59 +744,124 @@
     // Check if Safari/WebKit Declarative Push is available (navigator.pushManager without SW)
     function isDeclarativePushSupported() {
       // Safari 16+ exposes pushManager directly on navigator
-      return 'pushManager' in navigator && typeof navigator.pushManager?.subscribe === 'function';
+      const hasPushManagerOnNavigator = 'pushManager' in navigator;
+      const hasSubscribeMethod = typeof navigator.pushManager?.subscribe === 'function';
+      log(`[Detection] navigator.pushManager exists: ${hasPushManagerOnNavigator}`, 'info');
+      if (hasPushManagerOnNavigator) {
+        log(`[Detection] navigator.pushManager.subscribe is function: ${hasSubscribeMethod}`, 'info');
+      }
+      return hasPushManagerOnNavigator && hasSubscribeMethod;
     }
 
     // Ensure service worker is registered and ready (with timeout)
     async function ensureServiceWorker(timeoutMs = 10000) {
+      log('[SW] Inizio verifica Service Worker...', 'info');
+
       if (!('serviceWorker' in navigator)) {
+        log('[SW] navigator.serviceWorker: NON PRESENTE', 'error');
         throw new Error('Service Worker non supportato');
+      }
+      log('[SW] navigator.serviceWorker: presente ✓', 'info');
+
+      // Check controller (currently active SW for this page)
+      const controller = navigator.serviceWorker.controller;
+      log(`[SW] Controller attivo: ${controller ? 'SI' : 'NO'}`, controller ? 'success' : 'info');
+      if (controller) {
+        log(`[SW] Controller state: ${controller.state}`, 'info');
+        log(`[SW] Controller scriptURL: ${controller.scriptURL}`, 'info');
       }
 
       // Check if there's already an active registration
+      log('[SW] Controllo registrazioni esistenti...', 'info');
       const existingReg = await navigator.serviceWorker.getRegistration();
-      if (existingReg?.active) {
-        log('SW già registrato e attivo ✓', 'success');
-        return existingReg;
+      if (existingReg) {
+        log(`[SW] Registrazione trovata - scope: ${existingReg.scope}`, 'info');
+        log(`[SW] installing: ${existingReg.installing ? 'SI' : 'NO'}`, 'info');
+        log(`[SW] waiting: ${existingReg.waiting ? 'SI' : 'NO'}`, 'info');
+        log(`[SW] active: ${existingReg.active ? 'SI' : 'NO'}`, 'info');
+        if (existingReg.active) {
+          log(`[SW] Active state: ${existingReg.active.state}`, 'info');
+          log('[SW] Uso registrazione esistente ✓', 'success');
+          return existingReg;
+        }
+      } else {
+        log('[SW] Nessuna registrazione trovata', 'info');
       }
 
       // Register the service worker
-      log('Registro Service Worker...', 'info');
+      log('[SW] Registro nuovo Service Worker...', 'info');
       const baseUrl = import.meta.env.BASE_URL || '/';
+      const swUrl = `${baseUrl}sw.js`;
+      log(`[SW] URL: ${swUrl}`, 'info');
+      log(`[SW] Scope: ${baseUrl}`, 'info');
+
       try {
-        const reg = await navigator.serviceWorker.register(`${baseUrl}sw.js`, { scope: baseUrl });
-        log(`SW registrato (stato: ${reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'unknown'})`, 'info');
+        const reg = await navigator.serviceWorker.register(swUrl, { scope: baseUrl });
+        log(`[SW] Registrazione completata!`, 'success');
+        log(`[SW] Stato post-registrazione:`, 'info');
+        log(`[SW]   - installing: ${reg.installing ? `SI (state: ${reg.installing.state})` : 'NO'}`, 'info');
+        log(`[SW]   - waiting: ${reg.waiting ? `SI (state: ${reg.waiting.state})` : 'NO'}`, 'info');
+        log(`[SW]   - active: ${reg.active ? `SI (state: ${reg.active.state})` : 'NO'}`, 'info');
       } catch (regErr) {
-        log(`Errore registrazione SW: ${regErr.message}`, 'error');
+        log(`[SW] ERRORE registrazione: ${regErr.message}`, 'error');
+        log(`[SW] Stack: ${regErr.stack}`, 'error');
         throw regErr;
       }
 
       // Wait for ready with timeout
-      log(`Attendo SW ready (timeout ${timeoutMs / 1000}s)...`, 'info');
+      log(`[SW] Attendo .ready (timeout ${timeoutMs / 1000}s)...`, 'info');
+      const startTime = Date.now();
+
       const registration = await withTimeout(
         navigator.serviceWorker.ready,
         timeoutMs,
         `Service Worker non pronto dopo ${timeoutMs / 1000}s. Ricarica la pagina.`
       );
-      log('SW ready ✓', 'success');
+
+      const elapsed = Date.now() - startTime;
+      log(`[SW] Ready in ${elapsed}ms ✓`, 'success');
+      log(`[SW] Active worker state: ${registration.active?.state}`, 'info');
       return registration;
     }
 
     // Get PushManager - works on both iOS (direct) and Android (via SW)
     async function getPushManager() {
-      // Safari/iOS: use navigator.pushManager directly (Declarative Web Push)
-      if (isDeclarativePushSupported()) {
-        log('Uso navigator.pushManager (Safari/iOS) ✓', 'success');
+      log('[PushManager] Inizio rilevamento...', 'info');
+
+      // Check window.PushManager
+      const hasPushManagerClass = 'PushManager' in window;
+      log(`[PushManager] window.PushManager: ${hasPushManagerClass ? 'SI' : 'NO'}`, hasPushManagerClass ? 'info' : 'error');
+
+      // Check navigator.pushManager (Safari/iOS Declarative Push)
+      log('[PushManager] Controllo Declarative Push (Safari/iOS)...', 'info');
+      const isDeclarative = isDeclarativePushSupported();
+
+      if (isDeclarative) {
+        log('[PushManager] ✓ Declarative Push disponibile!', 'success');
+        log('[PushManager] Uso navigator.pushManager diretto (no SW richiesto)', 'success');
         return { pushManager: navigator.pushManager, mode: 'declarative' };
       }
 
+      log('[PushManager] Declarative Push non disponibile, provo via SW...', 'info');
+
       // Android/Chrome: use service worker's pushManager
-      if (!('PushManager' in window)) {
+      if (!hasPushManagerClass) {
+        log('[PushManager] ERRORE: Push API non supportata', 'error');
         throw new Error('Push API non supportata');
       }
 
+      log('[PushManager] Avvio ensureServiceWorker()...', 'info');
       const registration = await ensureServiceWorker();
-      log('Uso SW pushManager (Android/Chrome) ✓', 'success');
+
+      // Verify pushManager on registration
+      const hasPM = !!registration.pushManager;
+      log(`[PushManager] registration.pushManager: ${hasPM ? 'SI' : 'NO'}`, hasPM ? 'success' : 'error');
+
+      if (!hasPM) {
+        throw new Error('PushManager non disponibile sulla registrazione SW');
+      }
+
+      log('[PushManager] ✓ Uso SW pushManager (Android/Chrome)', 'success');
       return { pushManager: registration.pushManager, mode: 'standard' };
     }
 
