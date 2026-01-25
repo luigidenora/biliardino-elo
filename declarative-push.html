@@ -360,7 +360,7 @@
       
       <div class="step-indicator" id="step2">
         <div class="step-number">2</div>
-        <div class="step-text">Verifica <code>navigator.pushManager</code> (Declarative Push)</div>
+        <div class="step-text">Verifica Service Worker</div>
       </div>
       
       <div class="step-indicator" id="step3">
@@ -452,12 +452,12 @@
   <script type="module">
     import { getAllPlayers } from '/src/services/player.service.ts';
     
-    // VAPID key from environment
+    // Configuration - get from environment
     const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
     
-    // Debug logging
-    function log(message, type = 'info') {
+    // Debug logging utility
+    function log(message) {
       const debugLog = document.getElementById('debugLog');
       const time = new Date().toLocaleTimeString('it-IT');
       const entry = document.createElement('div');
@@ -465,15 +465,14 @@
       entry.innerHTML = `<span class="debug-time">[${time}]</span> ${message}`;
       debugLog.appendChild(entry);
       debugLog.scrollTop = debugLog.scrollHeight;
-      console.log(`[DeclarativePush] ${message}`);
+      console.log(`[Push] ${message}`);
     }
     
     window.clearDebugLog = function() {
-      const debugLog = document.getElementById('debugLog');
-      debugLog.innerHTML = '<div class="debug-entry"><span class="debug-time">[--:--:--]</span> Log pulito</div>';
+      document.getElementById('debugLog').innerHTML = '<div class="debug-entry"><span class="debug-time">[--:--:--]</span> Log pulito</div>';
     };
     
-    // Utility: Convert VAPID key to Uint8Array
+    // Convert VAPID key to Uint8Array
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
       const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -485,118 +484,68 @@
       return outputArray;
     }
     
-    // Check if Declarative Web Push is supported (navigator.pushManager)
-    // WebKit/Safari exposes pushManager on navigator for declarative push
-    function isDeclarativePushSupported() {
-      return typeof navigator !== 'undefined' && 'pushManager' in navigator && !!navigator.pushManager;
-    }
-    
-    // Check if traditional SW-based push is supported
-    function isServiceWorkerPushSupported() {
-      return 'serviceWorker' in navigator && 'PushManager' in window;
-    }
-    
-    // Get the appropriate PushManager
-    async function getPushManager() {
-      if (isDeclarativePushSupported()) {
-        log('Usando navigator.pushManager (Declarative Web Push - WebKit)');
-        return navigator.pushManager;
-      }
-      
-      if (isServiceWorkerPushSupported()) {
-        log('Usando Service Worker pushManager (legacy)');
-        const reg = await navigator.serviceWorker.ready;
-        return reg.pushManager;
-      }
-      
-      throw new Error('Push API non supportata su questo browser');
-    }
-    
-    // Update step indicator
+    // Update step indicator UI
     function updateStep(stepId, status) {
       const step = document.getElementById(stepId);
       step.classList.remove('complete', 'active');
-      if (status === 'complete') {
-        step.classList.add('complete');
-      } else if (status === 'active') {
-        step.classList.add('active');
-      }
+      if (status === 'complete') step.classList.add('complete');
+      else if (status === 'active') step.classList.add('active');
     }
     
     // Check browser status
     window.checkBrowserStatus = async function() {
       const statusDiv = document.getElementById('browserStatus');
       const statusPill = document.getElementById('statusPill');
-      
       statusDiv.className = 'status visible info';
       statusDiv.textContent = '⏳ Verifica in corso...';
       
       const results = [];
       
-      // Step 1: Push API support
+      // Step 1: Push API
       updateStep('step1', 'active');
-      const hasPushAPI = 'PushManager' in window || isDeclarativePushSupported();
+      const hasPushAPI = 'PushManager' in window;
       updateStep('step1', hasPushAPI ? 'complete' : '');
-      results.push(`Push API: ${hasPushAPI ? '✅ Supportata' : '❌ Non supportata'}`);
-      log(`Push API supportata: ${hasPushAPI}`);
+      results.push(`Push API: ${hasPushAPI ? '✅' : '❌'}`);
+      log(`Push API: ${hasPushAPI}`);
       
-      // Step 2: Declarative Push (window.pushManager)
+      // Step 2: Service Worker
       updateStep('step2', 'active');
-      const hasDeclarative = isDeclarativePushSupported();
-      updateStep('step2', hasDeclarative ? 'complete' : '');
-      results.push(`Declarative Push (navigator.pushManager): ${hasDeclarative ? '✅ Disponibile' : '⚠️ Non disponibile (userà Service Worker)'}`);
-      log(`Declarative Push (navigator.pushManager): ${hasDeclarative}`);
+      const hasSW = 'serviceWorker' in navigator;
+      updateStep('step2', hasSW ? 'complete' : '');
+      results.push(`Service Worker: ${hasSW ? '✅' : '❌'}`);
+      log(`Service Worker: ${hasSW}`);
       
       // Step 3: Notification permission
       updateStep('step3', 'active');
-      let permissionStatus = 'default';
-      if ('Notification' in window) {
-        permissionStatus = Notification.permission;
-      }
-      updateStep('step3', permissionStatus === 'granted' ? 'complete' : '');
-      results.push(`Permesso notifiche: ${permissionStatus === 'granted' ? '✅ Concesso' : permissionStatus === 'denied' ? '❌ Negato' : '⚠️ Non richiesto'}`);
-      log(`Permesso notifiche: ${permissionStatus}`);
+      const permission = 'Notification' in window ? Notification.permission : 'unsupported';
+      updateStep('step3', permission === 'granted' ? 'complete' : '');
+      results.push(`Permesso: ${permission === 'granted' ? '✅' : permission === 'denied' ? '❌' : '⚠️'} ${permission}`);
+      log(`Permesso notifiche: ${permission}`);
       
-      // Step 4: Active subscription
+      // Step 4: Subscription
       updateStep('step4', 'active');
       let hasSubscription = false;
-      try {
-        const pm = await getPushManager();
-        const sub = await pm.getSubscription();
-        hasSubscription = !!sub;
-        log(`Subscription trovata: ${hasSubscription}`);
-        if (sub) {
-          log(`Endpoint: ${sub.endpoint.substring(0, 50)}...`);
+      if (hasSW && hasPushAPI) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          hasSubscription = !!sub;
+          if (sub) log(`Endpoint: ${sub.endpoint.substring(0, 50)}...`);
+        } catch (e) {
+          log(`Errore verifica subscription: ${e.message}`);
         }
-      } catch (err) {
-        log(`Errore verifica subscription: ${err.message}`);
       }
       updateStep('step4', hasSubscription ? 'complete' : '');
-      results.push(`Subscription: ${hasSubscription ? '✅ Attiva' : '⚠️ Non attiva'}`);
+      results.push(`Subscription: ${hasSubscription ? '✅' : '⚠️'}`);
       
-      // Update status
-      const allGood = hasPushAPI && permissionStatus === 'granted' && hasSubscription;
-      statusDiv.className = `status visible ${allGood ? 'success' : 'info'}`;
-      statusDiv.innerHTML = results.join('<br>');
+      statusDiv.className = `status visible ${hasSubscription && permission === 'granted' ? 'success' : 'info'}`;
+      statusDiv.innerHTML = results.join(' | ');
       
-      // Update pill
-      if (hasDeclarative) {
-        statusPill.className = 'pill success';
-        statusPill.textContent = '✓ Safari/WebKit';
-      } else if (hasPushAPI) {
-        statusPill.className = 'pill warning';
-        statusPill.textContent = '⚡ Service Worker';
-      } else {
-        statusPill.className = 'pill error';
-        statusPill.textContent = '✗ Non supportato';
-      }
-      
-      // Additional info
-      log(`User Agent: ${navigator.userAgent}`);
-      log(`Standalone mode: ${window.matchMedia('(display-mode: standalone)').matches}`);
+      statusPill.className = hasPushAPI ? 'pill success' : 'pill error';
+      statusPill.textContent = hasPushAPI ? '✓ Supportato' : '✗ Non supportato';
     };
     
-    // Subscribe to push notifications
+    // Subscribe to push notifications - SIMPLE LINEAR FLOW
     window.subscribeToPush = async function() {
       const statusDiv = document.getElementById('subscribeStatus');
       const playerSelect = document.getElementById('playerSelect');
@@ -605,6 +554,7 @@
       const playerId = playerSelect.value;
       const playerName = playerSelect.options[playerSelect.selectedIndex]?.text;
       
+      // Validation
       if (!playerId) {
         statusDiv.className = 'status visible error';
         statusDiv.textContent = '❌ Seleziona un giocatore';
@@ -617,56 +567,64 @@
       log(`Inizio registrazione per ${playerName} (ID: ${playerId})`);
       
       try {
-        // Step 1: Request notification permission
+        // 1. Check browser support
+        if (!('serviceWorker' in navigator)) {
+          throw new Error('Service Worker non supportato');
+        }
+        if (!('PushManager' in window)) {
+          throw new Error('Push API non supportata');
+        }
+        log('Browser supportato ✓');
+        
+        // 2. Request notification permission
         log('Richiesta permesso notifiche...');
         const permission = await Notification.requestPermission();
-        log(`Permesso notifiche: ${permission}`);
-        
         if (permission !== 'granted') {
-          throw new Error(`Permesso notifiche: ${permission}`);
+          throw new Error(`Permesso notifiche negato: ${permission}`);
         }
+        log('Permesso concesso ✓');
         
-        // Step 2: Get PushManager
-        const pushManager = await getPushManager();
-        log('PushManager ottenuto');
+        // 3. Wait for service worker
+        log('Attendo Service Worker...');
+        const registration = await navigator.serviceWorker.ready;
+        log('Service Worker pronto ✓');
         
-        // Step 3: Check for existing subscription
-        let subscription = await pushManager.getSubscription();
-        log(`Subscription esistente: ${!!subscription}`);
+        // 4. Get or create subscription
+        log('Controllo subscription esistente...');
+        let subscription = await registration.pushManager.getSubscription();
         
-        // Step 4: Create new subscription if needed
         if (!subscription) {
-          log('Creazione nuova subscription...');
+          log('Creo nuova subscription...');
           if (!VAPID_PUBLIC_KEY) {
             throw new Error('VAPID_PUBLIC_KEY non configurata');
           }
-          
-          subscription = await pushManager.subscribe({
+          subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
           });
-          log('Nuova subscription creata');
+          log('Subscription creata ✓');
+        } else {
+          log('Subscription esistente trovata ✓');
         }
         
         log(`Endpoint: ${subscription.endpoint.substring(0, 60)}...`);
         
-        // Step 5: Save to server
-        log('Invio subscription al server...');
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        // 5. Save to server
+        log('Invio al server...');
+        const apiUrl = `${API_BASE_URL}/subscription`;
+        log(`URL: ${apiUrl}`);
         
-        const response = await fetch(`${API_BASE_URL}/subscription`, {
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             subscription: subscription.toJSON(),
             playerId: Number(playerId),
-            playerName
-          }),
-          signal: controller.signal
+            playerName: playerName
+          })
         });
         
-        clearTimeout(timeoutId);
+        log(`Risposta HTTP: ${response.status}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -674,29 +632,29 @@
         }
         
         const result = await response.json();
-        log(`Subscription salvata: ${JSON.stringify(result)}`);
+        log(`Salvata: ${JSON.stringify(result)}`);
         
-        // Save to localStorage
+        // 6. Save locally
         localStorage.setItem('biliardino_player_id', String(playerId));
         localStorage.setItem('biliardino_player_name', playerName);
         localStorage.setItem('biliardino_subscription', JSON.stringify(subscription.toJSON()));
         
         statusDiv.className = 'status visible success';
         statusDiv.innerHTML = `✅ Notifiche attive per <strong>${playerName}</strong>`;
+        log('Registrazione completata ✓');
         
-        // Refresh status
         await checkBrowserStatus();
         
       } catch (err) {
-        log(`Errore: ${err.message}`);
+        log(`ERRORE: ${err.message}`);
         statusDiv.className = 'status visible error';
-        statusDiv.textContent = `❌ Errore: ${err.message}`;
+        statusDiv.textContent = `❌ ${err.message}`;
       } finally {
         subscribeBtn.disabled = false;
       }
     };
     
-    // Build WebKit compliant declarative push payload
+    // Build notification payload
     function buildPayload() {
       const title = document.getElementById('notifTitle').value || 'Notifica';
       const body = document.getElementById('notifBody').value || '';
@@ -704,56 +662,38 @@
       const lang = document.getElementById('notifLang').value || 'it-IT';
       const playerId = document.getElementById('playerSelect').value;
       
-      // WebKit Declarative Web Push format
-      // See: https://github.com/nickmasu/nickmasu/wiki/Declarative-Web-Push
       return {
         playerId: playerId || undefined,
-        // Required fields
-        title,
+        title: title,
         default_action_url: defaultActionUrl,
-        // Optional options object (NotificationOptions)
         options: {
-          body,
-          lang,
+          body: body,
+          lang: lang,
           dir: 'ltr',
           icon: '/icons/icon-192.jpg',
           badge: '/icons/icon-192-maskable.png',
-          tag: `declarative-${Date.now()}`,
+          tag: `test-${Date.now()}`,
           requireInteraction: true,
-          // Actions must have 'url' property per WebKit spec
           actions: [
-            {
-              action: 'accept',
-              title: '✅ Accetta',
-              url: defaultActionUrl
-            },
-            {
-              action: 'ignore', 
-              title: '❌ Ignora',
-              url: '/'
-            }
+            { action: 'accept', title: '✅ Accetta', url: defaultActionUrl },
+            { action: 'ignore', title: '❌ Ignora', url: '/' }
           ]
         },
-        // Optional: mutable allows SW to transform notification
         mutable: false,
-        // Optional: app badge count
         app_badge: 1
       };
     }
     
     // Update payload preview
     function updatePayloadPreview() {
-      const payload = buildPayload();
-      document.getElementById('payloadPreview').textContent = JSON.stringify(payload, null, 2);
+      document.getElementById('payloadPreview').textContent = JSON.stringify(buildPayload(), null, 2);
     }
     
     // Send test notification
     window.sendTestNotification = async function() {
       const statusDiv = document.getElementById('sendStatus');
       const sendBtn = document.getElementById('sendTestBtn');
-      const playerSelect = document.getElementById('playerSelect');
-      
-      const playerId = playerSelect.value;
+      const playerId = document.getElementById('playerSelect').value;
       
       if (!playerId) {
         statusDiv.className = 'status visible error';
@@ -764,17 +704,22 @@
       sendBtn.disabled = true;
       statusDiv.className = 'status visible info';
       statusDiv.textContent = '⏳ Invio notifica...';
-      log('Invio notifica dichiarativa di test...');
+      log('Invio notifica di test...');
       
       try {
         const payload = buildPayload();
         log(`Payload: ${JSON.stringify(payload)}`);
         
-        const response = await fetch(`${API_BASE_URL}/declarative-push`, {
+        const apiUrl = `${API_BASE_URL}/declarative-push`;
+        log(`URL: ${apiUrl}`);
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+        
+        log(`Risposta HTTP: ${response.status}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -788,23 +733,24 @@
         statusDiv.textContent = `✅ ${result.message || 'Notifica inviata!'}`;
         
       } catch (err) {
-        log(`Errore: ${err.message}`);
+        log(`ERRORE: ${err.message}`);
         statusDiv.className = 'status visible error';
-        statusDiv.textContent = `❌ Errore: ${err.message}`;
+        statusDiv.textContent = `❌ ${err.message}`;
       } finally {
         sendBtn.disabled = false;
       }
     };
     
-    // Initialize
+    // Initialize page
     async function init() {
       log('Pagina inizializzata');
+      log(`VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY ? 'presente' : 'MANCANTE'}`);
+      log(`API_BASE_URL: ${API_BASE_URL || 'MANCANTE'}`);
       
       // Load players
       try {
         const players = getAllPlayers();
         const playerSelect = document.getElementById('playerSelect');
-        
         players.sort((a, b) => a.name.localeCompare(b.name)).forEach(player => {
           const option = document.createElement('option');
           option.value = player.id;
@@ -812,22 +758,17 @@
           playerSelect.appendChild(option);
         });
         
-        // Pre-select if saved
         const savedId = localStorage.getItem('biliardino_player_id');
-        if (savedId) {
-          playerSelect.value = savedId;
-        }
+        if (savedId) playerSelect.value = savedId;
         
         log(`Caricati ${players.length} giocatori`);
       } catch (err) {
         log(`Errore caricamento giocatori: ${err.message}`);
       }
       
-      // Update payload preview on input
       document.addEventListener('input', updatePayloadPreview);
       updatePayloadPreview();
       
-      // Auto-check browser status
       await checkBrowserStatus();
     }
     
