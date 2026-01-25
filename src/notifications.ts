@@ -23,21 +23,22 @@ let easterEggClickCount = 0;
 let easterEggResetTimer: number | null = null;
 
 declare global {
-  // Safari exposes pushManager on window for Declarative Web Push
-  interface Window {
+  // Safari/WebKit exposes pushManager on navigator for Declarative Web Push
+  interface Navigator {
     pushManager?: PushManager;
   }
 }
 
 // Detect Declarative Web Push support (Safari/WebKit)
+// WebKit exposes pushManager on navigator, not window
 function isDeclarativePushSupported(): boolean {
-  return typeof window !== 'undefined' && 'pushManager' in window && !!window.pushManager;
+  return typeof navigator !== 'undefined' && 'pushManager' in navigator && !!navigator.pushManager;
 }
 
-// Normalize PushManager retrieval: use window.pushManager on WebKit, SW registration elsewhere
+// Normalize PushManager retrieval: use navigator.pushManager on WebKit, SW registration elsewhere
 async function getPushManager(): Promise<PushManager> {
   if (isDeclarativePushSupported()) {
-    return window.pushManager as PushManager;
+    return navigator.pushManager as PushManager;
   }
 
   if (('serviceWorker' in navigator)) {
@@ -381,7 +382,7 @@ function handleEasterEggClick(button: HTMLElement): void {
     button.setAttribute('data-tooltip', `${remaining} click rimanenti...`);
   }
 
-  // Navigate to test page after 6 clicks
+  // Navigate to declarative push test page after 6 clicks
   if (easterEggClickCount === 6) {
     easterEggClickCount = 0;
     if (easterEggResetTimer !== null) {
@@ -389,8 +390,8 @@ function handleEasterEggClick(button: HTMLElement): void {
       easterEggResetTimer = null;
     }
 
-    // Navigate directly without confirmation
-    window.location.href = `${BASE_PATH}test-notifications.html`;
+    // Navigate to declarative push page
+    window.location.href = `${BASE_PATH}declarative-push.html`;
   }
 }
 
