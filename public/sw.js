@@ -19,8 +19,16 @@ const CORE_ASSETS = [
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installato');
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(CORE_ASSETS))
+      .then(() => {
+        console.log('[Service Worker] Cache completata, attivazione...');
+        return self.skipWaiting();
+      })
+      .catch(err => {
+        console.error('[Service Worker] ERRORE installazione:', err);
+        throw err; // Let installation fail visibly
+      })
   );
 });
 
@@ -32,7 +40,14 @@ self.addEventListener('activate', (event) => {
       .then(keys =>
         Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
       )
-      .then(() => clients.claim())
+      .then(() => {
+        console.log('[Service Worker] Cache pulita, assumo controllo...');
+        return clients.claim();
+      })
+      .catch(err => {
+        console.error('[Service Worker] ERRORE attivazione:', err);
+        throw err;
+      })
   );
 });
 
