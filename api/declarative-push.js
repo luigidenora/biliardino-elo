@@ -132,6 +132,20 @@ export default async function handler(req, res) {
           "title": "Nuovo Aggiornamento ELO",
           "body": "È stata registrata una nuova partita nel torneo.",
           "icon": "https://luigidenora.github.io/biliardino-elo/icons/icon-192.jpg",
+          "actions": [
+            {
+              "action": "accept",
+              "title": "Accetta",
+              "navigate": "https://luigidenora.github.io/biliardino-elo/confirm?status=ok",
+              "icon": "https://luigidenora.github.io/biliardino-elo/icons/check.png"
+            },
+            {
+              "action": "decline",
+              "title": "Rifiuta",
+              "navigate": "https://luigidenora.github.io/biliardino-elo/confirm?status=no"
+            }
+          ],
+
           // Il campo 'navigate' è obbligatorio nel modello dichiarativo [5, 6, 10]
           "navigate": "https://luigidenora.github.io/biliardino-elo/index.html",
           "app_badge": "1" // Supportato nativamente su iOS 18.4+ [7, 11]
