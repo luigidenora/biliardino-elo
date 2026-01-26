@@ -1,65 +1,65 @@
 import styles from '../styles/notifications.module.css';
 import { API_BASE_URL, BASE_PATH, VAPID_PUBLIC_KEY } from './config/env.config';
-import BANNER_TEMPLATE from './notification-banner.html?raw';
-import IOS_MODAL_TEMPLATE from './ios-notification-modal.html?raw';
+import IOS_PWA_INSTALL_BANNER_TEMPLATE from './pwa-ios-banner.html?raw';
 import { getAllPlayers } from './services/player.service';
 import { getRegisteredPlayerName } from './utils/notification-status.util';
+
 /**
- * Inizializza il servizio di notifiche push
+ * Subscribes a player to push notifications.
+ * 
+ * This function handles the complete push notification subscription flow:
+ * 1. Validates player data and browser support
+ * 2. Requests notification permission from the user
+ * 3. Gets or creates a push subscription
+ * 4. Registers the subscription with the backend API
+ * 5. Stores subscription data locally
+ * 
+ * @param playerId - The unique identifier of the player
+ * @param playerName - The name of the player
+ * @returns A promise that resolves to the PushSubscription object
+ * @throws {Error} If player data is missing
+ * @throws {Error} If VAPID public key is not configured
+ * @throws {Error} If push notifications are not supported by the browser
+ * @throws {Error} If notifications API is unavailable
+ * @throws {Error} If user denies notification permission
+ * @throws {Error} If subscription registration with the API fails
+ * 
  */
+export const subscribeToPushNotifications = async (playerId: number, playerName: string): Promise<PushSubscription> => {
+  if (!playerId || !playerName) throw new Error('Player data missing');
+  if (!VAPID_PUBLIC_KEY) throw new Error('VAPID public key missing');
+  if (!('PushManager' in window || navigator.pushManager)) throw new Error('Push not supported');
+
+  if (!('Notification' in window)) throw new Error('Notifications unavailable');
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') throw new Error('Notifications not granted');
+
+  localStorage.setItem(PLAYER_ID_KEY, String(playerId));
+  localStorage.setItem(PLAYER_NAME_KEY, playerName);
+
+  const pushManager = await getPushManager();
+  const existing = await pushManager.getSubscription();
+  const subscription = existing ?? await pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  });
+  const header = document.querySelector(`.${styles.notificationHeader}`);
+  if (header) header.classList.add(styles.loading);
+  const response = await fetch(`${API_BASE_URL}/subscription`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription, playerId, playerName })
+  });
+  if (header) header.classList.remove(styles.loading);
+  if (!response.ok) throw new Error('Subscription registration failed');
+
+  localStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(subscription));
+
+  return subscription;
+};
+
 export function initNotification(): void {
-  // NON sottoscrivere automaticamente su iOS - aspetta user gesture dalla modale
   initNotificationButton();
-}
-
-// LocalStorage key for iOS modal dismissal
-const IOS_MODAL_DISMISSED_KEY = 'biliardino_ios_modal_dismissed';
-
-// Timer registry for auto-collapse of expanded button
-const collapseTimers = new Map<HTMLElement, number>();
-
-// Easter egg counter for test notifications page access
-let easterEggClickCount = 0;
-let easterEggResetTimer: number | null = null;
-
-declare global {
-  // Safari/WebKit exposes pushManager on window for Declarative Web Push (iOS 18.4+)
-  interface Window {
-    pushManager?: PushManager;
-  }
-}
-
-// Detect Declarative Web Push support (Safari/WebKit)
-// WebKit exposes pushManager on window, not navigator (per WebKit paper)
-function isDeclarativePushSupported(): boolean {
-  return typeof window !== 'undefined' && 'pushManager' in window && !!window.pushManager;
-}
-
-// Normalize PushManager retrieval: use window.pushManager on WebKit, SW registration elsewhere
-async function getPushManager(): Promise<PushManager> {
-  // Priorità a window.pushManager (Declarative Web Push - iOS 18.4+)
-  if (typeof window !== 'undefined' && 'pushManager' in window && window.pushManager) {
-    return window.pushManager;
-  }
-
-  // Fallback al ServiceWorker pushManager
-  if ('serviceWorker' in navigator) {
-    const reg = await navigator.serviceWorker.ready;
-    return reg.pushManager;
-  }
-
-  throw new Error('PushManager non disponibile');
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
 }
 /**
  * Crea e gestisce il pulsante delle notifiche nell'header
@@ -142,21 +142,17 @@ function createNotificationButton(): HTMLElement {
     }
     const playerName = players.find(p => p.id === playerId)?.name || '';
 
-    // Su iOS con Declarative Web Push, mostra modale invece di sottoscrivere direttamente
-    if (isDeclarativePushSupported() && shouldShowIosModal()) {
+    try {
+      await subscribeToPushNotifications(playerId, playerName);
       collapseInlineSelect(button);
-      showIosNotificationModal(playerId, playerName);
-      return;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto';
+      alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
+      console.error('[Notifications]', err);
+      collapseInlineSelect(button);
     }
 
-    try {
-      await subscribeAndSave(playerId, playerName);
-      collapseInlineSelect(button);
-      updateButtonState();
-    } catch (err) {
-      console.error('Errore registrazione', err);
-      collapseInlineSelect(button);
-    }
+    updateButtonState();
   });
 
   inlineSelect.addEventListener('click', (e) => {
@@ -289,80 +285,6 @@ async function updateButtonState(): Promise<void> {
   button.setAttribute('data-tooltip', tooltipText);
 }
 
-async function subscribeAndSave(playerId: number, playerName: string): Promise<void> {
-  /* FOR DEBUG ON IPHONE: */ alert('Registrazione alle notifiche in corso...');
-  const declarativeSupported = isDeclarativePushSupported();
-
-  if (!declarativeSupported && !('serviceWorker' in navigator)) {
-    const errorMsg = 'Service workers non supportati su questo browser';
-    /* FOR DEBUG ON IPHONE: */ alert(errorMsg);
-    throw new Error(errorMsg);
-  }
-  /* FOR DEBUG ON IPHONE: */ alert(declarativeSupported ? 'Declarative Web Push disponibile' : 'Service workers supportati su questo browser');
-
-  // Save player selection immediately to differentiate selection vs subscription failure
-  localStorage.setItem('biliardino_player_id', String(playerId));
-  localStorage.setItem('biliardino_player_name', playerName);
-
-  try {
-    const pushManager = await getPushManager();
-    /* FOR DEBUG ON IPHONE: */ alert(declarativeSupported ? 'PushManager (window) pronto' : 'Service worker pronto');
-
-    if (!VAPID_PUBLIC_KEY) {
-      throw new Error('Chiave VAPID mancante, contattare lo sviluppatore');
-    }
-    /* FOR DEBUG ON IPHONE: */ alert('Chiave VAPID presente');
-    // Get or create push subscription
-    const existingSub = await pushManager.getSubscription();
-    const subscription = existingSub || await pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-    });
-    /* FOR DEBUG ON IPHONE: */ alert('Subscription ottenuta');
-    // Send subscription to server with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    /* FOR DEBUG ON IPHONE: */ alert('Invio subscription al server');
-    try {
-      const response = await fetch(`${API_BASE_URL}/subscription`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription, playerId, playerName }),
-        signal: controller.signal
-      });
-      /* FOR DEBUG ON IPHONE: */ alert('Risposta ricevuta dal server');
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        /* FOR DEBUG ON IPHONE: */ alert('Errore nella risposta del server');
-        const errorData = await response.json().catch(() => ({}));
-        const errorMsg = errorData.error || `Errore API: ${response.status} ${response.statusText}`;
-        throw new Error(errorMsg);
-      }
-      /* FOR DEBUG ON IPHONE: */ alert('Subscription registrata con successo');
-
-      // Only save subscription to localStorage after successful API call
-      localStorage.setItem('biliardino_subscription', JSON.stringify(subscription));
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      throw fetchError;
-    }
-  } catch (err) {
-    /* FOR DEBUG ON IPHONE: */ alert('Errore durante la registrazione delle notifiche');
-    // Remove only subscription on failure, keep player selection
-    localStorage.removeItem('biliardino_subscription');
-
-    const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto';
-    // Don't show alert twice for service worker error (already shown above)
-    alert('Errore durante la registrazione delle notifiche: ' + errorMessage);
-    console.error('Errore registrazione notifiche:', err);
-    throw err;
-  } finally {
-    /* FOR DEBUG ON IPHONE: */ alert('Aggiornamento stato pulsante notifiche');
-    updateButtonState();
-  }
-}
-
 /**
  * Easter egg: 6 clicks on notification button to access test page
  */
@@ -404,123 +326,60 @@ function showIosPwaBannerIfNeeded(): void {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone
     = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as any).standalone === true;
+    || (window.navigator as any).standalone === true;
   if (isIos) {
     if (!isInStandalone) {
       document.getElementById('ios-pwa-install-banner')?.remove();
       const bannerContainer = document.createElement('div');
       bannerContainer.id = 'ios-pwa-install-banner';
       bannerContainer.className = styles.iosPwaInstallBanner;
-      bannerContainer.innerHTML = BANNER_TEMPLATE;
+      bannerContainer.innerHTML = IOS_PWA_INSTALL_BANNER_TEMPLATE;
       document.body.appendChild(bannerContainer);
     }
   }
 }
 
-/**
- * Verifica se la modale iOS deve essere mostrata
- */
-function shouldShowIosModal(): boolean {
-  // Non mostrare se l'utente ha già una subscription attiva
-  if (localStorage.getItem('biliardino_subscription')) {
-    return false;
+declare global {
+  interface Navigator {
+    pushManager?: PushManager;
   }
-
-  // Non mostrare se l'utente ha già visto/rifiutato la modale
-  if (localStorage.getItem(IOS_MODAL_DISMISSED_KEY) === 'true') {
-    return false;
+  interface Window {
+    pushManager?: PushManager;
   }
-
-  return true;
 }
 
-/**
- * Mostra la modale informativa iOS per le notifiche
- */
-function showIosNotificationModal(playerId: number, playerName: string): void {
-  // Rimuovi eventuali modali esistenti
-  document.getElementById('ios-notification-modal-container')?.remove();
+const SUBSCRIPTION_KEY = 'biliardino_subscription';
+const PLAYER_ID_KEY = 'biliardino_player_id';
+const PLAYER_NAME_KEY = 'biliardino_player_name';
 
-  // Crea il container della modale
-  const modalContainer = document.createElement('div');
-  modalContainer.id = 'ios-notification-modal-container';
-  modalContainer.innerHTML = IOS_MODAL_TEMPLATE;
+const collapseTimers = new Map<HTMLElement, number>();
+let easterEggClickCount = 0;
+let easterEggResetTimer: number | null = null;
 
-  // Applica le classi CSS dal module
-  const overlay = modalContainer.querySelector('.ios-notification-modal-overlay');
-  const modal = modalContainer.querySelector('.ios-notification-modal');
-  const header = modalContainer.querySelector('.ios-notification-modal-header');
-  const body = modalContainer.querySelector('.ios-notification-modal-body');
-  const intro = modalContainer.querySelector('.ios-notification-modal-intro');
-  const benefits = modalContainer.querySelector('.ios-notification-modal-benefits');
-  const actions = modalContainer.querySelector('.ios-notification-modal-actions');
-  const footer = modalContainer.querySelector('.ios-notification-modal-footer');
-  const info = modalContainer.querySelector('.ios-notification-modal-info');
-  const btnPrimary = modalContainer.querySelector('[data-action="activate"]');
-  const btnSecondary = modalContainer.querySelector('[data-action="dismiss"]');
-
-  if (overlay) overlay.className = styles.iosNotificationModalOverlay;
-  if (modal) modal.className = styles.iosNotificationModal;
-  if (header) header.className = styles.iosNotificationModalHeader;
-  if (body) body.className = styles.iosNotificationModalBody;
-  if (intro) intro.className = styles.iosNotificationModalIntro;
-  if (benefits) benefits.className = styles.iosNotificationModalBenefits;
-  if (actions) actions.className = styles.iosNotificationModalActions;
-  if (footer) footer.className = styles.iosNotificationModalFooter;
-  if (info) info.className = styles.iosNotificationModalInfo;
-  if (btnPrimary) {
-    btnPrimary.className = `${styles.iosNotificationModalBtn} ${styles.iosNotificationModalBtnPrimary}`;
+function urlBase64ToUint8Array(base64String: string): BufferSource | string {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) {
+    output[i] = rawData.charCodeAt(i);
   }
-  if (btnSecondary) {
-    btnSecondary.className = `${styles.iosNotificationModalBtn} ${styles.iosNotificationModalBtnSecondary}`;
-  }
-
-  // Aggiungi event listeners ai pulsanti
-  btnPrimary?.addEventListener('click', async () => {
-    // Questa è la user gesture richiesta da iOS
-    try {
-      await subscribeAndSave(playerId, playerName);
-      removeIosModal();
-      updateButtonState();
-    } catch (err) {
-      console.error('Errore durante la sottoscrizione', err);
-      removeIosModal();
-    }
-  });
-
-  btnSecondary?.addEventListener('click', () => {
-    // Salva in localStorage che l'utente ha rifiutato
-    localStorage.setItem(IOS_MODAL_DISMISSED_KEY, 'true');
-    removeIosModal();
-  });
-
-  // Chiudi al click sull'overlay
-  overlay?.addEventListener('click', (e) => {
-    if (e.target === overlay) {
-      localStorage.setItem(IOS_MODAL_DISMISSED_KEY, 'true');
-      removeIosModal();
-    }
-  });
-
-  // Aggiungi al DOM
-  document.body.appendChild(modalContainer);
+  return output;
 }
 
-/**
- * Rimuove la modale iOS dal DOM
- */
-function removeIosModal(): void {
-  const modalContainer = document.getElementById('ios-notification-modal-container');
-  if (modalContainer) {
-    // Aggiungi animazione di uscita usando inline style
-    const overlay = modalContainer.querySelector(`.${styles.iosNotificationModalOverlay}`) as HTMLElement;
-    if (overlay) {
-      overlay.style.animation = 'fadeOut 0.3s ease forwards';
-      setTimeout(() => {
-        modalContainer.remove();
-      }, 300);
-    } else {
-      modalContainer.remove();
-    }
+function isDeclarativePushSupported(): boolean {
+  return typeof navigator.pushManager?.subscribe === 'function';
+}
+
+async function getPushManager(): Promise<PushManager> {
+  if (typeof navigator.pushManager?.subscribe === 'function') {
+    return navigator.pushManager;
   }
+
+  if ('serviceWorker' in navigator) {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager;
+  }
+
+  throw new Error('PushManager non disponibile');
 }
