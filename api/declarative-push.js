@@ -124,31 +124,53 @@ export default async function handler(req, res) {
       const response = await fetch(blob.url);
       const data = await response.json();
       const subscription = data.subscription;
-
+      // FORMATO FUNZIONATE ALLA GRANDE !!!! 
       // 2. Creazione del payload in formato Declarative Web Push [5-7]
+      // const payload = JSON.stringify({
+      //   "web_push": 8030, // La "chiave magica" obbligatoria [7-9]
+      //   "notification": {
+      //     "title": "Con actions e badge 2",
+      //     "body": "È stata registrata una nuova partita nel torneo.",
+      //     "icon": "https://luigidenora.github.io/biliardino-elo/icons/icon-192.jpg",
+      //     "actions": [
+      //       {
+      //         "action": "accept",
+      //         "title": "Accetta",
+      //         "navigate": "https://luigidenora.github.io/biliardino-elo/confirm?status=ok",
+      //       },
+      //       {
+      //         "action": "decline",
+      //         "title": "Rifiuta",
+      //         "navigate": "https://luigidenora.github.io/biliardino-elo/confirm?status=no"
+      //       }
+      //     ],
+
+      //     // Il campo 'navigate' è obbligatorio nel modello dichiarativo [5, 6, 10]
+      //     "navigate": "https://luigidenora.github.io/biliardino-elo/index.html",
+      //     "app_badge": "2", // Supportato nativamente su iOS 18.4+ [7, 11]
+      //   }
+      // });
+
+
       const payload = JSON.stringify({
-        "web_push": 8030, // La "chiave magica" obbligatoria [7-9]
+        "web_push": 8030,
         "notification": {
-          "title": "Con actions e badge 2",
-          "body": "È stata registrata una nuova partita nel torneo.",
-          "icon": "https://luigidenora.github.io/biliardino-elo/icons/icon-192.jpg",
+          "title": "Nuovo Risultato m8",
+          "body": "È stata registrata una partita di Calcio Balilla.",
+          "navigate": "https://luigidenora.github.io/biliardino-elo/index.html",
+          "app_badge": "0",
           "actions": [
             {
-              "action": "accept",
-              "title": "Accetta",
-              "navigate": "https://luigidenora.github.io/biliardino-elo/confirm?status=ok",
-              "icon": "https://luigidenora.github.io/biliardino-elo/icons/check.png"
+              "action": "confirm",
+              "title": "Confirm",
+              "navigate": "https://luigidenora.github.io/biliardino-elo/confirm.html"
             },
             {
-              "action": "decline",
-              "title": "Rifiuta",
-              "navigate": "https://luigidenora.github.io/biliardino-elo/confirm?status=no"
+              "action": "deny",
+              "title": "Deny",
+              "navigate": "https://luigidenora.github.io/biliardino-elo/deny.html"
             }
           ],
-
-          // Il campo 'navigate' è obbligatorio nel modello dichiarativo [5, 6, 10]
-          "navigate": "https://luigidenora.github.io/biliardino-elo/index.html",
-          "app_badge": "2" // Supportato nativamente su iOS 18.4+ [7, 11]
         }
       });
 
