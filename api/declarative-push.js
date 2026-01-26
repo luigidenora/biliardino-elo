@@ -129,7 +129,7 @@ export default async function handler(req, res) {
       const payload = JSON.stringify({
         "web_push": 8030, // La "chiave magica" obbligatoria [7-9]
         "notification": {
-          "title": "Nuovo Aggiornamento ELO",
+          "title": "Con actions e badge 2",
           "body": "È stata registrata una nuova partita nel torneo.",
           "icon": "https://luigidenora.github.io/biliardino-elo/icons/icon-192.jpg",
           "actions": [
@@ -148,7 +148,7 @@ export default async function handler(req, res) {
 
           // Il campo 'navigate' è obbligatorio nel modello dichiarativo [5, 6, 10]
           "navigate": "https://luigidenora.github.io/biliardino-elo/index.html",
-          "app_badge": "1" // Supportato nativamente su iOS 18.4+ [7, 11]
+          "app_badge": "2" // Supportato nativamente su iOS 18.4+ [7, 11]
         }
       });
 
