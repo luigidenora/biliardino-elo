@@ -96,14 +96,25 @@ export default async function handler(req, res) {
         await webpush.sendNotification(
           data.subscription,
           JSON.stringify({
-            title,
-            body,
-            url: `/confirm.html?time=${matchTime}`,
-            tag: `match-${matchTime}`,
-            requireInteraction: true,
-            icon: '/icons/icon-192.jpg',
-            badge: '/icons/icon-192.jpg'
-          })
+            web_push: 8030,
+            notification: {
+              title,
+              body,
+              navigate: `/confirm.html?time=${matchTime}`,
+              tag: `match-${matchTime}`,
+              requireInteraction: true,
+              icon: '/icons/icon-192.jpg',
+              badge: '/icons/icon-192.jpg',
+              app_badge: '0'
+            }
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/notification+json'
+            },
+            urgency: 'high',
+            TTL: 86400
+          }
         );
         sent++;
         console.log(`✅ Notifica inviata a ${playerName}`);

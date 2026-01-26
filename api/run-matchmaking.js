@@ -74,14 +74,25 @@ export default async function handler(req, res) {
         await webpush.sendNotification(
           subData.subscription,
           JSON.stringify({
-            title: '⚽ SEI STATO CONVOCATO!',
-            body: `Partita alle ${matchTime}! Preparati a dominare il campo!`,
-            url: '/matchmaking.html',
-            tag: `selected-${matchTime}`,
-            requireInteraction: true,
-            icon: '/icons/icon-192.jpg',
-            badge: '/icons/icon-192.jpg'
-          })
+            web_push: 8030,
+            notification: {
+              title: '⚽ SEI STATO CONVOCATO!',
+              body: `Partita alle ${matchTime}! Preparati a dominare il campo!`,
+              navigate: '/matchmaking.html',
+              tag: `selected-${matchTime}`,
+              requireInteraction: true,
+              icon: '/icons/icon-192.jpg',
+              badge: '/icons/icon-192.jpg',
+              app_badge: '0'
+            }
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/notification+json'
+            },
+            urgency: 'high',
+            TTL: 86400
+          }
         );
         success++;
       } catch (err) {
