@@ -106,9 +106,9 @@ export default async function handler(req, res) {
           body,
           navigate: url,
           icon: '/icons/icon-192.jpg',
-          badge: '/icons/icon-192-maskable.png',
+          badge: '/icons/icon-192.jpg',
           requireInteraction: requireInteraction,
-          app_badge: '1'
+          app_badge: '0'
         }
       };
 
