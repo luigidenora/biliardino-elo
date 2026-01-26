@@ -1,51 +1,15 @@
-name: Scheduled Notifications
-
+name: Broadcast Notifications
 on:
   schedule:
-    # ⚠️ MODALITÀ TEST: Esecuzione ogni minuto, tutti i giorni (incluso weekend)
-    # TODO: Ripristinare la configurazione produzione dopo i test:
-    #
-    # Produzione (CET - ora solare, ~fine ottobre a fine marzo):
-    # - cron: '45 9 * * 1-5'   # 9:45 UTC = 10:45 IT (CET)
-    # - cron: '45 14 * * 1-5'  # 14:45 UTC = 15:45 IT (CET)
-    #
-    # Produzione (CEST - ora legale, ~fine marzo a fine ottobre):
-    # - cron: '45 8 * * 1-5'   # 8:45 UTC = 10:45 IT (CEST)
-    # - cron: '45 13 * * 1-5'  # 13:45 UTC = 15:45 IT (CEST)
-    #
-    - cron: '* * * * *'  # Ogni minuto, tutti i giorni (TEST)
-  
-  # Permetti attivazione manuale per testing
-  workflow_dispatch:
-    inputs:
-      test_mode:
-        description: 'Modalità test (non invia notifiche reali)'
-        required: false
-        default: false
-        type: boolean
-
-  # Permetti testing su pull request
-  pull_request:
-    paths:
-      - '.github/workflows/cron.yml'
-
+    # https://crontab.guru/#45_9,14_*_*_1-5
+    # (Ogni giorno della settimana alle 09:45 UTC e 14:45 UTC)
+    # Adattato per l'ora di Roma (UTC+1/UTC+2) per inviare prima delle partite alle 11:00 e 16:00
+    - cron: 45 9,14 * * 1-5
 jobs:
-  send-notifications:
+  scheduled-job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log execution timestamp
-        run: |
-          echo "============================================="
-          echo "🕐 Workflow eseguito: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          echo "📅 Ora italiana (CET): $(TZ='Europe/Rome' date '+%Y-%m-%d %H:%M:%S %Z')"
-          echo "🔄 Trigger: ${{ github.event_name }}"
-          echo "🏷️ Branch: ${{ github.ref_name }}"
-          echo "📝 Commit: ${{ github.sha }}"
-          echo "============================================="
-
+      - uses: actions/checkout@v4
       - name: Send Broadcast Notification
         if: github.event_name != 'pull_request' && github.event.inputs.test_mode != 'true'
         run: |
@@ -60,6 +24,7 @@ jobs:
           echo "📢 Invio broadcast notifica per partita delle $MATCH_TIME..."
           response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.VERCEL_API_URL }}/api/send-broadcast" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -d "{\"matchTime\": \"$MATCH_TIME\"}")
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
@@ -70,16 +35,3 @@ jobs:
             exit 1
           fi
           echo "✅ Broadcast inviato con successo per partita delle $MATCH_TIME"
-
-      - name: Test mode - Skip notification
-        if: github.event_name == 'pull_request' || github.event.inputs.test_mode == 'true'
-        run: |
-          echo "🧪 MODALITÀ TEST - Notifiche NON inviate"
-          echo "   Questo è un test per verificare che il workflow funziona correttamente."
-          echo "   In produzione (scheduled/workflow_dispatch senza test_mode), le notifiche verranno inviate."
-          echo ""
-          echo "📋 Riepilogo configurazione:"
-          echo "   - Schedule: Ogni minuto, tutti i giorni (MODALITÀ TEST)"
-          echo "   - Endpoint: /api/send-broadcast (POST con matchTime)"
-          echo ""
-          echo "✅ Test completato con successo!"
