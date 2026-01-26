@@ -698,7 +698,11 @@ export class RankingView {
       // Calcola rating medio della partita per colorare la riga
       const avgRating = (eloA + eloB) / 2;
       let rowBackgroundColor = '';
-      if (avgRating >= 1080) {
+      let rowTextColor = '';
+      if (avgRating >= 1140) {
+        rowBackgroundColor = 'background-color: #1e3a8a;'; // blu scuro
+        rowTextColor = 'color: white;'; // scritta bianca
+      } else if (avgRating >= 1080) {
         rowBackgroundColor = 'background-color: rgba(0, 0, 255, 0.25);'; // blu leggero
       } else if (avgRating >= 1040) {
         rowBackgroundColor = 'background-color: rgba(0, 127, 255, 0.1);'; // azzurro chiaro
@@ -713,14 +717,15 @@ export class RankingView {
       const blueDot = isToday
         ? `<span title="Partita di oggi" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 40% 40%, #4fc3f7 70%, #1976d2 100%);box-shadow:0 0 4px #1976d2aa;vertical-align:middle;margin:0 2px;"></span>`
         : '';
+      const cellStyle = `${rowBackgroundColor}${rowTextColor}`;
       tr.innerHTML = `
-        <td style="${rowBackgroundColor}text-align:center;">${blueDot}</td>
-        <td style="${rowBackgroundColor}font-size:1.15em;font-style:italic;"><strong>${Math.round(avgRating)}</strong></td>
-        <td style="${rowBackgroundColor}"><strong>${eloA}</strong> ${deltaA_formatted}</td>
-        <td style="${rowBackgroundColor}">${teamA}</td>
-        <td style="${rowBackgroundColor}">${resultWithPercentages}</td>
-        <td style="${rowBackgroundColor}">${teamB}</td>
-        <td style="${rowBackgroundColor}"><strong>${eloB}</strong> ${deltaB_formatted}</td>
+        <td style="${cellStyle}text-align:center;">${blueDot}</td>
+        <td style="${cellStyle}font-size:1.15em;font-style:italic;"><strong>${Math.round(avgRating)}</strong></td>
+        <td style="${cellStyle}"><strong>${eloA}</strong> ${deltaA_formatted}</td>
+        <td style="${cellStyle}">${teamA}</td>
+        <td style="${cellStyle}">${resultWithPercentages}</td>
+        <td style="${cellStyle}">${teamB}</td>
+        <td style="${cellStyle}"><strong>${eloB}</strong> ${deltaB_formatted}</td>
       `;
       tbody.appendChild(tr);
     }
