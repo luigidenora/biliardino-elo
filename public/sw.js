@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '1.0.0-alpha.00';
+const VERSION = '1.0.0-alpha.01';
 // Asset cache: versioned, clears on VERSION change
 const ASSETS_CACHE = `CAlcio-Balilla-assets-v${VERSION}`;
 // Data cache: persists across versions, stores server responses
@@ -105,19 +105,18 @@ self.addEventListener('fetch', (event) => {
     }
   });
 
-  // Assets: use ASSETS_CACHE (cache-first)
+  // Assets: use ASSETS_CACHE (network-first for development, cache-first fallback)
   if (isAsset || url.pathname.match(/\.(js|css|json|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|webp|ico)$/i)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) {
-          return cached;
-        }
-        return fetch(request).then((response) => {
+      fetch(request)
+        .then((response) => {
           const copy = response.clone();
           caches.open(ASSETS_CACHE).then(cache => cache.put(request, copy));
           return response;
-        });
-      })
+        })
+        .catch(() =>
+          caches.match(request).then(cached => cached || new Response('Not found', { status: 404 }))
+        )
     );
     return;
   }
