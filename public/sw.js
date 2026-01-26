@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '1.0.0-alpha.0';
+const VERSION = '1.0.0-alpha.00';
 // Asset cache: versioned, clears on VERSION change
 const ASSETS_CACHE = `CAlcio-Balilla-assets-v${VERSION}`;
 // Data cache: persists across versions, stores server responses
