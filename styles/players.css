@@ -871,6 +871,7 @@ a.nav-link:hover {
     gap: 1rem;
     align-items: center;
     justify-content: flex-start;
+    margin-bottom: 10px;
   }
 
   .pp-card .pp-name {
@@ -912,27 +913,50 @@ a.nav-link:hover {
   .player-card.pp-card {
     gap: 0.75rem;
     padding: 0.75rem 1rem;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
 
   .pp-card .pp-avatar {
-    width: 100px;
-    height: 100px;
-    flex: 0 0 100px;
+    width: 128px;
+    height: 128px;
+    flex: 0 0 128px;
+    margin-bottom: 0.5rem;
+  }
+
+  .pp-card .pp-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
   }
 
   .pp-card .pp-header {
     gap: 0.5rem;
-    width: 100%;
     flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .pp-card .pp-name {
     font-size: 1rem;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    flex: 0 1 auto;
   }
 
   .pp-card .pp-badges {
-    font-size: 0.75rem;
+    display: flex;
+    flex-direction: row;
     gap: 0.4rem;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
   }
 
   .pp-card .pp-rank-badge,
@@ -963,6 +987,10 @@ a.nav-link:hover {
 
   .pp-card .pp-stats .stat-value.highlight {
     font-size: 1.15rem;
+  }
+
+  .pp-card .pp-stats .stat-item:last-child {
+    display: none;
   }
 }
 
