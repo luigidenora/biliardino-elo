@@ -58,15 +58,16 @@ export class PlayersView {
       return;
     }
 
-    // Update page title with player name and rank (after stats are calculated)
+    // Calculate rank considering only players with at least 1 match
+    const allPlayers = getAllPlayers().filter(p => p.matches > 0);
+    const sortedPlayers = allPlayers.toSorted((a, b) => b.elo - a.elo);
+    const rank = sortedPlayers.findIndex(p => p.id === player.id) + 1;
+    const rankText = rank > 0 ? ` (${rank}°)` : '';
+
+    // Update page title (empty)
     const titleElement = document.getElementById('player-name');
     if (titleElement) {
-      // Calculate rank considering only players with at least 1 match
-      const allPlayers = getAllPlayers().filter(p => p.matches > 0);
-      const sortedPlayers = allPlayers.toSorted((a, b) => b.elo - a.elo);
-      const rank = sortedPlayers.findIndex(p => p.id === player.id) + 1;
-      const rankText = rank > 0 ? ` (${rank}°)` : '';
-      titleElement.textContent = `Statistiche di ${player.name}${rankText}`;
+      titleElement.textContent = '';
     }
 
     const winPercentage = stats.matches > 0 ? ((stats.wins / stats.matches) * 100).toFixed(0) : '0';
@@ -74,6 +75,9 @@ export class PlayersView {
     const winPercentageDefence = stats.matchesAsDefence > 0 ? ((stats.winsAsDefence / stats.matchesAsDefence) * 100).toFixed(0) : '0';
     const attackRolePercentage = stats.matches > 0 ? ((stats.matchesAsAttack / stats.matches) * 100).toFixed(0) : '0';
     const defenceRolePercentage = stats.matches > 0 ? ((stats.matchesAsDefence / stats.matches) * 100).toFixed(0) : '0';
+
+    // Classe per il colore del win rate badge
+    const winRateClass = parseInt(winPercentage) > 50 ? 'pp-winrate-good' : parseInt(winPercentage) < 50 ? 'pp-winrate-bad' : 'pp-winrate-equal';
 
     const formatElo = (value: number): number | string => {
       if (!Number.isFinite(value)) return 'N/A';
@@ -248,8 +252,11 @@ export class PlayersView {
 
       <div class="pp-content">
         <div class="pp-header">
-          <h2 class="pp-name">🎮 ${player.name}</h2>
-          <span class="pp-win">Win ${winPercentage}%</span>
+          <h2 class="pp-name">${player.name}</h2>
+          <div class="pp-badges">
+            <span class="pp-rank-badge">#${rank}</span>
+            <span class="pp-winrate-badge ${winRateClass}">Win ${winPercentage}%</span>
+          </div>
         </div>
 
         <div class="pp-stats">
