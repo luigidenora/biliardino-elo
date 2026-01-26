@@ -100,58 +100,58 @@ function toAbsoluteUrl(url) {
   }
 }
 
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {};
+// self.addEventListener('push', (event) => {
+//   const data = event.data?.json() || {};
 
-  let title, body, navigateUrl;
+//   let title, body, navigateUrl;
 
-  // Formato Declarative Web Push (iOS con navigate in notification)
-  if (data.web_push === 8030 && data.notification) {
-    title = data.notification.title || 'Notifica';
-    body = data.notification.body || '';
-    navigateUrl = data.notification.navigate || '/';
-  } else {
-    // Formato semplice
-    title = data.title || 'Notifica';
-    body = data.body || '';
-    navigateUrl = data.url || data.navigate || '/';
-  }
+//   // Formato Declarative Web Push (iOS con navigate in notification)
+//   if (data.web_push === 8030 && data.notification) {
+//     title = data.notification.title || 'Notifica';
+//     body = data.notification.body || '';
+//     navigateUrl = data.notification.navigate || '/';
+//   } else {
+//     // Formato semplice
+//     title = data.title || 'Notifica';
+//     body = data.body || '';
+//     navigateUrl = data.url || data.navigate || '/';
+//   }
 
-  const options = {
-    body,
-    icon: '/icons/icon-192.jpg',
-    badge: '/icons/icon-192-maskable.png',
-    data: { navigate: navigateUrl }
-  };
+//   const options = {
+//     body,
+//     icon: '/icons/icon-192.jpg',
+//     badge: '/icons/icon-192-maskable.png',
+//     data: { navigate: navigateUrl }
+//   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
-});
+//   event.waitUntil(self.registration.showNotification(title, options));
+// });
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const action = event.action;
-  const data = event.notification.data || {};
-  const actionNavs = data.actionNavigations || {};
-  const fallbackNav = data.navigate || '/';
-  const targetUrl = toAbsoluteUrl(action ? (actionNavs[action] || fallbackNav) : fallbackNav);
+// self.addEventListener('notificationclick', (event) => {
+//   event.notification.close();
+//   const action = event.action;
+//   const data = event.notification.data || {};
+//   const actionNavs = data.actionNavigations || {};
+//   const fallbackNav = data.navigate || '/';
+//   const targetUrl = toAbsoluteUrl(action ? (actionNavs[action] || fallbackNav) : fallbackNav);
 
-  event.waitUntil(
-    (async () => {
-      const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-      for (const client of allClients) {
-        // If a client is already open on our origin, navigate it
-        try {
-          const url = new URL(client.url);
-          if (url.origin === self.location.origin) {
-            client.focus();
-            client.navigate(targetUrl);
-            return;
-          }
-        } catch (_) {
-          // Ignore URL parsing errors
-        }
-      }
-      await clients.openWindow(targetUrl);
-    })()
-  );
-});
+//   event.waitUntil(
+//     (async () => {
+//       const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+//       for (const client of allClients) {
+//         // If a client is already open on our origin, navigate it
+//         try {
+//           const url = new URL(client.url);
+//           if (url.origin === self.location.origin) {
+//             client.focus();
+//             client.navigate(targetUrl);
+//             return;
+//           }
+//         } catch (_) {
+//           // Ignore URL parsing errors
+//         }
+//       }
+//       await clients.openWindow(targetUrl);
+//     })()
+//   );
+// });

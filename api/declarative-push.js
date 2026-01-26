@@ -120,56 +120,49 @@ export default async function handler(req, res) {
     const results = [];
 
     for (const blob of blobs) {
-      try {
-        const response = await fetch(blob.url);
-        const data = await response.json();
-        const subscription = data.subscription;
 
-        if (!subscription) {
-          console.warn(`Subscription mancante nel blob ${blob.pathname}`);
-          continue;
+      const response = await fetch(blob.url);
+      const data = await response.json();
+      const subscription = data.subscription;
+
+      // 2. Creazione del payload in formato Declarative Web Push [5-7]
+      const payload = JSON.stringify({
+        "web_push": 8030, // La "chiave magica" obbligatoria [7-9]
+        "notification": {
+          "title": "Nuovo Aggiornamento ELO",
+          "body": "È stata registrata una nuova partita nel torneo.",
+          "icon": "https://luigidenora.github.io/biliardino-elo/icons/icon-192.jpg",
+          // Il campo 'navigate' è obbligatorio nel modello dichiarativo [5, 6, 10]
+          "navigate": "https://luigidenora.github.io/biliardino-elo/index.html",
+          "app_badge": "1" // Supportato nativamente su iOS 18.4+ [7, 11]
         }
-        const payload = {
-          web_push: 8030,
-          notification: {
-            title,
-            body: builtOptions.body || '',
-            icon: builtOptions.icon || '/icons/icon-192.jpg',
-            badge: builtOptions.badge || '/icons/icon-192.jpg',
-            navigate: default_action_url,
-            lang: builtOptions.lang || 'it-IT',
-            dir: 'ltr',
-            silent: false,
-            app_badge: String(app_badge || 1)
-          }
-        };
-        // Send with Content-Type: application/notification+json
-        // This signals to Safari/WebKit that this is a declarative push
-        await webpush.sendNotification(
-          subscription,
-          JSON.stringify(payload),
-          {
-            urgency: 'high',
-            TTL: 86400, // 24 hours
-            headers: {
-              'Content-Type': 'application/notification+json'
-            }
-          }
-        );
+      });
 
-        results.push({
-          success: true,
-          endpoint: subscription.endpoint.substring(0, 30) + '...'
-        });
+      // 3. Invio della notifica all'oggetto subscription salvato nel DB [12, 13]
 
-        console.log(`✅ Declarative Web Push inviato a player ${playerId}`);
-      } catch (sendErr) {
-        console.error(`Errore invio a ${blob.pathname}:`, sendErr.message);
-        results.push({
-          success: false,
-          error: sendErr.message
+      webpush.sendNotification(subscription, payload, {
+        // Segnala esplicitamente al browser l'uso del formato dichiarativo [3]
+        headers: {
+          'Content-Type': 'application/notification+json'
+        },
+        urgency: 'high',
+        TTL: 86400 // Time-To-Live di 24 ore [12, 14]
+      })
+        .then(response => {
+          console.log('Notifica dichiarativa inviata con successo.')
+          results.push({
+            success: true,
+            endpoint: subscription.endpoint.substring(0, 30) + '...'
+          });
+
+        })
+        .catch(error => {
+          console.error('Errore durante l\'invio:', error)
+          results.push({
+            success: false,
+            error: error.message
+          });
         });
-      }
     }
 
     const successCount = results.filter(r => r.success).length;
