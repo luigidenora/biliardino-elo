@@ -1296,6 +1296,43 @@ th[data-sort] {
 }
 
 /* Responsive adjustments for live match panel */
+@media (max-width: 1024px) {
+  .live-match-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .live-vs {
+    order: 2;
+    margin: 0 auto;
+    width: 60px;
+    height: 60px;
+    font-size: 1.4rem;
+  }
+
+  .live-team:first-child {
+    order: 1;
+  }
+
+  .live-team:last-child {
+    order: 3;
+  }
+
+  .live-match-panel {
+    padding: 1.5rem;
+  }
+
+  #live-match-container {
+    padding: 0 1rem;
+    margin: 1rem auto;
+  }
+
+  .live-team-winprob {
+    font-size: 1.5rem;
+    padding: 0.6rem 0.8rem;
+  }
+}
+
 @media (max-width: 768px) {
   .live-match-content {
     grid-template-columns: 1fr;
@@ -1330,6 +1367,28 @@ th[data-sort] {
   .live-team-winprob {
     font-size: 1.5rem;
     padding: 0.6rem 0.8rem;
+  }
+
+  .live-players {
+    gap: 0.5rem;
+  }
+
+  .live-player-link {
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .live-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .live-player-name {
+    font-size: 0.85rem;
+  }
+
+  .live-player-elo {
+    font-size: 0.75rem;
   }
 }
 
