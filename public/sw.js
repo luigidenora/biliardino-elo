@@ -4,17 +4,9 @@ const VERSION = '1.0.0-alpha.00';
 const ASSETS_CACHE = `CAlcio-Balilla-assets-v${VERSION}`;
 // Data cache: persists across versions, stores server responses
 const DATA_CACHE = 'CAlcio-Balilla-data';
-
+// Tutto ciò che deve essere sempre in cache dalla cartella public/
 const CORE_ASSETS = [
   './',
-  './index.html',
-  './players.html',
-  './matchmaking.html',
-  // './add.html',
-  './styles/ranking.css',
-  './styles/players.css',
-  './styles/matchmaking.css',
-  // './styles/add-match.css',
   './manifest.webmanifest',
   './icons/icon-192.jpg',
   './icons/icon-512.jpg',
