@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const CACHE_NAME = 'CAlcio-Balilla-v1';
+const VERSION = '1.0.0-alpha.0';
+// Asset cache: versioned, clears on VERSION change
+const ASSETS_CACHE = `CAlcio-Balilla-assets-v${VERSION}`;
+// Data cache: persists across versions, stores server responses
+const DATA_CACHE = 'CAlcio-Balilla-data';
+
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -18,12 +23,13 @@ const CORE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installato');
+  console.log(`[Service Worker] Installing version ${VERSION}`);
+
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(ASSETS_CACHE)
       .then(cache => cache.addAll(CORE_ASSETS))
       .then(() => {
-        console.log('[Service Worker] Cache completata, attivazione...');
+        console.log('[Service Worker] Assets cached, activating...');
         return self.skipWaiting();
       })
       .catch((err) => {
@@ -34,15 +40,23 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Attivo');
+  console.log(`[Service Worker] Activating version ${VERSION}`);
+
   event.waitUntil(
     caches
       .keys()
-      .then(keys =>
-        Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-      )
+      .then(keys => {
+        // Delete old asset caches (starts with 'CAlcio-Balilla-assets-'), keep data cache
+        return Promise.all(keys
+          .filter(key => key.startsWith('CAlcio-Balilla-assets-') && key !== ASSETS_CACHE)
+          .map(key => {
+            console.log(`[Service Worker] Deleting old asset cache: ${key}`);
+            return caches.delete(key);
+          })
+        );
+      })
       .then(() => {
-        console.log('[Service Worker] Cache pulita, assumo controllo...');
+        console.log('[Service Worker] Old assets cleared, taking control...');
         return clients.claim();
       })
       .catch((err) => {
@@ -50,6 +64,17 @@ self.addEventListener('activate', (event) => {
         throw err;
       })
   );
+});
+
+/**
+ * Listens for messages from clients (the main app).
+ * Handles SKIP_WAITING to immediately activate the new service worker.
+ */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[Service Worker] Received SKIP_WAITING message, activating immediately');
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -63,12 +88,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Navigation requests: cache-first strategy using ASSETS_CACHE
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          caches.open(ASSETS_CACHE).then(cache => cache.put(request, copy));
           return response;
         })
         .catch(() =>
@@ -78,16 +104,47 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Check if it's a core asset or data request
+  const isAsset = CORE_ASSETS.some(asset => {
+    try {
+      return new URL(asset, self.location.origin).href === url.href;
+    } catch {
+      return false;
+    }
+  });
+
+  // Assets: use ASSETS_CACHE (cache-first)
+  if (isAsset || url.pathname.match(/\.(js|css|json|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|webp|ico)$/i)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) {
+          return cached;
+        }
+        return fetch(request).then((response) => {
+          const copy = response.clone();
+          caches.open(ASSETS_CACHE).then(cache => cache.put(request, copy));
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Server data: use DATA_CACHE (cache-first, always available)
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.match(request, { cacheName: DATA_CACHE }).then((cached) => {
       if (cached) {
         return cached;
       }
-      return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        return response;
-      });
+      return fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(DATA_CACHE).then(cache => cache.put(request, copy));
+          return response;
+        })
+        .catch(() =>
+          new Response('Offline', { status: 503 })
+        );
     })
   );
 });
