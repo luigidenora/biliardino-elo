@@ -24,7 +24,7 @@ jobs:
           echo "📢 Invio broadcast notifica per partita delle $MATCH_TIME..."
           response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.VERCEL_API_URL }}/api/send-broadcast" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" \
             -d "{\"matchTime\": \"$MATCH_TIME\"}")
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
