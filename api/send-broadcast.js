@@ -1,5 +1,6 @@
 import { list } from '@vercel/blob';
 import webpush from 'web-push';
+import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 // Verifica configurazione
@@ -27,7 +28,7 @@ webpush.setVapidDetails(
  *   body?: string (opzionale)
  * }
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return;
 
@@ -52,7 +53,6 @@ export default async function handler(req, res) {
     }
 
     const { blobs } = await list({
-      prefix: 'biliardino-subs/',
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
@@ -141,3 +141,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAuth(handler, 'notify');

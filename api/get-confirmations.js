@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv';
+// import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 export default async function handler(req, res) {
@@ -28,3 +29,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'Errore lettura conferme' });
   }
 }
+
+// export default withAuth(handler, 'admin');

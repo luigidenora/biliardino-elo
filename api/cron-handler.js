@@ -5,9 +5,10 @@
  * - 10:58, 15:58 → Broadcast notifiche
  * - 11:03, 16:03 → Matchmaking automatico (5min dopo)
  */
+import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return;
 
@@ -64,3 +65,4 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+export default withAuth(handler, 'cron');

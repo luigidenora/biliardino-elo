@@ -34,6 +34,9 @@ export const subscribeToPushNotifications = async (playerId: number, playerName:
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notifications not granted');
 
+  const header = document.querySelector(`.${styles.notificationHeader}`);
+  if (header) header.classList.add(styles.loading);
+
   localStorage.setItem(PLAYER_ID_KEY, String(playerId));
   localStorage.setItem(PLAYER_NAME_KEY, playerName);
 
@@ -43,8 +46,6 @@ export const subscribeToPushNotifications = async (playerId: number, playerName:
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
   });
-  const header = document.querySelector(`.${styles.notificationHeader}`);
-  if (header) header.classList.add(styles.loading);
   const response = await fetch(`${API_BASE_URL}/subscription`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

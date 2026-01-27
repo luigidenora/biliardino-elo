@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '1.0.0-alpha.02';
+const VERSION = '1.0.0-alpha.04';
 const CACHE_NAME = 'CAlcio-Balilla-cache';
 
 // Firebase/API endpoints che vogliamo cachare

@@ -1,5 +1,6 @@
 import { list } from '@vercel/blob';
 import webpush from 'web-push';
+import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 
 /**
@@ -28,7 +29,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return;
 
@@ -225,3 +226,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAuth(handler, 'notify');
