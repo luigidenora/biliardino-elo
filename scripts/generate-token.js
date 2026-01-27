@@ -3,8 +3,7 @@ import dotenv from 'dotenv';
 import * as jose from 'jose';
 
 // Carica variabili come fa Vite: prima .env.local (override), poi .env
-dotenv.config({ path: '.env' });
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ['.env.local', '.env'] });
 
 /**
  * Script per generare JWT firmati con HS256
