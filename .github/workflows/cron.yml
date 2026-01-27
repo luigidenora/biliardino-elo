@@ -1,5 +1,7 @@
 name: Broadcast Notifications
 on:
+  push:
+    branches: [main]
   schedule:
     # https://crontab.guru/#45_9,14_*_*_1-5
     # (Ogni giorno della settimana alle 09:45 UTC e 14:45 UTC)
