@@ -142,4 +142,4 @@ async function handler(req, res) {
   }
 }
 
-export default withAuth(handler, 'notify');
+export default withAuth(handler, 'admin');
