@@ -362,7 +362,7 @@ export class RankingView {
       if (goalRatio === Infinity) {
         goalDiff = '<span style="color:green;">∞</span>';
       } else if (goalRatio > 0) {
-        const color = goalRatio < 0.8 ? 'red' : goalRatio > 1.2 ? 'green' : 'inherit';
+        const color = goalRatio <= 0.8 ? 'red' : goalRatio >= 1.2 ? 'green' : 'inherit';
         goalDiff = `<span style="color:${color};">${goalRatio.toFixed(2)}</span>`;
       }
 
