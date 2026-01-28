@@ -79,14 +79,16 @@ function computeRanks(): void {
 
   let rank = 0;
   let previousElo = -1;
+  let count = 0;
 
   for (const player of players) {
     if (player.matches < 1) continue; // TODO customize it
 
+    count++;
     const elo = getDisplayElo(player);
 
     if (elo !== previousElo) {
-      rank++;
+      rank = count;
       previousElo = elo;
     }
 
