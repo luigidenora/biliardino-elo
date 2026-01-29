@@ -96,7 +96,6 @@ async function handler(req, res) {
           { action: 'confirm', title: 'Conferma', url: `${BASE_URL}/confirm.html?accept=true` },
           { action: 'cancel', title: 'Rifiuta', url: `${BASE_URL}/confirm.html?accept=false` }
         ];
-        const url = `${BASE_URL}/confirm.html?time=${matchTime}`; // URL di default
 
         await webpush.sendNotification(
           data.subscription,
@@ -112,9 +111,8 @@ async function handler(req, res) {
               badge: '/icons/icon-192.jpg',
               app_badge: '0',
               actions: actions?.map(a => ({
-                action: a.action,
+                action: a.url,
                 title: a.title,
-                navigate: a.url || url // URL specifico azione (Apple spec)
               }))
             }
           }),
