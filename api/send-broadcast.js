@@ -84,11 +84,9 @@ async function handler(req, res) {
       });
     }
 
-    let sent = 0;
-    let failed = 0;
-
-    for (const data of validSubscriptions) {
-      try {
+    // Invia tutte le notifiche in parallelo
+    const results = await Promise.allSettled(
+      validSubscriptions.map(async (data) => {
         const playerName = data.playerName || 'Giocatore';
         const title = customTitle || '🎮 CAlcio Balilla';
         const body = customBody || `Ciao ${playerName}! Partita alle ${matchTime} 🏆`;
@@ -124,13 +122,22 @@ async function handler(req, res) {
             TTL: 86400
           }
         );
-        sent++;
+
         console.log(`✅ Notifica inviata a ${playerName}`);
-      } catch (err) {
-        console.warn('Errore invio a:', data.playerName || data.playerId, err.message);
-        failed++;
+        return { playerName, success: true };
+      })
+    );
+
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    // Log errori
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const playerName = validSubscriptions[index]?.playerName || validSubscriptions[index]?.playerId || 'Unknown';
+        console.warn('Errore invio a:', playerName, result.reason?.message || result.reason);
       }
-    }
+    });
 
     console.log(`✅ Broadcast completato: ${sent}/${validSubscriptions.length} inviati (Match: ${matchTime})`);
 
