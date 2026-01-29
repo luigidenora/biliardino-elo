@@ -100,10 +100,22 @@ self.addEventListener('push', async (event) => {
 
 });
 
-/* Handle notification click on navigation url */
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.navigate || '/';
+
+  let targetUrl = event.notification?.navigate || '/';
+
+  // Se è stata cliccata un'azione, cerchiamo l'URL specifico dell'azione
+  if (event.action && event.notification?.actions) {
+    const actionData = event.notification.actions.find(a => a.action === event.action);
+    if (actionData == 'cancel') {
+      return; // Non fare nulla se l'azione è "cancel"
+    }
+    if (actionData && actionData.navigate) {
+      targetUrl = actionData.navigate;
+    }
+  }
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

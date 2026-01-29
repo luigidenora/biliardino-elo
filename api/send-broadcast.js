@@ -93,10 +93,10 @@ async function handler(req, res) {
         const title = customTitle || '🎮 CAlcio Balilla';
         const body = customBody || `Ciao ${playerName}! Partita alle ${matchTime} 🏆`;
         const actions = [
-          { action: 'confirm', title: 'Conferma', url: `/confirm.html?time=${matchTime}` },
-          { action: 'decline', title: 'Rifiuta', url: `/decline.html?time=${matchTime}` }
+          { action: 'confirm', title: 'Conferma', url: `${BASE_URL}/confirm.html?accept=true` },
+          { action: 'cancel', title: 'Rifiuta', url: `${BASE_URL}/confirm.html?accept=false` }
         ];
-        const url = `/confirm.html?time=${matchTime}`; // URL di default
+        const url = `${BASE_URL}/confirm.html?time=${matchTime}`; // URL di default
 
         await webpush.sendNotification(
           data.subscription,
@@ -105,7 +105,7 @@ async function handler(req, res) {
             notification: {
               title,
               body,
-              navigate: `/confirm.html?time=${matchTime}`,
+              navigate: `${BASE_URL}/confirm.html?time=${matchTime}`,
               tag: `match-${matchTime}`,
               requireInteraction: true,
               icon: '/icons/icon-192.jpg',
