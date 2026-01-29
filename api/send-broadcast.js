@@ -92,6 +92,11 @@ async function handler(req, res) {
         const playerName = data.playerName || 'Giocatore';
         const title = customTitle || '🎮 CAlcio Balilla';
         const body = customBody || `Ciao ${playerName}! Partita alle ${matchTime} 🏆`;
+        const actions = [
+          { action: 'confirm', title: 'Conferma', url: `/confirm.html?time=${matchTime}` },
+          { action: 'decline', title: 'Rifiuta', url: `/decline.html?time=${matchTime}` }
+        ];
+        const url = `/confirm.html?time=${matchTime}`; // URL di default
 
         await webpush.sendNotification(
           data.subscription,
@@ -105,7 +110,12 @@ async function handler(req, res) {
               requireInteraction: true,
               icon: '/icons/icon-192.jpg',
               badge: '/icons/icon-192.jpg',
-              app_badge: '0'
+              app_badge: '0',
+              actions: actions?.map(a => ({
+                action: a.action,
+                title: a.title,
+                navigate: a.url || url // URL specifico azione (Apple spec)
+              }))
             }
           }),
           {
