@@ -28,7 +28,8 @@ describe('send-broadcast API', () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data).toBeDefined();
+    expect(data.sent).toBeGreaterThanOrEqual(data.total);
+    expect(data.failed).toBe(0);
   });
 
   it('should reject request without Authorization header', async () => {

@@ -1,8 +1,7 @@
-import { list } from '@vercel/blob';
-import { kv } from '@vercel/kv';
 import webpush from 'web-push';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { redis } from './_redisClient.js';
 
 webpush.setVapidDetails(
   'mailto:info@biliardino.app',
@@ -21,11 +20,11 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Missing matchTime parameter' });
     }
 
-    // Ottieni conferme da KV
-    const keys = await kv.keys(`availability:${matchTime}:*`);
+    // Ottieni conferme da Redis
+    const keys = await redis.keys(`availability:${matchTime}:*`);
     const confirmations = await Promise.all(
       keys.map(async (key) => {
-        const data = await kv.get(key);
+        const data = await redis.get(key);
         return data;
       })
     );
@@ -42,7 +41,7 @@ async function handler(req, res) {
       });
     }
 
-    // Estrai 4 giocatori random
+    // 4 giocatori random
     const shuffled = validConfirmations.sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, 4);
     const selectedIds = selected.map(c => c.playerId);
@@ -51,7 +50,7 @@ async function handler(req, res) {
 
     // Ottieni le subscriptions di questi giocatori
     const { blobs } = await list({
-      prefix: 'biliardino-subs/',
+      prefix: `${playerId}-subs/`,
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
@@ -103,7 +102,7 @@ async function handler(req, res) {
     }
 
     // Pulisci le conferme di questa fascia oraria
-    await Promise.all(keys.map(key => kv.del(key)));
+    await Promise.all(keys.map(key => redis.del(key)));
 
     console.log(`✅ Matchmaking completato: ${success} notifiche inviate, ${fail} fallite`);
 

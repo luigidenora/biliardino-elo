@@ -2,6 +2,7 @@ import { list } from '@vercel/blob';
 import webpush from 'web-push';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { getRandomMessage } from './_randomMessage.js';
 
 // Verifica configurazione
 if (!process.env.VITE_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
@@ -29,6 +30,7 @@ webpush.setVapidDetails(
  * }
  */
 async function handler(req, res) {
+
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return;
 
@@ -37,7 +39,12 @@ async function handler(req, res) {
   }
 
   try {
-    const { matchTime, title: customTitle, body: customBody } = req.body;
+    /**
+     * @param {string} matchTime - Ora della partita (es: "14:30")
+     * @param {string} [title] - Titolo personalizzato della notifica
+     * @param {string} [body] - Corpo personalizzato della notifica
+     */
+    const { matchTime, title: customTitle, subtitle: customSubtitle, body: customBody } = req.body;
 
     if (!matchTime) {
       return res.status(400).json({ error: 'matchTime è obbligatorio' });
@@ -84,15 +91,18 @@ async function handler(req, res) {
       });
     }
 
+    const url = process.env.BASE_URL || '.';
+    const matchDate = new Date(matchTime).toLocaleTimeString('it-IT', { hour: '2-digit' });
     // Invia tutte le notifiche in parallelo
     const results = await Promise.allSettled(
       validSubscriptions.map(async (data) => {
         const playerName = data.playerName || 'Giocatore';
-        const title = customTitle || '🎮 CAlcio Balilla';
-        const body = customBody || `Ciao ${playerName}! Partita alle ${matchTime} 🏆`;
+        const _randomMessage = getRandomMessage(playerName.split(' ')[0]);
+        const title = customTitle || _randomMessage.title;
+        const body = customBody || _randomMessage.body;
         const actions = [
-          { action: 'confirm', title: 'Conferma', url: `${BASE_URL}/confirm.html?accept=true` },
-          { action: 'cancel', title: 'Rifiuta', url: `${BASE_URL}/confirm.html?accept=false` }
+          { action: 'confirm', title: 'Partecipa', url: `${url}/confirm.html?c=true&matchTime=${matchTime}` },
+          { action: 'cancel', title: 'Rifiuta', url: `${url}/confirm.html?c=false&matchTime=${matchTime}` }
         ];
 
         await webpush.sendNotification(
@@ -102,15 +112,16 @@ async function handler(req, res) {
             notification: {
               title,
               body,
-              navigate: `${BASE_URL}/confirm.html?time=${matchTime}`,
-              tag: `match-${matchTime}`,
+              navigate: `${url}/confirm.html?matchTime=${matchTime}`,
+              tag: `match`,
               requireInteraction: true,
               icon: '/icons/icon-192.jpg',
               badge: '/icons/icon-192.jpg',
               app_badge: '0',
               actions: actions?.map(a => ({
-                action: a.url,
+                action: a.action,
                 title: a.title,
+                navigate: a.url,
               }))
             }
           }),

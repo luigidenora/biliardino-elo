@@ -1,5 +1,6 @@
+
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '1.0.0-alpha.04';
+const VERSION = '1.0.0-alpha.05';
 const CACHE_NAME = 'CAlcio-Balilla-cache';
 
 // Firebase/API endpoints che vogliamo cachare
@@ -93,7 +94,7 @@ self.addEventListener('push', async (event) => {
   }
 
   try {
-    await self.registration.showNotification(title, options);
+    await self.registration.showNotification(title, { ...options, data: { navigate: notification?.navigate } });
   } catch (exception) {
     console.error('[push event] Error showing notification:', exception);
   }
@@ -101,31 +102,13 @@ self.addEventListener('push', async (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  let targetUrl = event.notification?.navigate || '/';
-
-  // Se è stata cliccata un'azione, cerchiamo l'URL specifico dell'azione
-  if (event.action && event.notification?.actions) {
-    const actionData = event.notification.actions.find(a => a.action === event.action);
-    if (actionData == 'cancel') {
-      return; // Non fare nulla se l'azione è "cancel"
-    }
-    if (actionData && actionData.navigate) {
-      targetUrl = actionData.navigate;
-    }
+  if (!event.action) {
+    clients.openWindow(event.notification.data?.navigate || '/');
+    return;
   }
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
-  );
+  if (event.action === 'cancel') {
+    // ignora l'azione
+    return;
+  }
+  clients.openWindow(event.action.url || '/');
 });
