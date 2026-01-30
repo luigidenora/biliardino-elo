@@ -78,27 +78,42 @@ function createNotificationHeader(): HTMLElement {
   const header = document.createElement('div');
   header.className = styles.notificationHeader;
 
-  const button = createNotificationButton();
-  header.appendChild(button);
-  button.addEventListener('click', (e) => {
-    e.preventDefault();
-
-    // Easter egg: 6 clicks to access test notifications page
-    handleEasterEggClick(button);
-
-    showIosPwaBannerIfNeeded();
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().then(() => {
-        updateButtonState();
-      });
-    } else {
-      toggleInlineSelect(button);
-    }
-  });
+  const notificationBtn = createNotificationButton();
+  const geoBtn = createGeolocationButton();
+  header.appendChild(notificationBtn);
+  header.appendChild(geoBtn);
 
   return header;
 }
 
+/** 
+ * Crea l'elemento html per la geolocalizzazione
+ */
+function createGeolocationButton(): HTMLElement {
+  const button = document.createElement('button');
+  button.id = 'geolocation-status';
+  button.className = styles.geolocationStatus;
+  button.setAttribute('aria-live', 'polite');
+  button.setAttribute('role', 'status');
+  button.textContent = 'Geolocalizzazione non attiva';
+
+  button.addEventListener('click', async () => {
+    if (!('geolocation' in navigator)) {
+      alert('Geolocalizzazione non supportata dal browser.');
+      return;
+    }
+
+    button.textContent = 'Richiesta geolocalizzazione...';
+
+    navigator.geolocation.getCurrentPosition((position => {
+      button.textContent = `Posizione: Lat ${position.coords.latitude.toFixed(4)}, Lon ${position.coords.longitude.toFixed(4)}`;
+    }), (error) => {
+      button.textContent = 'Geolocalizzazione non attiva';
+      alert('Errore nella geolocalizzazione: ' + error.message);
+    });
+  });
+  return button;
+}
 /**
  * Crea l'elemento HTML del pulsante con icona e avatar
  */
@@ -195,6 +210,20 @@ function createNotificationButton(): HTMLElement {
   button.appendChild(notificationIcon);
   button.appendChild(inlineSelect);
 
+
+  button.addEventListener('click', (e) => {
+    e.preventDefault();
+
+    showIosPwaBannerIfNeeded();
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(() => {
+        updateButtonState();
+      });
+    } else {
+      toggleInlineSelect(button);
+    }
+  });
+
   return button;
 }
 
@@ -286,39 +315,6 @@ async function updateButtonState(): Promise<void> {
   button.setAttribute('data-tooltip', tooltipText);
 }
 
-/**
- * Easter egg: 6 clicks on notification button to access test page
- */
-function handleEasterEggClick(button: HTMLElement): void {
-  easterEggClickCount++;
-
-  // Reset counter after 3 seconds of inactivity
-  if (easterEggResetTimer !== null) {
-    window.clearTimeout(easterEggResetTimer);
-  }
-  easterEggResetTimer = window.setTimeout(() => {
-    easterEggClickCount = 0;
-    easterEggResetTimer = null;
-  }, 3000);
-
-  // Show progress after 3rd click
-  if (easterEggClickCount >= 3 && easterEggClickCount < 6) {
-    const remaining = 6 - easterEggClickCount;
-    button.setAttribute('data-tooltip', `${remaining} click rimanenti...`);
-  }
-
-  // Navigate to declarative push test page after 6 clicks
-  if (easterEggClickCount === 6) {
-    easterEggClickCount = 0;
-    if (easterEggResetTimer !== null) {
-      window.clearTimeout(easterEggResetTimer);
-      easterEggResetTimer = null;
-    }
-
-    // Navigate to declarative push page
-    window.location.href = `${BASE_PATH}declarative-push.html`;
-  }
-}
 
 /**
  * Mostra il banner di installazione PWA per iOS se applicabile
