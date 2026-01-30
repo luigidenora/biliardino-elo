@@ -1,6 +1,5 @@
 import { list } from '@vercel/blob';
-import { withAuth } from './_auth.js';
-import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { handleCorsPreFlight } from './_cors.js';
 import { redis } from './_redisClient.js';
 
 async function findMatchingSubscription(playerId, incomingSubscription) {
@@ -28,8 +27,8 @@ async function findMatchingSubscription(playerId, incomingSubscription) {
   return { exists: true, matched };
 }
 
-async function handler(req, res) {
-  setCorsHeaders(res);
+export default async function handler(req, res) {
+  // setCorsHeaders(res);
 
   if (handleCorsPreFlight(req, res)) return;
   if (req.method !== 'POST') {
@@ -57,13 +56,13 @@ async function handler(req, res) {
       }
     }
 
-    const { exists, matched } = await findMatchingSubscription(playerIdNum, parsedSubscription);
-    if (!exists) {
-      return res.status(401).json({ error: 'Nessuna subscription associata a questo utente' });
-    }
-    if (!matched) {
-      return res.status(401).json({ error: 'Subscription non valida per questo utente' });
-    }
+    // const { exists, matched } = await findMatchingSubscription(playerIdNum, parsedSubscription);
+    // if (!exists) {
+    //   return res.status(401).json({ error: 'Nessuna subscription associata a questo utente' });
+    // }y
+    // if (!matched) {
+    //   return res.status(401).json({ error: 'Subscription non valida per questo utente' });
+    // }
 
     const key = `availability:${matchTime}:${playerIdNum}`;
 
@@ -88,4 +87,4 @@ async function handler(req, res) {
   }
 }
 
-export default withAuth(handler, 'admin');
+// export default withAuth(handler, 'admin');

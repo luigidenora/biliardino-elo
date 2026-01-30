@@ -259,12 +259,14 @@
       const btn = document.getElementById('confirm-btn');
       btn.disabled = true;
       btn.textContent = '⏳ Confermando...';
+      const playerId = localStorage.getItem('biliardino_player_id');
+      const subscription = localStorage.getItem('biliardino_subscription');
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/confirm-attendance`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/confirm-availability`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ time: matchTime, playerId: localStorage.getItem('playerId'), subscription: localStorage.getItem('subscription') })
+          body: JSON.stringify({ matchTime, playerId, subscription })
         });
 
         if (!res.ok) throw new Error('Errore nella conferma');
