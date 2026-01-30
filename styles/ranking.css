@@ -259,6 +259,7 @@ table {
   border-collapse: separate;
   border-spacing: 0;
   background: transparent;
+  overflow: hidden;
 }
 
 thead {
