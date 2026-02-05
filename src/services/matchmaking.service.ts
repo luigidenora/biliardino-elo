@@ -31,6 +31,17 @@ export interface IMatchmakingConfig {
 export interface IMatchProposal {
   teamA: { defence: IPlayer; attack: IPlayer };
   teamB: { defence: IPlayer; attack: IPlayer };
+  heuristicData?: IHeuristicData;
+}
+
+export interface IHeuristicData {
+  matchBalance: { score: number; max: number }; // Punteggio bilanciamento partita
+  teamBalance: { score: number; max: number }; // Punteggio bilanciamento team
+  priority: { score: number; max: number }; // Punteggio priorità giocatori
+  diversity: { score: number; max: number }; // Punteggio diversità
+  randomness: { score: number; max: number }; // Punteggio randomness
+  totalWithoutRandom: { score: number; max: number }; // Punteggio totale senza randomness
+  total: { score: number; max: number }; // Punteggio totale
 }
 
 export type Diversity = { teammate: number; opponent: number };
@@ -40,7 +51,7 @@ const config: IMatchmakingConfig = {
   teamBalanceWeight: 0.2,
   priorityWeight: 0.1,
   diversityWeight: 0.35,
-  randomness: 0.08
+  randomness: 0.2
 };
 
 export function findBestMatch(playersId: number[], priorityPlayersId: number[]): IMatchProposal | null {
@@ -132,14 +143,30 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   const diversityOpponentCount = getOpponentDiversity(defA, attA, defB, attB);
   const diversityNormalized = 1 - ((diversityTeammateCount / maxDiversity.teammate) + (diversityOpponentCount / maxDiversity.opponent)) / 2;
   const diversityScore = diversityNormalized * config.diversityWeight;
+  const randomness = Math.random() * config.randomness;
 
-  const score = calculateMatchScore(diversityScore, matchBalanceScore, priorityScore, teamBalanceScore);
+  const score = diversityScore + matchBalanceScore + priorityScore + teamBalanceScore + randomness;
 
   if (score > bestScore) {
     proposal.teamA.defence = defA;
     proposal.teamA.attack = attA;
     proposal.teamB.defence = defB;
     proposal.teamB.attack = attB;
+
+    // Salva i punteggi effettivi con i valori massimi
+    const scoreWithoutRandom = matchBalanceScore + teamBalanceScore + priorityScore + diversityScore;
+    const maxWithoutRandom = config.matchBalanceWeight + config.teamBalanceWeight + config.priorityWeight + config.diversityWeight;
+    const maxTotal = maxWithoutRandom + config.randomness;
+    proposal.heuristicData = {
+      matchBalance: { score: matchBalanceScore, max: config.matchBalanceWeight },
+      teamBalance: { score: teamBalanceScore, max: config.teamBalanceWeight },
+      priority: { score: priorityScore, max: config.priorityWeight },
+      diversity: { score: diversityScore, max: config.diversityWeight },
+      randomness: { score: randomness, max: config.randomness },
+      totalWithoutRandom: { score: scoreWithoutRandom, max: maxWithoutRandom },
+      total: { score: score, max: maxTotal }
+    };
+
     bestScore = score;
   }
 
@@ -242,11 +269,6 @@ function getOpponentDiversity(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB:
   const B2 = B2Player.opponentsMatchCount?.get(B2OtherPlayer.id) ?? 0;
 
   return A1 + A2 + B1 + B2; // TODO fix normalizzazione qui e anche sui match (bisogna sottrarre il minimo)
-}
-
-function calculateMatchScore(diversityScore: number, matchBalanceScore: number, priorityScore: number, teamBalanceScore: number): number {
-  const randomness = Math.random() * config.randomness;
-  return diversityScore + matchBalanceScore + priorityScore + teamBalanceScore + randomness;
 }
 
 function getPlayersRolesArray(matches: IMatch[], players: IPlayer[], defArray: IPlayer[], attArray: IPlayer[]): void {

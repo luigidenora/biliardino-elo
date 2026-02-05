@@ -483,6 +483,46 @@ export class MatchmakingView {
 
     matchContent.appendChild(teamsContainer);
 
+    // Dati euristici in una riga separata sotto i team
+    if (match.heuristicData) {
+      const heuristicContainer = document.createElement('div');
+      heuristicContainer.className = 'heuristic-container';
+      heuristicContainer.innerHTML = `
+        <div class="heuristic-title">📊 Euristica di Generazione</div>
+        <div class="heuristic-items">
+          <div class="heuristic-item" title="Bilanciamento ELO tra i team">
+            <span class="heuristic-label">⚖️ Bilanciamento partita</span>
+            <span class="heuristic-value">${match.heuristicData.matchBalance.score.toFixed(3)} / ${match.heuristicData.matchBalance.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item" title="Bilanciamento ELO all'interno dei team">
+            <span class="heuristic-label">🤝 Bilanciamento team</span>
+            <span class="heuristic-value">${match.heuristicData.teamBalance.score.toFixed(3)} / ${match.heuristicData.teamBalance.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item" title="Priorità ai giocatori con meno partite">
+            <span class="heuristic-label">⭐ Priorità</span>
+            <span class="heuristic-value">${match.heuristicData.priority.score.toFixed(3)} / ${match.heuristicData.priority.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item" title="Varietà nelle combinazioni di giocatori">
+            <span class="heuristic-label">🎲 Diversità</span>
+            <span class="heuristic-value">${match.heuristicData.diversity.score.toFixed(3)} / ${match.heuristicData.diversity.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item" title="Fattore di casualità">
+            <span class="heuristic-label">🎰 Casualità</span>
+            <span class="heuristic-value">${match.heuristicData.randomness.score.toFixed(3)} / ${match.heuristicData.randomness.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item heuristic-subtotal" title="Punteggio totale senza fattore casuale">
+            <span class="heuristic-label">📊 Totale (senza random)</span>
+            <span class="heuristic-value">${match.heuristicData.totalWithoutRandom.score.toFixed(3)} / ${match.heuristicData.totalWithoutRandom.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item heuristic-total" title="Punteggio totale della partita">
+            <span class="heuristic-label">🏆 Totale</span>
+            <span class="heuristic-value">${match.heuristicData.total.score.toFixed(3)} / ${match.heuristicData.total.max.toFixed(2)}</span>
+          </div>
+        </div>
+      `;
+      matchContent.appendChild(heuristicContainer);
+    }
+
     // Pulsante salva
     const saveButton = document.createElement('button');
     saveButton.type = 'submit';

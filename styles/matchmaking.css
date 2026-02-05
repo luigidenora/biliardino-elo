@@ -642,6 +642,94 @@ h2 {
   color: #ff3b30;
 }
 
+/* Heuristic data container */
+.heuristic-container {
+  margin-top: 1rem;
+  padding: 0.875rem 1rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.heuristic-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #495057;
+  text-align: center;
+  margin-bottom: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.heuristic-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.heuristic-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.65rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  gap: 0.5rem;
+}
+
+.heuristic-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.heuristic-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.heuristic-value {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #495057;
+  min-width: 70px;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.heuristic-total {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 193, 7, 0.15) 100%);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  font-weight: 700;
+}
+
+.heuristic-total:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 193, 7, 0.25) 100%);
+}
+
+.heuristic-total .heuristic-label,
+.heuristic-total .heuristic-value {
+  color: #856404;
+}
+
+.heuristic-subtotal {
+  background: linear-gradient(135deg, rgba(173, 216, 230, 0.2) 0%, rgba(135, 206, 250, 0.15) 100%);
+  border: 1px solid rgba(135, 206, 250, 0.3);
+  font-weight: 600;
+}
+
+.heuristic-subtotal:hover {
+  background: linear-gradient(135deg, rgba(173, 216, 230, 0.3) 0%, rgba(135, 206, 250, 0.25) 100%);
+}
+
+.heuristic-subtotal .heuristic-label,
+.heuristic-subtotal .heuristic-value {
+  color: #004085;
+}
+
 .switch-roles-btn {
   width: 100%;
   padding: 0.5rem;
