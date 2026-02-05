@@ -91,7 +91,7 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 
   if (currentClass === newClass) return;
 
-  if (!win && player.elo % 100 > 65) { // treshold per non derankare subito se hai rankato e perdi una partita (deranki se perdi 34 punti)
+  if (!win && player.elo % 100 >= 70 && player.elo >= 800) { // treshold per non derankare subito se hai rankato e perdi una partita (deranki se perdi più di 30 punti)
     newClass--;
   }
 
@@ -99,6 +99,7 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 }
 
 export function getClass(elo: number): number {
+  // TODO if you update this, edit also updatePlayerClass method
   if (elo >= 1200) return 0;
   if (elo >= 1100) return 1;
   if (elo >= 1000) return 2;
