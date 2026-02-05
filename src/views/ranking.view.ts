@@ -31,9 +31,9 @@ export class RankingView {
 
   private static sortKey: SortKey = 'elo';
   private static sortAsc: boolean = false;
-  // Indici colonne: 0=#, 1=Nome, 2=Elo, 3=Ruolo, 4=Match, 5=V/S, 6=%Win, 7=Goal F/S, 8=Forma
+  // Indici colonne: 0=#, 1=Classe, 2=Nome, 3=Elo, 4=Ruolo, 5=Match, 6=V/S, 7=%Win, 8=Goal F/S, 9=Forma
   private static readonly sortKeys: (SortKey | null)[] = [
-    null, 'name', 'elo', null, 'matches', null, 'winrate', 'goaldiff', 'form'
+    null, null, 'name', 'elo', null, 'matches', null, 'winrate', 'goaldiff', 'form'
   ];
 
   /**
@@ -418,8 +418,21 @@ export class RankingView {
       const rankDelta = startRank - rank;
       const todayRankBadge = RankingView.renderTodayRankBadge(rankDelta, todayMatches);
 
+      // Class icon
+      const fallbackClassIcon = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjQiIHk9IjMyIiBmb250LXNpemU9IjMwIiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzc5N2FiMSI+PzwvdGV4dD48L3N2Zz4=';
+      const classImageHTML = player.class !== -1 ? `
+        <div class="class-icon">
+          <img 
+            src="/biliardino-elo/class/${player.class}.webp" 
+            alt="Class ${player.class}"
+            onerror="this.src='${fallbackClassIcon}'"
+          />
+        </div>
+      ` : '';
+
       tr.innerHTML = `
         <td title="Posizione in classifica"><strong>${rankDisplay}°</strong> ${todayRankBadge}</td>
+        <td title="Classe">${classImageHTML}</td>
         <td title="Nome giocatore"><div class="player-info">${avatarHTML}<span>${playerNameDisplay}</span></div></td>
         <td title="ELO rating attuale"><strong>${elo}</strong> ${todayBadge}</td>
         <td title="Ruolo preferito e percentuale">${role}</td>
