@@ -1,6 +1,6 @@
 import { IMatch, IMatchDTO, IRunningMatchDTO } from '@/models/match.interface';
-import { IPlayer } from '@/models/player.interface';
-import { getCollections, getDb } from '@/utils/firebase-lazy.util';
+import { IPlayer, IPlayerDTO } from '@/models/player.interface';
+import { db, MATCHES_COLLECTION, PLAYERS_COLLECTION, RUNNING_MATCH_COLLECTION } from '@/utils/firebase.util';
 import { collection, deleteDoc, doc, DocumentData, getDoc, getDocFromServer, getDocsFromCache, getDocsFromServer, QuerySnapshot, setDoc } from 'firebase/firestore';
 
 const CURRENT_RUNNING_MATCH = 'current';
@@ -13,7 +13,6 @@ const { useCacheMatches, useCachePlayers } = await shouldUseCache();
 
 async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMatches: number | null }> {
   try {
-    const db = await getDb();
     const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     const snap = await getDoc(ref);
 
@@ -32,7 +31,6 @@ async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMat
 
 export async function updatePlayersHash(): Promise<void> {
   try {
-    const db = await getDb();
     const hashPlayers = Math.random();
     const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     await setDoc(ref, { hashPlayers }, { merge: true });
@@ -43,7 +41,6 @@ export async function updatePlayersHash(): Promise<void> {
 
 export async function updateMatchesHash(): Promise<void> {
   try {
-    const db = await getDb();
     const hashMatches = Math.random();
     const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     await setDoc(ref, { hashMatches }, { merge: true });
@@ -86,7 +83,6 @@ async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMat
 }
 
 export async function fetchPlayers(): Promise<IPlayer[]> {
-  const { PLAYERS_COLLECTION } = await getCollections();
   const snap = await getDocsCacheServer(PLAYERS_COLLECTION, useCachePlayers);
 
   const players = snap.docs.map((d) => {
@@ -106,7 +102,8 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       matchesAsDefender: 0,
       matchesDelta: [],
       wins: 0,
-      rank: -1
+      rank: -1,
+      class: -1
     } satisfies IPlayer;
   });
 
@@ -114,7 +111,6 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 }
 
 export async function fetchMatches(): Promise<IMatch[]> {
-  const { MATCHES_COLLECTION } = await getCollections();
   const snap = await getDocsCacheServer(MATCHES_COLLECTION, useCacheMatches);
   const matches: IMatch[] = [];
 
@@ -142,8 +138,6 @@ export async function fetchMatches(): Promise<IMatch[]> {
 }
 
 export async function saveMatch(match: IMatchDTO): Promise<void> {
-  const db = await getDb();
-  const { MATCHES_COLLECTION } = await getCollections();
   const ref = doc(collection(db, MATCHES_COLLECTION), match.id.toString());
   await setDoc(ref, match, { merge: true });
   await updateMatchesHash();
@@ -165,15 +159,11 @@ export function parseMatchDTO(match: IMatchDTO): IMatch {
 }
 
 export async function saveRunningMatch(match: IRunningMatchDTO): Promise<void> {
-  const db = await getDb();
-  const { RUNNING_MATCH_COLLECTION } = await getCollections();
   const ref = doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
   await setDoc(ref, match, { merge: true });
 }
 
 export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
-  const db = await getDb();
-  const { RUNNING_MATCH_COLLECTION } = await getCollections();
   const snap = await getDocFromServer(doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH));
 
   if (!snap?.exists()) return null;
@@ -182,35 +172,27 @@ export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
 }
 
 export async function clearRunningMatch(): Promise<void> {
-  const db = await getDb();
-  const { RUNNING_MATCH_COLLECTION } = await getCollections();
   const ref = doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
   await deleteDoc(ref);
 }
 
-export async function savePlayer(player: IPlayer): Promise<void> {
-  const db = await getDb();
-  const { PLAYERS_COLLECTION } = await getCollections();
+export async function savePlayer(player: IPlayerDTO): Promise<void> {
   const ref = doc(collection(db, PLAYERS_COLLECTION), player.id.toString());
   const playerDTO = {
-    id: player.id,
     name: player.name,
     elo: player.elo,
     defence: player.defence
   };
   await setDoc(ref, playerDTO, { merge: true });
+  await updatePlayersHash();
 }
 
 export async function deletePlayer(id: number): Promise<void> {
-  const db = await getDb();
-  const { PLAYERS_COLLECTION } = await getCollections();
   const ref = doc(collection(db, PLAYERS_COLLECTION), id.toString());
   await deleteDoc(ref);
 }
 
 async function getDocsCacheServer(collectionName: string, useCache: boolean): Promise<QuerySnapshot<DocumentData, DocumentData>> {
-  const db = await getDb();
-
   if (useCache) {
     console.log('cached fetch for collection:', collectionName);
     return await getDocsFromCache(collection(db, collectionName));

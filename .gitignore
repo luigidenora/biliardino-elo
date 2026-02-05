@@ -32,5 +32,5 @@ Thumbs.db
 .vercel
 .env*.local
 
-# Test files
-test-ios-modal.html
+# Coverage reports
+coverage/
