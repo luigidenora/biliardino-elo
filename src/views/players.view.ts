@@ -254,7 +254,10 @@ export class PlayersView {
 
       <div class="pp-content">
         <div class="pp-header">
-          <h2 class="pp-name">${player.name}</h2>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            ${player.class !== -1 ? `<img src="/biliardino-elo/class/${player.class}.webp" alt="Class ${player.class}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+            <h2 class="pp-name">${player.name}</h2>
+          </div>
           <div class="pp-badges">
             <span class="pp-rank-badge">${formatRank(getRank(player.id))}</span>
             <span class="pp-winrate-badge ${winRateClass}">Win ${winPercentage}%</span>
