@@ -98,7 +98,7 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
   player.class = newClass;
 }
 
-function getClass(elo: number): number {
+export function getClass(elo: number): number {
   if (elo >= 1200) return 0;
   if (elo >= 1100) return 1;
   if (elo >= 1000) return 2;

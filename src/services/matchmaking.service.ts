@@ -2,7 +2,7 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerElo } from './elo.service';
 import { getAllMatches } from './match.service';
-import { getPlayerById } from './player.service';
+import { getClass, getPlayerById } from './player.service';
 
 export interface IMatchmakingConfig {
   /**
@@ -18,12 +18,7 @@ export interface IMatchmakingConfig {
    */
   diversityWeight: number;
   /**
-   * Weight for diversity (0-1). Higher values prioritize new player combinations.
-   */
-  teamBalanceWeight: number;
-  /**
    * Randomness factor (0-1). Adds variation to avoid always selecting the same match.
-   * The final score is multiplied by random(1 - randomness, 1 + randomness).
    */
   randomness: number;
 }
@@ -36,21 +31,20 @@ export interface IMatchProposal {
 
 export interface IHeuristicData {
   matchBalance: { score: number; max: number }; // Punteggio bilanciamento partita
-  teamBalance: { score: number; max: number }; // Punteggio bilanciamento team
   priority: { score: number; max: number }; // Punteggio priorità giocatori
   diversity: { score: number; max: number }; // Punteggio diversità
   randomness: { score: number; max: number }; // Punteggio randomness
-  totalWithoutRandom: { score: number; max: number }; // Punteggio totale senza randomness
   total: { score: number; max: number }; // Punteggio totale
 }
+
+// TODO: consider early exit if bad performance (too many players)
 
 export type Diversity = { teammate: number; opponent: number };
 
 const config: IMatchmakingConfig = {
-  matchBalanceWeight: 0.35,
-  teamBalanceWeight: 0.2,
+  matchBalanceWeight: 0.3,
   priorityWeight: 0.1,
-  diversityWeight: 0.35,
+  diversityWeight: 0.4,
   randomness: 0.2
 };
 
@@ -95,7 +89,7 @@ function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity:
           const p4 = att[l];
           if (p4 === p1 || p4 === p2 || p4 === p3) continue;
 
-          if (!validatePriorityPlayers(p1, p2, p3, p4, priorityPlayers)) continue;
+          if (!validateGrades(p1, p2, p3, p4) || !validatePriority(p1, p2, p3, p4, priorityPlayers)) continue;
 
           bestScore = checkProposal(p1, p2, p3, p4, maxEloDiff, maxMatches, maxDiversity, bestScore, bestProposal);
         }
@@ -106,7 +100,9 @@ function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity:
   return bestScore === -Infinity ? null : bestProposal;
 }
 
-function validatePriorityPlayers(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer, priorityPlayers: IPlayer[]): boolean {
+function validatePriority(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer, priorityPlayers: IPlayer[]): boolean {
+  if (priorityPlayers.length === 0) return true;
+
   const playersSet = new Set([p1, p2, p3, p4]);
 
   for (const priorityPlayer of priorityPlayers) {
@@ -114,6 +110,18 @@ function validatePriorityPlayers(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPla
   }
 
   return true;
+}
+
+function validateGrades(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): boolean {
+  const rank1 = p1.rank === -1 ? getClass(p1.elo) : p1.rank;
+  const rank2 = p2.rank === -1 ? getClass(p2.elo) : p2.rank;
+  const rank3 = p3.rank === -1 ? getClass(p3.elo) : p3.rank;
+  const rank4 = p4.rank === -1 ? getClass(p4.elo) : p4.rank;
+
+  const maxRank = Math.max(rank1, rank2, rank3, rank4);
+  const minRank = Math.min(rank1, rank2, rank3, rank4);
+
+  return maxRank - minRank <= 1;
 }
 
 function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlayer, maxEloDiff: number, maxMatches: number, maxDiversity: Diversity, bestScore: number, proposal: IMatchProposal): number {
@@ -124,19 +132,10 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   const matchEloDiffNormalized = 1 - (matchEloDiff / maxEloDiff);
   const matchBalanceScore = matchEloDiffNormalized * config.matchBalanceWeight;
 
-  // TEAM ELO DIFFERENCE SCORE
-  const diffTeamAElo = Math.abs(getPlayerElo(defA, true) - getPlayerElo(attA, false));
-  const diffTeamBElo = Math.abs(getPlayerElo(defB, true) - getPlayerElo(attB, false));
-  const teamEloDiff = Math.max(diffTeamAElo, diffTeamBElo);
-  const teamEloDiffNormalized = 1 - Math.min(1, teamEloDiff / maxEloDiff);
-  const teamBalanceScore = teamEloDiffNormalized * config.teamBalanceWeight; // stiamo usando la differenza tra i primi 2 player e gli ultimi 2, ma va bene comunque
-
   // AVERAGE MATCHES PLAYED
   const teamsMatches = defA.matches + attA.matches + defB.matches + attB.matches;
   const teamMatchessNormalized = 1 - (teamsMatches / maxMatches);
   const priorityScore = teamMatchessNormalized * config.priorityWeight;
-
-  // TODO we can apply an eary exit here
 
   // DIVERSITY SCORE
   const diversityTeammateCount = getTeammateDiversity(defA, attA, defB, attB);
@@ -147,7 +146,7 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   const diversityScore = diversityNormalized * config.diversityWeight;
   const randomness = Math.random() * config.randomness;
 
-  const score = diversityScore + matchBalanceScore + priorityScore + teamBalanceScore + randomness;
+  const score = diversityScore + matchBalanceScore + priorityScore + randomness;
 
   if (score > bestScore) {
     proposal.teamA.defence = defA;
@@ -155,18 +154,12 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
     proposal.teamB.defence = defB;
     proposal.teamB.attack = attB;
 
-    // Salva i punteggi effettivi con i valori massimi
-    const scoreWithoutRandom = matchBalanceScore + teamBalanceScore + priorityScore + diversityScore;
-    const maxWithoutRandom = config.matchBalanceWeight + config.teamBalanceWeight + config.priorityWeight + config.diversityWeight;
-    const maxTotal = maxWithoutRandom + config.randomness;
     proposal.heuristicData = {
       matchBalance: { score: matchBalanceScore, max: config.matchBalanceWeight },
-      teamBalance: { score: teamBalanceScore, max: config.teamBalanceWeight },
       priority: { score: priorityScore, max: config.priorityWeight },
       diversity: { score: diversityScore, max: config.diversityWeight },
       randomness: { score: randomness, max: config.randomness },
-      totalWithoutRandom: { score: scoreWithoutRandom, max: maxWithoutRandom },
-      total: { score: score, max: maxTotal }
+      total: { score: score, max: 1 }
     };
 
     bestScore = score;
