@@ -83,7 +83,7 @@ function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity:
   for (let i = 0; i < defCount - 1; i++) {
     const p1 = def[i];
 
-    for (let j = 0; j < attCount - 1; j++) {
+    for (let j = 0; j < attCount; j++) {
       const p2 = att[j];
       if (p2 === p1) continue;
 
@@ -91,9 +91,9 @@ function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity:
         const p3 = def[k];
         if (p3 === p2) continue;
 
-        for (let l = j + 1; l < attCount; l++) {
+        for (let l = 0; l < attCount; l++) {
           const p4 = att[l];
-          if (p4 === p1 || p4 === p3) continue;
+          if (p4 === p1 || p4 === p2 || p4 === p3) continue;
 
           if (!validatePriorityPlayers(p1, p2, p3, p4, priorityPlayers)) continue;
 
@@ -141,7 +141,9 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   // DIVERSITY SCORE
   const diversityTeammateCount = getTeammateDiversity(defA, attA, defB, attB);
   const diversityOpponentCount = getOpponentDiversity(defA, attA, defB, attB);
-  const diversityNormalized = 1 - ((diversityTeammateCount / maxDiversity.teammate) + (diversityOpponentCount / maxDiversity.opponent)) / 2;
+  // 66% peso alla diversità dei compagni di squadra, 33% a quella degli avversari
+  // TODO split euristica
+  const diversityNormalized = 1 - ((diversityTeammateCount / maxDiversity.teammate) * 0.66 + (diversityOpponentCount / maxDiversity.opponent) * 0.33);
   const diversityScore = diversityNormalized * config.diversityWeight;
   const randomness = Math.random() * config.randomness;
 
