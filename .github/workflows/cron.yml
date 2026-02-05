@@ -1,0 +1,39 @@
+name: Broadcast Notifications
+on:
+  # push:
+  #   branches: [main]
+  schedule:
+    # https://crontab.guru/#45_9,14_*_*_1-5
+    # (Ogni giorno della settimana alle 09:45 UTC e 14:45 UTC)
+    # Adattato per l'ora di Roma (UTC+1/UTC+2) per inviare prima delle partite alle 11:00 e 16:00
+    - cron: 45 9,14 * * 1-5
+jobs:
+  scheduled-job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send Broadcast Notification
+        if: github.event_name != 'pull_request' && github.event.inputs.test_mode != 'true'
+        run: |
+          # Calcola l'orario della partita in base all'ora corrente (Roma)
+          CURRENT_HOUR=$(TZ='Europe/Rome' date '+%H')
+          if [ "$CURRENT_HOUR" -lt 12 ]; then
+            MATCH_TIME="11:00"
+          else
+            MATCH_TIME="16:00"
+          fi
+          
+          echo "📢 Invio broadcast notifica per partita delle $MATCH_TIME..."
+          response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.VERCEL_API_URL }}/api/send-broadcast" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" \
+            -d "{\"matchTime\": \"$MATCH_TIME\"}")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "📥 Response code: $http_code"
+          echo "📄 Response body: $body"
+          if [ "$http_code" -ge 400 ]; then
+            echo "❌ Errore nella chiamata API"
+            exit 1
+          fi
+          echo "✅ Broadcast inviato con successo per partita delle $MATCH_TIME"

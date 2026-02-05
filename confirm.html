@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="it">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conferma Partecipazione - CAlcio Balilla</title>
+  <meta name="theme-color" content="#062c7d" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0a1628 0%, #062c7d 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .logo {
+      font-size: 5rem;
+      margin-bottom: 1rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff 0%, #a0c4ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #a0c4ff;
+      margin-bottom: 3rem;
+      font-weight: 500;
+    }
+
+    .loading-container {
+      margin: 3rem 0;
+    }
+
+    .spinner {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 1.5rem;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .status-text {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 0.5rem;
+    }
+
+    .match-time {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #4CAF50;
+      margin: 1rem 0;
+      text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1rem 3rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);
+      text-decoration: none;
+      margin-top: 2rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(76, 175, 80, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      background: #666;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .queue-info {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(76, 175, 80, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .queue-count {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #4CAF50;
+      margin: 0.5rem 0;
+    }
+
+    .queue-label {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .success {
+      color: #4CAF50;
+    }
+
+    .error {
+      color: #f44336;
+    }
+
+    .back-link {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+    }
+
+    .back-link a {
+      color: #a0c4ff;
+      text-decoration: none;
+    }
+
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="logo">⚽</div>
+    <h1 id="main-title">Partita di Biliardino</h1>
+    <p class="subtitle" id="subtitle">Conferma la tua presenza</p>
+
+    <div id="loading-state" class="loading-container">
+      <div class="spinner"></div>
+      <p class="status-text">Caricamento...</p>
+    </div>
+
+    <div id="confirm-state" style="display: none;">
+      <div class="match-time" id="match-time">--:--</div>
+      <div class="queue-info">
+        <div class="queue-label">Giocatori in coda</div>
+        <div class="queue-count" id="queue-count">0</div>
+        <div class="queue-label">/ 5 richiesti</div>
+      </div>
+      <button id="confirm-btn" class="btn">✓ Confermo la mia presenza</button>
+    </div>
+
+    <div id="success-state" style="display: none;">
+      <div class="logo">✅</div>
+      <p class="status-text success">Confermato con successo!</p>
+      <p class="subtitle">Aspetta il matchmaking...</p>
+      <div class="back-link">
+        <a href="./index.html">← Torna alla home</a>
+      </div>
+    </div>
+
+    <div id="error-state" style="display: none;">
+      <div class="logo">❌</div>
+      <p class="status-text error" id="error-message">Errore nella conferma</p>
+      <button id="retry-btn" class="btn">↻ Riprova</button>
+      <div class="back-link">
+        <a href="./index.html">← Torna alla home</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const urlParams = new URLSearchParams(window.location.search);
+    const matchTime = urlParams.get('time') || '11:00';
+    const confirmation = urlParams.get('c');
+    if (confirmation === 'true') {
+      await autoConfirm();
+    } else if (confirmation === 'false') {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-message').textContent = 'Hai rifiutato la partecipazione alla partita.';
+      document.getElementById('error-state').style.display = 'block';
+    }
+    document.getElementById('match-time').textContent = matchTime;
+
+    async function loadConfirmations() {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/get-confirmations?time=` + matchTime);
+        const data = await res.json();
+        document.getElementById('queue-count').textContent = data.count || 0;
+      } catch (err) {
+        console.error('Errore caricamento conferme:', err);
+      }
+    }
+
+    async function init() {
+      await loadConfirmations();
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('confirm-state').style.display = 'block';
+
+      // dopo un tot deve smettere di aggiornare
+      const intervalId = setInterval(loadConfirmations, 5000);
+      setTimeout(() => clearInterval(intervalId), 60_000);
+    }
+
+    async function confirmAttendance() {
+      const btn = document.getElementById('confirm-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Confermando...';
+      const playerId = localStorage.getItem('biliardino_player_id');
+      const subscription = localStorage.getItem('biliardino_subscription');
+
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/confirm-availability`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matchTime, playerId, subscription })
+        });
+
+        if (!res.ok) throw new Error('Errore nella conferma');
+
+        document.getElementById('confirm-state').style.display = 'none';
+        document.getElementById('success-state').style.display = 'block';
+      } catch (err) {
+        console.error('Errore durante la conferma:', err);
+        document.getElementById('confirm-state').style.display = 'none';
+        document.getElementById('error-message').textContent = err.message || 'Errore nella conferma';
+        document.getElementById('error-state').style.display = 'block';
+      }
+    }
+
+    async function autoConfirm() {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('confirm-state').style.display = 'block';
+      await confirmAttendance();
+    }
+
+    document.getElementById('confirm-btn').addEventListener('click', confirmAttendance);
+
+    document.getElementById('retry-btn')?.addEventListener('click', () => {
+      document.getElementById('error-state').style.display = 'none';
+      document.getElementById('confirm-state').style.display = 'block';
+      document.getElementById('confirm-btn').disabled = false;
+      document.getElementById('confirm-btn').textContent = '✓ Confermo la mia presenza';
+    });
+
+    init();
+  </script>
+</body>
+
+</html>
