@@ -6,7 +6,7 @@ import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } fro
 import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { findBestMatch, IMatchProposal } from '../services/matchmaking.service';
-import { getAllPlayers, getPlayerById, getPlayerByName } from '../services/player.service';
+import { getAllPlayers, getPlayerById, getPlayerByName, getRank } from '../services/player.service';
 
 /**
  * Player state: 0 = unchecked, 1 = checked (queue), 2 = priority
@@ -570,10 +570,11 @@ export class MatchmakingView {
                 onerror="this.src='${fallbackAvatar}'"
               />
             </div>
-            <div class="match-player-name"><span class="player-name">${roleIcon1} ${player1.name}</span></div>
+            <div class="match-player-name"><span class="player-name">${roleIcon1} ${player1.name}</span><span class="player-rank" style="font-size:0.85em;opacity:0.75;"> ${getRank(player1.id)}°</span></div>
             <div class="match-player-meta">
               <span class="role-badge ${roleBadgeClass1}" title="Percentuale partite nel ruolo assegnato">${roleLabel1}</span>
               <span class="player-elo">${Math.round(getPlayerElo(player1, role1 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player1)})</span></span>
+              ${player1.class !== -1 ? `<img src="/biliardino-elo/class/${player1.class}.webp" alt="Class ${player1.class}" style="width:24px;height:24px;object-fit:contain;" />` : ''}
             </div>
           </div>
         </div>
@@ -587,10 +588,11 @@ export class MatchmakingView {
                 onerror="this.src='${fallbackAvatar}'"
               />
             </div>
-            <div class="match-player-name"><span class="player-name">${roleIcon2} ${player2.name}</span></div>
+            <div class="match-player-name"><span class="player-name">${roleIcon2} ${player2.name}</span><span class="player-rank" style="font-size:0.85em;opacity:0.75;"> ${getRank(player2.id)}°</span></div>
             <div class="match-player-meta">
               <span class="role-badge ${roleBadgeClass2}" title="Percentuale partite nel ruolo assegnato">${roleLabel2}</span>
               <span class="player-elo">${Math.round(getPlayerElo(player2, role2 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player2)})</span></span>
+              ${player2.class !== -1 ? `<img src="/biliardino-elo/class/${player2.class}.webp" alt="Class ${player2.class}" style="width:24px;height:24px;object-fit:contain;" />` : ''}
             </div>
           </div>
         </div>
