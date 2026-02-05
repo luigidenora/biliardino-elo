@@ -1,0 +1,1 @@
+[![Broadcast Notifications](https://github.com/luigidenora/biliardino-elo/actions/workflows/cron.yml/badge.svg?event=schedule)](https://github.com/luigidenora/biliardino-elo/actions/workflows/cron.yml)

@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 out/
+serve/
 
 # TypeScript compiled files
 *.tsbuildinfo
@@ -27,5 +28,9 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Coverage reports
-coverage/
+# Vercel deployment files
+.vercel
+.env*.local
+
+# Test files
+test-ios-modal.html
