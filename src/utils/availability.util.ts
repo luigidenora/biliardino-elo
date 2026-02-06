@@ -18,7 +18,8 @@ export const availabilityList = {
     'Onofrio Petragallo',
     'Gianni Labarile',
     'Angela Tragni',
-    'Pasquale Ceglie'
+    'Pasquale Ceglie',
+    'Michele Morisco'
   ],
   tuesday: [
     'Francesco Molinari',
@@ -39,7 +40,8 @@ export const availabilityList = {
     // 'Ilenia Taccogna',
     'Onofrio Petragallo',
     'Gianni Labarile',
-    'Pasquale Ceglie'
+    'Pasquale Ceglie',
+    'Michele Morisco'
   ],
   wednesday: [
     'Francesco Molinari',
@@ -64,7 +66,8 @@ export const availabilityList = {
     'Gianni Labarile',
     'Arcangelo Clemente',
     'Gianni Nitti',
-    'Pasquale Ceglie'
+    'Pasquale Ceglie',
+    'Michele Morisco'
   ],
   thursday: [
     'Francesco Molinari',
@@ -88,7 +91,8 @@ export const availabilityList = {
     // 'Ilenia Taccogna',
     'Onofrio Petragallo',
     'Gianni Labarile',
-    'Pasquale Ceglie'
+    'Pasquale Ceglie',
+    'Michele Morisco'
   ],
   friday: [
     'Francesco Molinari',
@@ -111,6 +115,7 @@ export const availabilityList = {
     'Angela Tragni',
     'Arcangelo Clemente',
     'Gianni Nitti',
-    'Pasquale Ceglie'
+    'Pasquale Ceglie',
+    'Michele Morisco'
   ]
 };

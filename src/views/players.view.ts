@@ -14,21 +14,26 @@ export class PlayersView {
    * Initialize the view by reading player from query string and rendering stats.
    */
   public static init(): void {
-    const urlParams = new URLSearchParams(globalThis.location.search);
-    const playerId = Number.parseInt(urlParams.get('id')!);
+    try {
+      const urlParams = new URLSearchParams(globalThis.location.search);
+      const playerId = Number.parseInt(urlParams.get('id')!);
 
-    if (!playerId) {
-      PlayersView.renderError('Nessun giocatore specificato. Aggiungi ?id=PLAYER_ID all\'URL.');
-      return;
+      if (!playerId) {
+        PlayersView.renderError('Nessun giocatore specificato. Aggiungi ?id=PLAYER_ID all\'URL.');
+        return;
+      }
+
+      const player = getPlayerById(playerId);
+      if (!player) {
+        PlayersView.renderError('Giocatore non trovato.');
+        return;
+      }
+
+      PlayersView.renderPlayerStats(player);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      PlayersView.renderError(`❌ Errore: ${errorMessage}`);
     }
-
-    const player = getPlayerById(playerId);
-    if (!player) {
-      PlayersView.renderError('Giocatore non trovato.');
-      return;
-    }
-
-    PlayersView.renderPlayerStats(player);
   }
 
   /**
