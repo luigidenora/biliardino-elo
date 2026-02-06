@@ -262,8 +262,8 @@ export class PlayersView {
 
       <div class="pp-content">
         <div class="pp-header">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            ${player.class !== -1 ? `<img src="/biliardino-elo/class/${player.class}.webp" alt="Class ${player.class}" title="${getClassName(player.class)}" style="width: 56px; height: 56px; object-fit: contain; cursor: help;" />` : ''}
+          <div class="pp-name-wrapper">
+            ${player.class !== -1 ? `<img src="/biliardino-elo/class/${player.class}.webp" alt="Class ${player.class}" title="${getClassName(player.class)}" class="pp-class-icon" />` : ''}
             <h2 class="pp-name">${player.name}</h2>
           </div>
           <div class="pp-badges">
@@ -272,28 +272,28 @@ export class PlayersView {
           </div>
         </div>
 
-        <div class="pp-stats" style="display: flex; gap: 20px; font-size: 0.9em;">
-          <div class="stat-item" style="flex: 1;">
+        <div class="pp-stats">
+          <div class="stat-item">
             <span class="stat-label">ELO Attuale</span>
             <span class="stat-value highlight">${formatElo(stats.elo)}</span>
           </div>
 
-          <div class="stat-item" style="flex: 1;">
+          <div class="stat-item">
             <span class="stat-label">Miglior ELO</span>
-            <span class="stat-value positive" style="display: flex; align-items: center; gap: 8px;">
+            <span class="stat-value positive stat-value-with-icon">
               ${formatElo(stats.bestElo)}
-              ${Number.isFinite(stats.bestClass) && stats.bestClass !== -1 ? `<img src="/biliardino-elo/class/${stats.bestClass}.webp" alt="Class ${stats.bestClass}" title="${getClassName(stats.bestClass)}" style="width: 48px; height: 48px; object-fit: contain; cursor: help;" />` : ''}
+              ${Number.isFinite(stats.bestClass) && stats.bestClass !== -1 ? `<img src="/biliardino-elo/class/${stats.bestClass}.webp" alt="Class ${stats.bestClass}" title="${getClassName(stats.bestClass)}" class="stat-class-icon" />` : ''}
             </span>
           </div>
 
-          <div class="stat-item" style="flex: 1;">
+          <div class="stat-item">
             <span class="stat-label">Peggior ELO</span>
             <span class="stat-value negative">${formatElo(stats.worstElo)}</span>
           </div>
 
-          <div class="stat-item" style="flex: 1; text-align: center;">
+          <div class="stat-item stat-item-role">
             <span class="stat-label">Ruolo</span>
-            <span class="stat-value">${rolePercentage === 50 ? `<span class="role-badge" style="color: #6c757d !important;">⚖️ ${rolePercentage}%</span>` : isDefender ? `<span class="role-badge badge-def">🛡️ ${rolePercentage}%</span>` : `<span class="role-badge badge-att">⚔️ ${rolePercentage}%</span>`}</span>
+            <span class="stat-value">${rolePercentage === 50 ? `<span class="role-badge badge-neutral">⚖️ ${rolePercentage}%</span>` : isDefender ? `<span class="role-badge badge-def">🛡️ ${rolePercentage}%</span>` : `<span class="role-badge badge-att">⚔️ ${rolePercentage}%</span>`}</span>
           </div>
         </div>
       </div>
