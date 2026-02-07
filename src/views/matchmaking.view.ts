@@ -5,9 +5,11 @@ import { addMatch } from '@/services/match.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { BASE_PATH } from '../config/env.config';
+import { BASE_PATH, API_BASE_URL } from '../config/env.config';
 import { findBestMatch, IMatchProposal } from '../services/matchmaking.service';
 import { getAllPlayers, getPlayerById, getPlayerByName, getRank } from '../services/player.service';
+import { getNextMatchTime } from '@/utils/next-match-time.util';
+import { IConfirmationsResponse } from '@/models/confirmation.interface';
 
 /**
  * Player state: 0 = unchecked, 1 = checked (queue), 2 = priority
@@ -21,6 +23,11 @@ export class MatchmakingView {
   private static readonly playerStates: Map<string, PlayerState> = new Map();
   private static currentMatch: IMatchProposal | null = null;
 
+  // Conferme real-time
+  private static pollingIntervalId: number | null = null;
+  private static confirmedPlayerIds: Set<number> = new Set();
+  private static currentMatchTime: string = '';
+
   /**
    * Initialize the matchmaking UI.
    */
@@ -30,6 +37,14 @@ export class MatchmakingView {
     MatchmakingView.renderDisclaimer();
     await MatchmakingView.restoreSavedMatch();
     MatchmakingView.updateUI();
+
+    // Avvia polling conferme
+    MatchmakingView.startConfirmationsPolling();
+
+    // Cleanup al beforeunload
+    window.addEventListener('beforeunload', () => {
+      MatchmakingView.stopConfirmationsPolling();
+    });
   }
 
   /**
@@ -117,6 +132,12 @@ export class MatchmakingView {
       label.className = 'player-checkbox';
       label.dataset.playerName = player.name;
 
+      // Controlla se il giocatore ha confermato tramite app
+      const isConfirmed = MatchmakingView.confirmedPlayerIds.has(player.id);
+      if (isConfirmed) {
+        label.classList.add('confirmed');
+      }
+
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.value = player.name;
@@ -141,6 +162,15 @@ export class MatchmakingView {
 
       label.appendChild(checkbox);
       label.appendChild(playerInfo);
+
+      // Aggiungi badge se confermato tramite app
+      if (isConfirmed) {
+        const badge = document.createElement('span');
+        badge.className = 'confirmation-badge';
+        badge.textContent = '✓';
+        badge.title = 'Confermato tramite app';
+        label.appendChild(badge);
+      }
 
       // Add click handler for 3-state cycling
       checkbox.addEventListener('click', (e) => {
@@ -751,6 +781,14 @@ export class MatchmakingView {
     try {
       const matchDTO = addMatch(teamA, teamB, [scoreTeamA, scoreTeamB]);
       await saveMatch(matchDTO);
+
+      // Cancella le conferme da Redis
+      try {
+        await MatchmakingView.clearConfirmations();
+      } catch (clearError) {
+        console.error('Errore durante la cancellazione delle conferme:', clearError);
+      }
+
       try {
         await clearRunningMatch();
       } catch (clearError) {
@@ -759,11 +797,146 @@ export class MatchmakingView {
 
       // Reset state
       MatchmakingView.currentMatch = null;
+      MatchmakingView.confirmedPlayerIds.clear();
       MatchmakingView.renderMatches([]);
       MatchmakingView.updateUI();
     } catch (error) {
       console.error('Errore durante il salvataggio della partita:', error);
       alert('Errore durante il salvataggio della partita. Riprova.');
     }
+  }
+
+  /**
+   * Inizializza il polling delle conferme ogni 7 secondi
+   */
+  private static startConfirmationsPolling(): void {
+    MatchmakingView.currentMatchTime = getNextMatchTime();
+
+    // Carica subito
+    MatchmakingView.loadConfirmations();
+
+    // Polling ogni 7 secondi
+    MatchmakingView.pollingIntervalId = window.setInterval(() => {
+      MatchmakingView.loadConfirmations();
+    }, 7000);
+
+    console.log(`🔄 Polling conferme avviato per match ${MatchmakingView.currentMatchTime}`);
+  }
+
+  /**
+   * Ferma il polling delle conferme
+   */
+  private static stopConfirmationsPolling(): void {
+    if (MatchmakingView.pollingIntervalId !== null) {
+      clearInterval(MatchmakingView.pollingIntervalId);
+      MatchmakingView.pollingIntervalId = null;
+      console.log('🛑 Polling conferme fermato');
+    }
+  }
+
+  /**
+   * Carica le conferme dal server e aggiorna la UI
+   */
+  private static async loadConfirmations(): Promise<void> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/get-confirmations?time=${MatchmakingView.currentMatchTime}`
+      );
+
+      if (!response.ok) {
+        console.error('Errore caricamento conferme:', response.status);
+        return;
+      }
+
+      const data: IConfirmationsResponse = await response.json();
+
+      // Rileva nuove conferme
+      const newConfirmedIds = new Set(
+        data.confirmations.map(c => c.playerId)
+      );
+
+      const addedIds = [...newConfirmedIds].filter(
+        id => !MatchmakingView.confirmedPlayerIds.has(id)
+      );
+
+      MatchmakingView.confirmedPlayerIds = newConfirmedIds;
+
+      // Auto-seleziona i giocatori confermati
+      MatchmakingView.autoSelectConfirmedPlayers();
+
+      if (addedIds.length > 0) {
+        console.log(`✅ Nuove conferme: ${addedIds.join(', ')} (totale: ${data.count})`);
+      }
+
+    } catch (error) {
+      console.error('Errore nel polling conferme:', error);
+    }
+  }
+
+  /**
+   * Auto-seleziona i giocatori che hanno confermato tramite app
+   */
+  private static autoSelectConfirmedPlayers(): void {
+    const playersList = document.getElementById('players-list');
+    if (!playersList) return;
+
+    MatchmakingView.confirmedPlayerIds.forEach(playerId => {
+      const player = getPlayerById(playerId);
+      if (!player) {
+        console.warn(`⚠️ Player ${playerId} non trovato`);
+        return;
+      }
+
+      const currentState = MatchmakingView.playerStates.get(player.name) || 0;
+
+      // Se non selezionato, seleziona (stato 1 = queue)
+      if (currentState === 0) {
+        MatchmakingView.playerStates.set(player.name, 1);
+      }
+
+      // Aggiorna UI
+      const label = playersList.querySelector(
+        `label[data-player-name="${player.name}"]`
+      ) as HTMLLabelElement;
+
+      if (label) {
+        const checkbox = label.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        if (checkbox && !checkbox.checked) {
+          checkbox.checked = true;
+        }
+
+        // Aggiungi classe CSS per indicatore visivo
+        if (!label.classList.contains('confirmed')) {
+          label.classList.add('confirmed');
+        }
+      }
+    });
+
+    MatchmakingView.updateUI();
+  }
+
+  /**
+   * Cancella le conferme da Redis
+   */
+  private static async clearConfirmations(): Promise<void> {
+    const token = localStorage.getItem('biliardino_admin_token');
+
+    const response = await fetch(`${API_BASE_URL}/clear-confirmations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        matchTime: MatchmakingView.currentMatchTime
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to clear confirmations: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`🗑️ Conferme cancellate: ${data.deleted}`);
   }
 }
