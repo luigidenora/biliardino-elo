@@ -1,12 +1,5 @@
 {
-  "rewrites": [
-    {
-      "source": "/biliardino-elo/(.*)",
-      "destination": "/$1"
-    },
-    {
-      "source": "/biliardino-elo",
-      "destination": "/index.html"
-    }
-  ]
+  "buildCommand": null,
+  "outputDirectory": null,
+  "installCommand": "npm install"
 }
