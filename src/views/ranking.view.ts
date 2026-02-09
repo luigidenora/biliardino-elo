@@ -3,6 +3,7 @@ import { getPlayerElo } from '@/services/elo.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { BASE_PATH } from '../config/env.config';
 import { getAllMatches } from '../services/match.service';
 import { getAllPlayers, getPlayerById, getRank } from '../services/player.service';
 import { fetchRunningMatch } from '../services/repository.service';
@@ -403,7 +404,7 @@ export class RankingView {
       const avatarHTML = `
         <div class="player-avatar">
           <img 
-            src="/biliardino-elo/avatars/${player.id}.webp" 
+            src="${BASE_PATH}avatars/${player.id}.webp" 
             alt="${player.name}"
             class="avatar-img"
             onerror="this.src='${fallbackAvatar}'"
