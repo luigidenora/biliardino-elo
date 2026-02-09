@@ -28,7 +28,7 @@ async function findMatchingSubscription(playerId, incomingSubscription) {
 }
 
 export default async function handler(req, res) {
-  // setCorsHeaders(res);
+  setCorsHeaders(res);
 
   if (handleCorsPreFlight(req, res)) return;
   if (req.method !== 'POST') {

@@ -20,26 +20,20 @@ const firebaseConfig = {
 
 /**
  * Root Firebase application instance initialized with the project configuration.
- * Only initialized in production mode.
  */
 const app = useMockData ? null : initializeApp(firebaseConfig);
-
 /**
  * Firestore database instance bound to the initialized Firebase app.
  *
  * Used by the repository code to read and write collections.
- * Set to null in dev mode when using mock data.
  */
-export const db = useMockData
-  ? null
-  : initializeFirestore(app!, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    });
+export const db = useMockData ? null : initializeFirestore(app!, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
 
 /**
  * Firebase Authentication instance for the current app.
  * Used to authenticate predefined users via email (username) and password.
- * Set to null in dev mode when using mock data.
  */
 export const AUTH = useMockData ? null : getAuth(app!);
 
