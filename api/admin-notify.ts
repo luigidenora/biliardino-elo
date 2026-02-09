@@ -1,7 +1,9 @@
 import { list } from '@vercel/blob';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { sanitizeLogOutput, validateMatchTime, validateNumber, validatePlayerId, validateString } from './_validation.js';
 
 // Verifica che le variabili d'ambiente siano configurate
 if (!process.env.VITE_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
@@ -14,9 +16,27 @@ if (!process.env.BLOB_READ_WRITE_TOKEN) {
 
 webpush.setVapidDetails(
   'mailto:info@biliardino.app',
-  process.env.VITE_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
+  process.env.VITE_VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
 );
+
+interface SubscriptionData {
+  subscription: webpush.PushSubscription;
+  playerId: number;
+  playerName: string;
+  createdAt: string;
+}
+
+type NotificationType = 'player-selected' | 'rank-change';
+
+interface AdminNotifyRequest {
+  type?: NotificationType;
+  playerId?: number;
+  matchTime?: string;
+  message?: string;
+  oldRank?: number;
+  newRank?: number;
+}
 
 /**
  * API per inviare notifiche admin a un player specifico
@@ -37,46 +57,74 @@ webpush.setVapidDetails(
  *   message?: string
  * }
  */
-async function handler(req, res) {
+async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
   setCorsHeaders(res);
-  if (handleCorsPreFlight(req, res)) return;
+  if (handleCorsPreFlight(req, res)) return res;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { type, playerId, matchTime, message, oldRank, newRank } = req.body;
+    const {
+      type: rawType,
+      playerId: rawPlayerId,
+      matchTime: rawMatchTime,
+      message: rawMessage,
+      oldRank: rawOldRank,
+      newRank: rawNewRank
+    } = req.body as AdminNotifyRequest;
 
     // Validazione input base
-    if (!type) {
+    if (!rawType) {
       return res.status(400).json({ error: 'type è obbligatorio' });
     }
 
-    if (!playerId) {
+    if (!rawPlayerId) {
       return res.status(400).json({ error: 'playerId è obbligatorio' });
     }
 
     // Validazione tipo
-    if (type !== 'player-selected' && type !== 'rank-change') {
+    if (rawType !== 'player-selected' && rawType !== 'rank-change') {
       return res.status(400).json({
         error: 'Tipo non valido',
         message: 'type deve essere "player-selected" o "rank-change"'
       });
     }
 
+    // Valida e sanitizza playerId
+    const playerId = validatePlayerId(rawPlayerId);
+
     // Validazione parametri specifici per tipo
-    if (type === 'player-selected' && !matchTime) {
-      return res.status(400).json({ error: 'matchTime è obbligatorio per type "player-selected"' });
+    let matchTime: string | undefined;
+    let oldRank: number | undefined;
+    let newRank: number | undefined;
+    let message: string | undefined;
+
+    if (rawType === 'player-selected') {
+      if (!rawMatchTime) {
+        return res.status(400).json({ error: 'matchTime è obbligatorio per type "player-selected"' });
+      }
+      // Valida e sanitizza matchTime per prevenire injection
+      matchTime = validateMatchTime(rawMatchTime);
     }
 
-    if (type === 'rank-change') {
-      if (oldRank === undefined || newRank === undefined) {
+    if (rawType === 'rank-change') {
+      if (rawOldRank === undefined || rawNewRank === undefined) {
         return res.status(400).json({ error: 'oldRank e newRank sono obbligatori per type "rank-change"' });
       }
-      if (typeof oldRank !== 'number' || typeof newRank !== 'number') {
-        return res.status(400).json({ error: 'oldRank e newRank devono essere numeri' });
+      // Valida i rank (devono essere numeri interi positivi)
+      oldRank = validateNumber(rawOldRank, 'oldRank', 1, 1000);
+      newRank = validateNumber(rawNewRank, 'newRank', 1, 1000);
+
+      if (!Number.isInteger(rawOldRank) || !Number.isInteger(rawNewRank)) {
+        return res.status(400).json({ error: 'oldRank e newRank devono essere numeri interi' });
       }
+    }
+
+    // Valida messaggio personalizzato se fornito
+    if (rawMessage) {
+      message = validateString(rawMessage, 'message', 500);
     }
 
     // Verifica configurazione
@@ -116,7 +164,7 @@ async function handler(req, res) {
       blobs.map(async (blob) => {
         try {
           const response = await fetch(blob.url);
-          return await response.json();
+          return await response.json() as SubscriptionData;
         } catch (err) {
           console.error(`Errore caricamento blob ${blob.pathname}:`, err);
           return null;
@@ -124,10 +172,10 @@ async function handler(req, res) {
       })
     );
 
-    const validSubscriptions = allSubscriptions.filter(sub => sub !== null);
+    const validSubscriptions = allSubscriptions.filter((sub): sub is SubscriptionData => sub !== null);
 
     // Trova la subscription del player specifico
-    const playerSub = validSubscriptions.find(sub => sub.playerId === Number(playerId));
+    const playerSub = validSubscriptions.find(sub => sub.playerId === playerId);
 
     if (!playerSub) {
       return res.status(404).json({
@@ -138,16 +186,21 @@ async function handler(req, res) {
     }
 
     // Prepara il payload della notifica in base al tipo
-    let title, body, navigate, tag, requireInteraction;
+    let title: string;
+    let body: string;
+    let navigate: string;
+    let tag: string;
+    let requireInteraction: boolean;
 
-    if (type === 'player-selected') {
+    if (rawType === 'player-selected') {
       title = '⚽ SEI STATO CONVOCATO!';
       body = message || `⚽ Sei stato convocato! Partita alle ${matchTime}, preparati!`;
       navigate = '/matchmaking.html';
       tag = `selected-${matchTime}`;
       requireInteraction = true;
-    } else if (type === 'rank-change') {
-      const isImprovement = newRank < oldRank;
+    } else {
+      // rank-change
+      const isImprovement = newRank! < oldRank!;
       title = isImprovement ? '🏆 Sei salito in classifica!' : '📉 Cambio in classifica';
       body = message || (isImprovement
         ? `Fantastico! Sei passato dalla posizione ${oldRank}ª alla ${newRank}ª! Continua così! 🔥`
@@ -185,11 +238,11 @@ async function handler(req, res) {
         }
       );
 
-      console.log(`✅ Notifica ${type} inviata a ${playerSub.playerName} (ID: ${playerId})`);
+      console.log(`✅ Notifica ${rawType} inviata a ${sanitizeLogOutput(playerSub.playerName)} (ID: ${playerId})`);
 
       return res.status(200).json({
         success: true,
-        type,
+        type: rawType,
         message: `Notifica inviata a ${playerSub.playerName}`,
         playerId,
         playerName: playerSub.playerName
@@ -198,15 +251,15 @@ async function handler(req, res) {
       console.error('Errore invio notifica:', sendErr);
       return res.status(500).json({
         error: 'Errore durante l\'invio della notifica',
-        details: sendErr.message
+        details: (sendErr as Error).message
       });
     }
   } catch (err) {
     console.error('Errore API admin-notify:', err);
     return res.status(500).json({
       error: 'Errore server',
-      details: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      details: (err as Error).message,
+      stack: process.env.NODE_ENV === 'development' ? (err as Error).stack : undefined
     });
   }
 }

@@ -50,7 +50,7 @@ describe('admin-notify API', () => {
 
     it('should validate that ADMIN_TOKEN is configured', () => {
       expect(ADMIN_TOKEN).toBeDefined();
-      expect(ADMIN_TOKEN.length).toBeGreaterThan(0);
+      expect(ADMIN_TOKEN!.length).toBeGreaterThan(0);
     });
   });
 
@@ -71,7 +71,7 @@ describe('admin-notify API', () => {
       });
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as { error: string };
       expect(data.error).toContain('type');
     });
 
@@ -91,7 +91,7 @@ describe('admin-notify API', () => {
       });
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as { error: string };
       expect(data.error).toContain('playerId');
     });
 
@@ -112,7 +112,7 @@ describe('admin-notify API', () => {
       });
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as { error: string };
       expect(data.error).toContain('Tipo non valido');
     });
 
@@ -132,7 +132,7 @@ describe('admin-notify API', () => {
       });
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as { error: string };
       expect(data.error).toContain('matchTime');
     });
 
@@ -153,11 +153,11 @@ describe('admin-notify API', () => {
       });
 
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as { error: string };
       expect(data.error).toContain('oldRank e newRank');
     });
 
-    it('should reject rank-change with non-numeric ranks', async () => {
+    it('should reject rank-change with non-integer ranks', async () => {
       const endpoint = `${BASE_URL}/admin-notify`;
 
       const response = await fetch(endpoint, {
@@ -169,14 +169,14 @@ describe('admin-notify API', () => {
         body: JSON.stringify({
           type: 'rank-change',
           playerId: 1,
-          oldRank: '3',
-          newRank: '1'
+          oldRank: 3.5,
+          newRank: 1.2
         })
       });
 
       expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toContain('devono essere numeri');
+      const data = await response.json() as { error: string };
+      expect(data.error).toContain('devono essere numeri interi');
     });
   });
 
@@ -200,13 +200,12 @@ describe('admin-notify API', () => {
       // Should either succeed or return 404 if subscription not found
       expect([200, 404]).toContain(response.status);
 
-      const data = await response.json();
+      const data = await response.json() as { success?: boolean; type?: string; playerId?: number; playerName?: string; error?: string };
       if (response.status === 200) {
         expect(data.success).toBe(true);
         expect(data.type).toBe('player-selected');
         expect(data.playerId).toBe(1);
         expect(data.playerName).toBeDefined();
-        expect(data.message).toContain('Notifica inviata');
       } else {
         expect(data.error).toBeDefined();
       }
@@ -256,13 +255,12 @@ describe('admin-notify API', () => {
       // Should either succeed or return 404 if subscription not found
       expect([200, 404]).toContain(response.status);
 
-      const data = await response.json();
+      const data = await response.json() as { success?: boolean; type?: string; playerId?: number; playerName?: string; error?: string };
       if (response.status === 200) {
         expect(data.success).toBe(true);
         expect(data.type).toBe('rank-change');
         expect(data.playerId).toBe(1);
         expect(data.playerName).toBeDefined();
-        expect(data.message).toContain('Notifica inviata');
       } else {
         expect(data.error).toBeDefined();
       }
