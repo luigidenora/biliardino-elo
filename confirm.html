@@ -158,6 +158,88 @@
       letter-spacing: 1px;
     }
 
+    /* ---- Barra progresso conferme ---- */
+    .confirm-progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 0.75rem 0 0.5rem;
+    }
+
+    .confirm-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #66bb6a, #4CAF50);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .confirm-progress-fill.complete {
+      background: linear-gradient(90deg, #4CAF50, #2e7d32);
+    }
+
+    .progress-text {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* ---- Lista confermati ---- */
+    .confirmed-list {
+      margin-top: 1rem;
+      text-align: left;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .confirmed-list-title {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .confirmed-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0.6rem;
+      border-radius: 8px;
+      margin-bottom: 0.25rem;
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.15);
+      animation: slide-in 0.3s ease-out;
+    }
+
+    .confirmed-item-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #a5d6a7;
+    }
+
+    .confirmed-item-you {
+      color: #4CAF50;
+    }
+
+    .confirmed-item-time {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     .success {
       color: #4CAF50;
     }
@@ -199,6 +281,14 @@
         <div class="queue-label">Giocatori in coda</div>
         <div class="queue-count" id="queue-count">0</div>
         <div class="queue-label">/ 5 richiesti</div>
+        <div class="confirm-progress-bar">
+          <div id="confirm-progress-fill" class="confirm-progress-fill" style="width:0%"></div>
+        </div>
+        <span id="confirm-progress-text" class="progress-text"></span>
+      </div>
+      <div id="confirmed-list" class="confirmed-list" style="display:none">
+        <p class="confirmed-list-title">Hanno confermato</p>
+        <div id="confirmed-items"></div>
       </div>
       <button id="confirm-btn" class="btn">✓ Confermo la mia presenza</button>
     </div>
@@ -224,8 +314,11 @@
 
   <script type="module">
     const urlParams = new URLSearchParams(window.location.search);
-    const matchTime = urlParams.get('time') || '11:00';
+    const matchTime = urlParams.get('time') || getNextMatchTime();
     const confirmation = urlParams.get('c');
+    const MIN_PLAYERS = 5;
+    const myPlayerId = localStorage.getItem('biliardino_player_id');
+
     if (confirmation === 'true') {
       await autoConfirm();
     } else if (confirmation === 'false') {
@@ -235,11 +328,68 @@
     }
     document.getElementById('match-time').textContent = matchTime;
 
+    /**
+     * Calcola il prossimo orario di partita (11:00 o 16:00)
+     */
+    function getNextMatchTime() {
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      if (mins < 660) return '11:00';   // prima delle 11:00
+      if (mins < 960) return '16:00';   // prima delle 16:00
+      return '11:00';                    // dopo le 16:00 → domani
+    }
+
+    function formatTimeAgo(isoDate) {
+      const diff = Date.now() - new Date(isoDate).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'adesso';
+      if (mins === 1) return '1 min fa';
+      return `${mins} min fa`;
+    }
+
     async function loadConfirmations() {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/get-confirmations?time=` + matchTime);
         const data = await res.json();
-        document.getElementById('queue-count').textContent = data.count || 0;
+        const count = data.count || 0;
+
+        document.getElementById('queue-count').textContent = count;
+
+        // Progress bar
+        const pct = Math.min(100, (count / MIN_PLAYERS) * 100);
+        const fill = document.getElementById('confirm-progress-fill');
+        fill.style.width = `${pct}%`;
+        fill.classList.toggle('complete', count >= MIN_PLAYERS);
+
+        const progressText = document.getElementById('confirm-progress-text');
+        progressText.textContent = count >= MIN_PLAYERS
+          ? `${count} confermati — si gioca! ⚽`
+          : `Servono ancora ${MIN_PLAYERS - count} giocatori`;
+
+        // Lista confermati
+        const listContainer = document.getElementById('confirmed-list');
+        const itemsContainer = document.getElementById('confirmed-items');
+        if (data.confirmations && data.confirmations.length > 0) {
+          listContainer.style.display = '';
+          itemsContainer.innerHTML = '';
+          const sorted = [...data.confirmations].sort(
+            (a, b) => new Date(a.confirmedAt).getTime() - new Date(b.confirmedAt).getTime()
+          );
+          for (const conf of sorted) {
+            const isMe = String(conf.playerId) === String(myPlayerId);
+            const div = document.createElement('div');
+            div.className = 'confirmed-item';
+            div.innerHTML = `
+              <span class="confirmed-item-name ${isMe ? 'confirmed-item-you' : ''}">
+                ${isMe ? '🙋 Tu' : `Giocatore #${conf.playerId}`}
+              </span>
+              <span class="confirmed-item-time">${formatTimeAgo(conf.confirmedAt)}</span>
+            `;
+            itemsContainer.appendChild(div);
+          }
+        } else {
+          listContainer.style.display = 'none';
+        }
       } catch (err) {
         console.error('Errore caricamento conferme:', err);
       }
@@ -250,7 +400,7 @@
       document.getElementById('loading-state').style.display = 'none';
       document.getElementById('confirm-state').style.display = 'block';
 
-      // dopo un tot deve smettere di aggiornare
+      // Polling ogni 5s, per massimo 60s
       const intervalId = setInterval(loadConfirmations, 5000);
       setTimeout(() => clearInterval(intervalId), 60_000);
     }
@@ -259,7 +409,7 @@
       const btn = document.getElementById('confirm-btn');
       btn.disabled = true;
       btn.textContent = '⏳ Confermando...';
-      const playerId = localStorage.getItem('biliardino_player_id');
+      const playerId = myPlayerId;
       const subscription = localStorage.getItem('biliardino_subscription');
 
       try {

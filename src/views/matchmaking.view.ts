@@ -1,3 +1,4 @@
+import { IConfirmationsResponse } from '@/models/confirmation.interface';
 import { IRunningMatchDTO } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerElo } from '@/services/elo.service';
@@ -5,11 +6,10 @@ import { addMatch } from '@/services/match.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { BASE_PATH, API_BASE_URL } from '../config/env.config';
+import { getNextMatchTime } from '@/utils/next-match-time.util';
+import { API_BASE_URL, BASE_PATH } from '../config/env.config';
 import { findBestMatch, IMatchProposal } from '../services/matchmaking.service';
 import { getAllPlayers, getPlayerById, getPlayerByName, getRank } from '../services/player.service';
-import { getNextMatchTime } from '@/utils/next-match-time.util';
-import { IConfirmationsResponse } from '@/models/confirmation.interface';
 
 /**
  * Player state: 0 = unchecked, 1 = checked (queue), 2 = priority
@@ -26,6 +26,7 @@ export class MatchmakingView {
   // Conferme real-time
   private static pollingIntervalId: number | null = null;
   private static confirmedPlayerIds: Set<number> = new Set();
+  private static confirmationTimes: Map<number, string> = new Map();
   private static currentMatchTime: string = '';
 
   /**
@@ -162,15 +163,6 @@ export class MatchmakingView {
 
       label.appendChild(checkbox);
       label.appendChild(playerInfo);
-
-      // Aggiungi badge se confermato tramite app
-      if (isConfirmed) {
-        const badge = document.createElement('span');
-        badge.className = 'confirmation-badge';
-        badge.textContent = '✓';
-        badge.title = 'Confermato tramite app';
-        label.appendChild(badge);
-      }
 
       // Add click handler for 3-state cycling
       checkbox.addEventListener('click', (e) => {
@@ -859,10 +851,25 @@ export class MatchmakingView {
         id => !MatchmakingView.confirmedPlayerIds.has(id)
       );
 
+      // Aggiorna timestamps
+      MatchmakingView.confirmationTimes.clear();
+      for (const c of data.confirmations) {
+        MatchmakingView.confirmationTimes.set(c.playerId, c.confirmedAt);
+      }
+
+      // Rimuovi classe confirmed dai giocatori che non sono più confermati
+      const removedIds = [...MatchmakingView.confirmedPlayerIds].filter(
+        id => !newConfirmedIds.has(id)
+      );
+      MatchmakingView.removeConfirmedStatus(removedIds);
+
       MatchmakingView.confirmedPlayerIds = newConfirmedIds;
 
-      // Auto-seleziona i giocatori confermati
+      // Auto-seleziona i giocatori confermati e aggiorna badge inline
       MatchmakingView.autoSelectConfirmedPlayers();
+
+      // Aggiorna il pannello riepilogo (solo conteggio + progresso)
+      MatchmakingView.renderConfirmationsPanel(data);
 
       if (addedIds.length > 0) {
         console.log(`✅ Nuove conferme: ${addedIds.join(', ')} (totale: ${data.count})`);
@@ -874,7 +881,56 @@ export class MatchmakingView {
   }
 
   /**
+   * Aggiorna il pannello riepilogo conferme (solo conteggio + barra progresso).
+   * La lista dettagliata è integrata direttamente nelle checkbox di #players-list.
+   */
+  private static renderConfirmationsPanel(data: IConfirmationsResponse): void {
+    const panel = document.getElementById('confirmations-panel');
+    if (!panel) return;
+
+    panel.style.display = '';
+
+    // Orario match
+    const timeEl = document.getElementById('conf-match-time');
+    if (timeEl) timeEl.textContent = MatchmakingView.currentMatchTime;
+
+    // Badge conteggio
+    const badge = document.getElementById('conf-count-badge');
+    if (badge) {
+      badge.textContent = String(data.count);
+      badge.classList.toggle('enough', data.count >= 4);
+    }
+
+    // Barra progresso (minimo 4 per una partita)
+    const MIN_PLAYERS = 4;
+    const fill = document.getElementById('conf-progress-fill');
+    const label = document.getElementById('conf-progress-label');
+    if (fill) {
+      const pct = Math.min(100, (data.count / MIN_PLAYERS) * 100);
+      fill.style.width = `${pct}%`;
+      fill.classList.toggle('complete', data.count >= MIN_PLAYERS);
+    }
+    if (label) {
+      label.textContent = data.count >= MIN_PLAYERS
+        ? `${data.count} confermati ✓`
+        : `${data.count} / ${MIN_PLAYERS} min.`;
+    }
+  }
+
+  /**
+   * Formatta un timestamp ISO come "Xm fa" o "adesso"
+   */
+  private static formatTimeAgo(isoDate: string): string {
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return 'adesso';
+    if (mins === 1) return '1 min fa';
+    return `${mins} min fa`;
+  }
+
+  /**
    * Auto-seleziona i giocatori che hanno confermato tramite app
+   * e aggiorna badge inline nella lista principale.
    */
   private static autoSelectConfirmedPlayers(): void {
     const playersList = document.getElementById('players-list');
@@ -909,10 +965,52 @@ export class MatchmakingView {
         if (!label.classList.contains('confirmed')) {
           label.classList.add('confirmed');
         }
+
+        // Badge inline con tempo relativo
+        MatchmakingView.upsertConfirmationBadge(label, playerId);
       }
     });
 
     MatchmakingView.updateUI();
+  }
+
+  /**
+   * Aggiunge o aggiorna il badge "📱 confermato Xm fa" dentro la label.
+   */
+  private static upsertConfirmationBadge(label: HTMLLabelElement, playerId: number): void {
+    const isoDate = MatchmakingView.confirmationTimes.get(playerId);
+    const timeText = isoDate ? MatchmakingView.formatTimeAgo(isoDate) : '';
+
+    let badge = label.querySelector('.confirmation-badge') as HTMLSpanElement | null;
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'confirmation-badge';
+      label.appendChild(badge);
+    }
+    badge.textContent = `📱 ${timeText}`;
+    badge.title = 'Confermato tramite app';
+  }
+
+  /**
+   * Rimuove lo stato "confermato" dai giocatori la cui conferma è scaduta/rimossa.
+   */
+  private static removeConfirmedStatus(playerIds: number[]): void {
+    const playersList = document.getElementById('players-list');
+    if (!playersList) return;
+
+    for (const playerId of playerIds) {
+      const player = getPlayerById(playerId);
+      if (!player) continue;
+
+      const label = playersList.querySelector(
+        `label[data-player-name="${player.name}"]`
+      ) as HTMLLabelElement | null;
+      if (!label) continue;
+
+      label.classList.remove('confirmed');
+      const badge = label.querySelector('.confirmation-badge');
+      if (badge) badge.remove();
+    }
   }
 
   /**

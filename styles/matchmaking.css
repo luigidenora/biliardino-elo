@@ -834,13 +834,100 @@ h2 {
    CONFERME REAL-TIME
    ======================================== */
 
+/* ---- Pannello conferme ---- */
+.confirmations-panel {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0faf0 0%, #e8f5e9 100%);
+  border: 1px solid rgba(76, 175, 80, 0.25);
+}
+
+.confirmations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.confirmations-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.confirmations-icon {
+  font-size: 1rem;
+}
+
+.conf-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 14px;
+  background: #e0e0e0;
+  color: #555;
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.conf-count-badge.enough {
+  background: #4caf50;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+/* ---- Barra di progresso ---- */
+.confirmations-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #66bb6a, #4caf50);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.progress-fill.complete {
+  background: linear-gradient(90deg, #4caf50, #2e7d32);
+}
+
+.progress-label {
+  font-size: 0.72rem;
+  color: #666;
+  white-space: nowrap;
+  font-weight: 600;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* (lista confermati rimossa — ora integrata nelle checkbox)
+
 /**
  * Stile per giocatori confermati tramite app
  */
 .player-checkbox.confirmed {
   background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
   border: 2px solid #4caf50;
-  position: relative;
   animation: confirm-pulse 0.5s ease-out;
 }
 
@@ -850,24 +937,32 @@ h2 {
 }
 
 /**
- * Badge di conferma (check verde)
+ * Badge inline "📱 confermato Xm fa" dentro la checkbox
  */
 .confirmation-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  background: #4caf50;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 1;
+  margin-left: auto;
+  padding: 2px 8px;
+  background: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.4;
+  animation: conf-badge-in 0.3s ease-out;
+}
+
+@keyframes conf-badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /**
@@ -878,10 +973,12 @@ h2 {
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
   }
+
   100% {
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
