@@ -3,7 +3,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
-import { sanitizeLogOutput, validateMatchTime, validateNumber, validatePlayerId, validateString } from './_validation.js';
+import { getRandomMessage } from './_randomMessage.js';
+import { sanitizeLogOutput, validateMatchTime, validatePlayerId, validateString } from './_validation.js';
 
 // Verifica che le variabili d'ambiente siano configurate
 if (!process.env.VITE_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
@@ -113,12 +114,12 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       if (rawOldRank === undefined || rawNewRank === undefined) {
         return res.status(400).json({ error: 'oldRank e newRank sono obbligatori per type "rank-change"' });
       }
-      // Valida i rank (devono essere numeri interi positivi)
-      oldRank = validateNumber(rawOldRank, 'oldRank', 1, 1000);
-      newRank = validateNumber(rawNewRank, 'newRank', 1, 1000);
+      // Valida che siano numeri (elo va da 0 a n, nessun limite)
+      oldRank = Number(rawOldRank);
+      newRank = Number(rawNewRank);
 
-      if (!Number.isInteger(rawOldRank) || !Number.isInteger(rawNewRank)) {
-        return res.status(400).json({ error: 'oldRank e newRank devono essere numeri interi' });
+      if (Number.isNaN(oldRank) || Number.isNaN(newRank)) {
+        return res.status(400).json({ error: 'oldRank e newRank devono essere numeri validi' });
       }
     }
 
@@ -136,26 +137,16 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       });
     }
 
-    // Cerca la subscription del player
-    // Prova prima con il prefisso nuovo {playerId}-subs/
-    let { blobs } = await list({
+    // Cerca la subscription del player con il prefisso {playerId}-subs/
+    const { blobs } = await list({
       prefix: `${playerId}-subs/`,
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
 
-    // Se non trovato, prova con il prefisso vecchio biliardino-subs/
-    if (!blobs || blobs.length === 0) {
-      const result = await list({
-        prefix: 'biliardino-subs/',
-        token: process.env.BLOB_READ_WRITE_TOKEN
-      });
-      blobs = result.blobs;
-    }
-
     if (!blobs || blobs.length === 0) {
       return res.status(404).json({
-        error: 'Nessuna subscription trovata',
-        message: 'Non ci sono subscriptions registrate nel sistema'
+        error: 'Subscription non trovata',
+        message: `Nessuna subscription registrata per il player ID ${playerId}`
       });
     }
 
@@ -180,8 +171,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     if (!playerSub) {
       return res.status(404).json({
         error: 'Subscription non trovata',
-        message: `Nessuna subscription registrata per il player ID ${playerId}`,
-        availablePlayers: validSubscriptions.map(s => ({ id: s.playerId, name: s.playerName }))
+        message: `Nessuna subscription registrata per il player ID ${playerId}`
       });
     }
 
@@ -193,18 +183,68 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     let requireInteraction: boolean;
 
     if (rawType === 'player-selected') {
-      title = '⚽ SEI STATO CONVOCATO!';
-      body = message || `⚽ Sei stato convocato! Partita alle ${matchTime}, preparati!`;
+      // Usa messaggio personalizzato o genera uno random per convocazione
+      if (message) {
+        title = '⚽ SEI STATO CONVOCATO!';
+        body = message;
+      } else {
+        const randomMsg = getRandomMessage(playerSub.playerName);
+        title = randomMsg.title;
+        body = `${randomMsg.body} Partita alle ${matchTime}!`;
+      }
       navigate = '/matchmaking.html';
       tag = `selected-${matchTime}`;
       requireInteraction = true;
     } else {
       // rank-change
       const isImprovement = newRank! < oldRank!;
-      title = isImprovement ? '🏆 Sei salito in classifica!' : '📉 Cambio in classifica';
-      body = message || (isImprovement
-        ? `Fantastico! Sei passato dalla posizione ${oldRank}ª alla ${newRank}ª! Continua così! 🔥`
-        : `Sei sceso dalla posizione ${oldRank}ª alla ${newRank}ª. È ora di riscattarsi! 💪`);
+
+      if (message) {
+        title = isImprovement ? '🏆 Sei salito in classifica!' : '📉 Cambio in classifica';
+        body = message;
+      } else {
+        // Messaggi random per cambio classifica
+        const improvementTitles = [
+          '🏆 Sei salito in classifica!',
+          '⭐ Grande scalata!',
+          '🚀 In ascesa!',
+          '💎 Che progressi!',
+          '🔥 Stai volando!'
+        ];
+
+        const declineTitles = [
+          '📉 Cambio in classifica',
+          '⚠️ Attenzione!',
+          '💪 È ora di reagire!',
+          '🎯 Non mollare!',
+          '🔄 Tempo di rimonta!'
+        ];
+
+        const improvementBodies = [
+          `Fantastico! Sei passato dalla posizione ${oldRank}ª alla ${newRank}ª! Continua così! 🔥`,
+          `Che scalata! Da ${oldRank}ª a ${newRank}ª posizione! Gli squali non si fermano! 🦈`,
+          `Boom! Dalla ${oldRank}ª alla ${newRank}ª! Mostra di che pasta sei fatto! 💎`,
+          `Eccezionale! Posizione ${newRank}ª raggiunta (eri ${oldRank}ª)! Adrenalina pura! ⚡`,
+          `Strepitoso! ${oldRank}ª → ${newRank}ª! È il tuo momento! 🌟`
+        ];
+
+        const declineBodies = [
+          `Sei sceso dalla posizione ${oldRank}ª alla ${newRank}ª. È ora di riscattarsi! 💪`,
+          `Da ${oldRank}ª a ${newRank}ª. Gli squali non mollano mai! Torna a dominare! 🦈`,
+          `Posizione ${newRank}ª (eri ${oldRank}ª). Cocciutaggine attiva! Recupera! 🐂`,
+          `${oldRank}ª → ${newRank}ª. È tempo di rimonta! Dai tutto! 🔥`,
+          `Ora sei ${newRank}ª (prima ${oldRank}ª). La rivincita ti aspetta! ⚔️`
+        ];
+
+        if (isImprovement) {
+          title = improvementTitles[Math.floor(Math.random() * improvementTitles.length)];
+          body = improvementBodies[Math.floor(Math.random() * improvementBodies.length)];
+        } else {
+          title = declineTitles[Math.floor(Math.random() * declineTitles.length)];
+          body = declineBodies[Math.floor(Math.random() * declineBodies.length)];
+        }
+      }
+
       navigate = '/';
       tag = 'rank-change';
       requireInteraction = false;
