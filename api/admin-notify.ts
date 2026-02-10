@@ -236,12 +236,15 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
           `Ora sei ${newRank}ª (prima ${oldRank}ª). La rivincita ti aspetta! ⚔️`
         ];
 
+        // Usa lo stesso indice per title e body per garantire coerenza
+        const randomIndex = Math.floor(Math.random() * 5);
+
         if (isImprovement) {
-          title = improvementTitles[Math.floor(Math.random() * improvementTitles.length)];
-          body = improvementBodies[Math.floor(Math.random() * improvementBodies.length)];
+          title = improvementTitles[randomIndex];
+          body = improvementBodies[randomIndex];
         } else {
-          title = declineTitles[Math.floor(Math.random() * declineTitles.length)];
-          body = declineBodies[Math.floor(Math.random() * declineBodies.length)];
+          title = declineTitles[randomIndex];
+          body = declineBodies[randomIndex];
         }
       }
 
