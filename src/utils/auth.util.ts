@@ -1,3 +1,4 @@
+import { useMockData } from '@/config/env.config';
 import { browserSessionPersistence, onAuthStateChanged, setPersistence } from 'firebase/auth';
 import { AUTH, login } from './firebase.util';
 
@@ -91,6 +92,13 @@ async function promptLogin(): Promise<void> {
  * @param action - A function to execute after the user is authenticated. May be synchronous or return a Promise.
  */
 export function withAuthentication(action: () => void | Promise<void>): void {
+  // In dev/mock mode AUTH is null — skip Firebase auth entirely
+  if (useMockData || !AUTH) {
+    console.log('[MOCK] Skipping authentication, executing action directly');
+    void action();
+    return;
+  }
+
   let started = false;
 
   onAuthStateChanged(AUTH, async (user) => {

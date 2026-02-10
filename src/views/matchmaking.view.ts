@@ -36,11 +36,12 @@ export class MatchmakingView {
     MatchmakingView.renderPlayersList();
     MatchmakingView.setupEventListeners();
     MatchmakingView.renderDisclaimer();
+
+    // Avvia polling conferme subito, prima del restore async
+    MatchmakingView.startConfirmationsPolling();
+
     await MatchmakingView.restoreSavedMatch();
     MatchmakingView.updateUI();
-
-    // Avvia polling conferme
-    MatchmakingView.startConfirmationsPolling();
 
     // Cleanup al beforeunload
     window.addEventListener('beforeunload', () => {
@@ -898,11 +899,11 @@ export class MatchmakingView {
     const badge = document.getElementById('conf-count-badge');
     if (badge) {
       badge.textContent = String(data.count);
-      badge.classList.toggle('enough', data.count >= 4);
+      badge.classList.toggle('enough', data.count >= 5);
     }
 
-    // Barra progresso (minimo 4 per una partita)
-    const MIN_PLAYERS = 4;
+    // Barra progresso (minimo 5 per una partita)
+    const MIN_PLAYERS = 5;
     const fill = document.getElementById('conf-progress-fill');
     const label = document.getElementById('conf-progress-label');
     if (fill) {

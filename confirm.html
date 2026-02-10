@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Conferma Partecipazione - CAlcio Balilla</title>
-  <meta name="theme-color" content="#062c7d" />
+  <meta name="theme-color" content="#f5f5f7" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,70 +19,376 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #0a1628 0%, #062c7d 100%);
-      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+      background-attachment: fixed;
+      color: #1d1d1f;
       min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ====== Aquarium layer (behind content) ====== */
+    #aquarium {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* ====== Each fish wrapper ====== */
+    .fish {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      will-change: transform;
+      z-index: 1;
+    }
+
+    .fish-sprite {
+      font-size: 2rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
+      transition: transform 0.3s;
+    }
+
+    .fish.flipped .fish-sprite {
+      transform: scaleX(-1);
+    }
+
+    /* Figma-style cursor label */
+    .fish-label {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 4px;
+      padding: 3px 10px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      white-space: nowrap;
+      color: #fff;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      opacity: 0.92;
+    }
+
+    .fish-label::before {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid var(--label-color);
+    }
+
+    /* Fish swim animations — randomized per-fish via inline style */
+    @keyframes swim-h {
+      0% {
+        left: var(--start-x);
+      }
+
+      100% {
+        left: var(--end-x);
+      }
+    }
+
+    @keyframes bob {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(var(--bob-y, -12px));
+      }
+    }
+
+    .fish {
+      animation:
+        swim-h var(--dur) linear infinite alternate,
+        bob var(--bob-dur) ease-in-out infinite;
+      top: var(--y);
+    }
+
+    /* ====== God rays ====== */
+    .god-rays {
+      position: fixed;
+      top: -40%;
+      left: 50%;
+      width: 200%;
+      height: 140%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .god-ray {
+      position: absolute;
+      top: 0;
+      width: var(--ray-w, 120px);
+      height: 120%;
+      background: linear-gradient(180deg,
+          rgba(100, 180, 255, 0.12) 0%,
+          rgba(100, 180, 255, 0.04) 40%,
+          transparent 80%);
+      transform-origin: top center;
+      transform: rotate(var(--ray-angle, 0deg));
+      animation: ray-sway var(--ray-dur, 8s) ease-in-out infinite alternate;
+      opacity: var(--ray-opacity, 0.5);
+      filter: blur(8px);
+    }
+
+    @keyframes ray-sway {
+      0% {
+        transform: rotate(var(--ray-angle, 0deg)) translateX(-10px);
+        opacity: var(--ray-opacity, 0.5);
+      }
+
+      100% {
+        transform: rotate(var(--ray-angle, 0deg)) translateX(10px);
+        opacity: calc(var(--ray-opacity, 0.5) * 0.6);
+      }
+    }
+
+    /* ====== Rising bubbles ====== */
+    .bubble {
+      position: absolute;
+      bottom: -20px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at 30% 30%,
+          rgba(60, 150, 255, 0.55),
+          rgba(60, 150, 255, 0.1));
+      border: 1px solid rgba(60, 150, 255, 0.35);
+      box-shadow: inset 0 -2px 6px rgba(60, 150, 255, 0.3), 0 0 8px rgba(60, 150, 255, 0.12);
+      animation: rise var(--rise-dur) ease-in infinite;
+      animation-delay: var(--rise-delay);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes rise {
+      0% {
+        opacity: 0;
+        transform: translateX(0) scale(0.7);
+        bottom: -20px;
+      }
+
+      10% {
+        opacity: 0.6;
+      }
+
+      70% {
+        opacity: 0.3;
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateX(var(--drift, 15px)) scale(1.05);
+        bottom: 105%;
+      }
+    }
+
+    /* ====== Seabed hint ====== */
+    .seabed {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(180deg, transparent 0%, rgba(100, 160, 220, 0.06) 50%, rgba(100, 160, 220, 0.12) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .seabed-deco {
+      position: absolute;
+      bottom: 4px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 1.2rem;
+      letter-spacing: 2.5rem;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* ====== Top status bar ====== */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      padding-top: max(0.6rem, env(safe-area-inset-top));
+      background: rgba(249, 249, 249, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .top-bar-time {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: -0.3px;
+    }
+
+    .top-bar-status {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #34c759;
+    }
+
+    /* ====== Content layer ====== */
+    .page-scroll {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 1.5rem 1rem;
+      padding-bottom: 6.5rem;
+      position: relative;
+      z-index: 2;
     }
 
     .container {
       text-align: center;
-      max-width: 500px;
+      max-width: 420px;
       width: 100%;
+      padding: 2rem 1.5rem;
+      position: relative;
     }
 
-    .logo {
-      font-size: 5rem;
-      margin-bottom: 1rem;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(1.1);
-      }
-    }
-
-    h1 {
-      font-size: 2rem;
+    /* ====== Hero watermark (behind fish) ====== */
+    .time-watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      pointer-events: none;
+      font-size: 8rem;
       font-weight: 800;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, #fff 0%, #a0c4ff 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: rgba(6, 44, 125, 0.08);
+      letter-spacing: -4px;
+      line-height: 1;
+      white-space: nowrap;
+      user-select: none;
     }
 
-    .subtitle {
+    /* ====== Status (in top bar) ====== */
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .count-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.9rem;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1d1d1f;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .count-pill .num {
       font-size: 1.1rem;
-      color: #a0c4ff;
-      margin-bottom: 3rem;
-      font-weight: 500;
+      font-weight: 800;
     }
 
+    /* ====== Sticky CTA ====== */
+    .cta-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 0.75rem 1rem;
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+      background: rgba(249, 249, 249, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      max-width: 420px;
+      padding: 1rem 2rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #062c7d 0%, #1a4aad 50%, #2563d4 100%);
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 24px rgba(6, 44, 125, 0.3);
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: 0.2px;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, #0a3592 0%, #1e52b8 50%, #2d6ddf 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 32px rgba(6, 44, 125, 0.4);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 12px rgba(6, 44, 125, 0.2);
+    }
+
+    .btn:disabled {
+      background: linear-gradient(135deg, #b0b0b0, #ccc);
+      color: #888;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* ====== States ====== */
     .loading-container {
-      margin: 3rem 0;
+      padding: 2rem 0;
     }
 
     .spinner {
-      width: 60px;
-      height: 60px;
-      margin: 0 auto 1.5rem;
-      border: 4px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #4CAF50;
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 0.75rem;
+      border: 3px solid rgba(0, 0, 0, 0.08);
+      border-top-color: #34c759;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: spin 0.8s linear infinite;
     }
 
     @keyframes spin {
@@ -92,224 +398,134 @@
     }
 
     .status-text {
-      font-size: 1rem;
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      color: #6e6e73;
     }
 
-    .match-time {
+    .page-icon {
       font-size: 2.5rem;
-      font-weight: 800;
-      color: #4CAF50;
-      margin: 1rem 0;
-      text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
-    }
-
-    .btn {
-      display: inline-block;
-      padding: 1rem 3rem;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #fff;
-      background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);
-      text-decoration: none;
-      margin-top: 2rem;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(76, 175, 80, 0.4);
-    }
-
-    .btn:active {
-      transform: translateY(0);
-    }
-
-    .btn:disabled {
-      background: #666;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-
-    .queue-info {
-      background: rgba(255, 255, 255, 0.05);
-      border: 2px solid rgba(76, 175, 80, 0.3);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin: 2rem 0;
-    }
-
-    .queue-count {
-      font-size: 3rem;
-      font-weight: 800;
-      color: #4CAF50;
-      margin: 0.5rem 0;
-    }
-
-    .queue-label {
-      font-size: 0.9rem;
-      color: rgba(255, 255, 255, 0.6);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    /* ---- Barra progresso conferme ---- */
-    .confirm-progress-bar {
-      width: 100%;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      overflow: hidden;
-      margin: 0.75rem 0 0.5rem;
-    }
-
-    .confirm-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #66bb6a, #4CAF50);
-      border-radius: 4px;
-      transition: width 0.5s ease;
-    }
-
-    .confirm-progress-fill.complete {
-      background: linear-gradient(90deg, #4CAF50, #2e7d32);
-    }
-
-    .progress-text {
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    /* ---- Lista confermati ---- */
-    .confirmed-list {
-      margin-top: 1rem;
-      text-align: left;
-      max-height: 180px;
-      overflow-y: auto;
-    }
-
-    .confirmed-list-title {
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
-      text-transform: uppercase;
-      letter-spacing: 1px;
       margin-bottom: 0.5rem;
-      text-align: center;
-    }
-
-    .confirmed-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.4rem 0.6rem;
-      border-radius: 8px;
-      margin-bottom: 0.25rem;
-      background: rgba(76, 175, 80, 0.1);
-      border: 1px solid rgba(76, 175, 80, 0.15);
-      animation: slide-in 0.3s ease-out;
-    }
-
-    .confirmed-item-name {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #a5d6a7;
-    }
-
-    .confirmed-item-you {
-      color: #4CAF50;
-    }
-
-    .confirmed-item-time {
-      font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.4);
-    }
-
-    @keyframes slide-in {
-      from {
-        opacity: 0;
-        transform: translateY(-4px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
 
     .success {
-      color: #4CAF50;
+      color: #2e7d32;
     }
 
     .error {
-      color: #f44336;
+      color: #d32f2f;
     }
 
     .back-link {
-      margin-top: 2rem;
-      font-size: 0.9rem;
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
     }
 
     .back-link a {
-      color: #a0c4ff;
+      color: #6e6e73;
       text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
     }
 
     .back-link a:hover {
-      text-decoration: underline;
+      color: #1d1d1f;
+    }
+
+    /* ====== Responsive ====== */
+    @media (max-width: 380px) {
+      .time-watermark {
+        font-size: 5.5rem;
+      }
+
+      .btn {
+        font-size: 1rem;
+        padding: 0.875rem 1.5rem;
+      }
+
+      .fish-sprite {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (min-height: 700px) {
+      .page-scroll {
+        justify-content: center;
+      }
+    }
+
+    @media (max-height: 550px) {
+      .page-scroll {
+        justify-content: flex-start;
+        padding-top: 1rem;
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <div class="logo">⚽</div>
-    <h1 id="main-title">Partita di Biliardino</h1>
-    <p class="subtitle" id="subtitle">Conferma la tua presenza</p>
+  <!-- God rays -->
+  <div class="god-rays" id="god-rays"></div>
 
-    <div id="loading-state" class="loading-container">
-      <div class="spinner"></div>
-      <p class="status-text">Caricamento...</p>
+  <!-- Aquarium: fish + bubbles spawn here -->
+  <div id="aquarium"></div>
+
+  <!-- Time watermark behind fish -->
+  <div class="time-watermark" id="time-watermark">--:--</div>
+
+  <!-- Sandy seabed at bottom -->
+  <div class="seabed">
+    <div class="seabed-deco">🪸🌿🐚🪨🌊</div>
+  </div>
+
+  <!-- Top status bar -->
+  <div class="top-bar" id="top-bar" style="display:none">
+    <span class="top-bar-time" id="top-bar-time">⚽ 11:00</span>
+    <div class="count-pill">
+      <span>🐟</span>
+      <span class="num" id="queue-count">0</span>
+      <span>/ 5</span>
     </div>
+    <span class="top-bar-status" id="top-bar-status"></span>
+  </div>
 
-    <div id="confirm-state" style="display: none;">
-      <div class="match-time" id="match-time">--:--</div>
-      <div class="queue-info">
-        <div class="queue-label">Giocatori in coda</div>
-        <div class="queue-count" id="queue-count">0</div>
-        <div class="queue-label">/ 5 richiesti</div>
-        <div class="confirm-progress-bar">
-          <div id="confirm-progress-fill" class="confirm-progress-fill" style="width:0%"></div>
+  <div class="page-scroll">
+    <div class="container">
+
+      <!-- Loading -->
+      <div id="loading-state" class="loading-container">
+        <div class="spinner"></div>
+        <p class="status-text">Caricamento...</p>
+      </div>
+
+      <!-- Confirm state -->
+      <div id="confirm-state" style="display: none;"></div>
+
+      <!-- Success -->
+      <div id="success-state" style="display: none;">
+        <div class="page-icon">✅</div>
+        <p class="status-text success" style="font-weight:700;font-size:1.15rem;margin-bottom:0.25rem;">Confermato!</p>
+        <p class="status-text">Aspetta il matchmaking...</p>
+        <div class="back-link">
+          <a href="./index.html">← Torna alla home</a>
         </div>
-        <span id="confirm-progress-text" class="progress-text"></span>
       </div>
-      <div id="confirmed-list" class="confirmed-list" style="display:none">
-        <p class="confirmed-list-title">Hanno confermato</p>
-        <div id="confirmed-items"></div>
-      </div>
-      <button id="confirm-btn" class="btn">✓ Confermo la mia presenza</button>
-    </div>
 
-    <div id="success-state" style="display: none;">
-      <div class="logo">✅</div>
-      <p class="status-text success">Confermato con successo!</p>
-      <p class="subtitle">Aspetta il matchmaking...</p>
-      <div class="back-link">
-        <a href="./index.html">← Torna alla home</a>
+      <!-- Error -->
+      <div id="error-state" style="display: none;">
+        <div class="page-icon">❌</div>
+        <p class="status-text error" id="error-message" style="font-weight:700;">Errore nella conferma</p>
+        <div class="back-link">
+          <a href="./index.html">← Torna alla home</a>
+        </div>
       </div>
-    </div>
 
-    <div id="error-state" style="display: none;">
-      <div class="logo">❌</div>
-      <p class="status-text error" id="error-message">Errore nella conferma</p>
-      <button id="retry-btn" class="btn">↻ Riprova</button>
-      <div class="back-link">
-        <a href="./index.html">← Torna alla home</a>
-      </div>
     </div>
+  </div>
+
+  <!-- Sticky CTA -->
+  <div class="cta-footer" id="cta-footer">
+    <button id="confirm-btn" class="btn">🌊 Ci sono!</button>
+    <button id="retry-btn" class="btn" style="display:none">↻ Riprova</button>
   </div>
 
   <script type="module">
@@ -319,24 +535,29 @@
     const MIN_PLAYERS = 5;
     const myPlayerId = localStorage.getItem('biliardino_player_id');
 
-    if (confirmation === 'true') {
-      await autoConfirm();
-    } else if (confirmation === 'false') {
-      document.getElementById('loading-state').style.display = 'none';
-      document.getElementById('error-message').textContent = 'Hai rifiutato la partecipazione alla partita.';
-      document.getElementById('error-state').style.display = 'block';
-    }
-    document.getElementById('match-time').textContent = matchTime;
+    const confirmBtn = document.getElementById('confirm-btn');
+    const retryBtn = document.getElementById('retry-btn');
+    const ctaFooter = document.getElementById('cta-footer');
+    const aquarium = document.getElementById('aquarium');
+    const topBar = document.getElementById('top-bar');
 
-    /**
-     * Calcola il prossimo orario di partita (11:00 o 16:00)
-     */
+    // ─── Fish / sea creature emoji pool ──────────────────────────────────
+    const FISH_POOL = ['🐟', '🐠', '🐡', '🦈', '🐙', '🦑', '🐳', '🐬', '🦐', '🐚'];
+    // Figma-style label colors — one per fish, cycling
+    const LABEL_COLORS = [
+      '#1e90ff', '#e74c3c', '#8e44ad', '#e67e22', '#2ecc71',
+      '#f39c12', '#16a085', '#c0392b', '#2980b9', '#d35400'
+    ];
+
+    // Track current fish on screen: Map<playerId, HTMLElement>
+    const fishMap = new Map();
+
     function getNextMatchTime() {
       const now = new Date();
       const mins = now.getHours() * 60 + now.getMinutes();
-      if (mins < 660) return '11:00';   // prima delle 11:00
-      if (mins < 960) return '16:00';   // prima delle 16:00
-      return '11:00';                    // dopo le 16:00 → domani
+      if (mins < 660) return '11:00';
+      if (mins < 960) return '16:00';
+      return '11:00';
     }
 
     function formatTimeAgo(isoDate) {
@@ -347,6 +568,130 @@
       return `${mins} min fa`;
     }
 
+    function showState(state) {
+      ['loading-state', 'confirm-state', 'success-state', 'error-state'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+      });
+      document.getElementById(`${state}-state`).style.display = 'block';
+      confirmBtn.style.display = state === 'confirm' ? 'block' : 'none';
+      retryBtn.style.display = state === 'error' ? 'block' : 'none';
+      ctaFooter.style.display = (state === 'confirm' || state === 'error') ? 'flex' : 'none';
+      topBar.style.display = state === 'confirm' ? 'flex' : 'none';
+    }
+
+    // ─── Aquarium fish system ────────────────────────────────────────────
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+
+    function spawnFish(playerId, name, index) {
+      if (fishMap.has(playerId)) return; // already swimming
+
+      const isMe = String(playerId) === String(myPlayerId);
+      const emoji = isMe ? '🦈' : FISH_POOL[index % FISH_POOL.length];
+      const labelColor = LABEL_COLORS[index % LABEL_COLORS.length];
+      const size = isMe ? 2.6 : rand(1.6, 2.4);
+
+      // Random swim parameters
+      const goRight = Math.random() > 0.5;
+      const startX = goRight ? rand(-10, 15) : rand(60, 95);
+      const endX = goRight ? rand(60, 95) : rand(-10, 15);
+      // Swim across entire screen, no restricted bands
+      const yPos = rand(5, 85);
+      const dur = rand(10, 22);
+      const bobDur = rand(2.5, 5);
+      const bobY = rand(-8, -18);
+      const delay = rand(0, 3);
+
+      const fish = document.createElement('div');
+      fish.className = `fish ${goRight ? '' : 'flipped'}`;
+      fish.style.cssText = `
+        --start-x: ${startX}%;
+        --end-x: ${endX}%;
+        --y: ${yPos}%;
+        --dur: ${dur}s;
+        --bob-dur: ${bobDur}s;
+        --bob-y: ${bobY}px;
+        animation-delay: ${delay}s, ${delay}s;
+      `;
+
+      fish.innerHTML = `
+        <span class="fish-sprite" style="font-size:${size}rem">${emoji}</span>
+        <span class="fish-label" style="background:${labelColor};--label-color:${labelColor}">
+          ${isMe ? '🙋 Tu' : name}
+        </span>
+      `;
+
+      aquarium.appendChild(fish);
+      fishMap.set(playerId, fish);
+    }
+
+    function removeFish(playerId) {
+      const fish = fishMap.get(playerId);
+      if (!fish) return;
+      fish.style.transition = 'opacity 0.5s';
+      fish.style.opacity = '0';
+      setTimeout(() => { fish.remove(); fishMap.delete(playerId); }, 500);
+    }
+
+    function syncFish(confirmations) {
+      const activeIds = new Set(confirmations.map(c => c.playerId));
+
+      // Remove fish that are no longer confirmed
+      for (const id of fishMap.keys()) {
+        if (!activeIds.has(id)) removeFish(id);
+      }
+
+      // Spawn new fish
+      const sorted = [...confirmations].sort(
+        (a, b) => new Date(a.confirmedAt).getTime() - new Date(b.confirmedAt).getTime()
+      );
+      sorted.forEach((conf, i) => {
+        const isMe = String(conf.playerId) === String(myPlayerId);
+        const name = isMe ? '🙋 Tu' : `Giocatore #${conf.playerId}`;
+        spawnFish(conf.playerId, name, i);
+      });
+    }
+
+    // ─── Bubbles ─────────────────────────────────────────────────────
+
+    function spawnBubbles() {
+      const count = 18;
+      for (let i = 0; i < count; i++) {
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        const size = rand(8, 26);
+        b.style.cssText = `
+          width: ${size}px;
+          height: ${size}px;
+          left: ${rand(3, 97)}%;
+          --rise-dur: ${rand(7, 16)}s;
+          --rise-delay: ${rand(0, 10)}s;
+          --drift: ${rand(-30, 30)}px;
+        `;
+        aquarium.appendChild(b);
+      }
+    }
+
+    function spawnGodRays() {
+      const container = document.getElementById('god-rays');
+      const rays = 5;
+      for (let i = 0; i < rays; i++) {
+        const r = document.createElement('div');
+        r.className = 'god-ray';
+        const angle = rand(-25, 25);
+        r.style.cssText = `
+          left: ${rand(10, 90)}%;
+          --ray-w: ${rand(80, 200)}px;
+          --ray-angle: ${angle}deg;
+          --ray-dur: ${rand(6, 14)}s;
+          --ray-opacity: ${rand(0.3, 0.7)};
+        `;
+        container.appendChild(r);
+      }
+    }
+
+    // ─── API ─────────────────────────────────────────────────────────────
+
     async function loadConfirmations() {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/get-confirmations?time=` + matchTime);
@@ -355,40 +700,15 @@
 
         document.getElementById('queue-count').textContent = count;
 
-        // Progress bar
-        const pct = Math.min(100, (count / MIN_PLAYERS) * 100);
-        const fill = document.getElementById('confirm-progress-fill');
-        fill.style.width = `${pct}%`;
-        fill.classList.toggle('complete', count >= MIN_PLAYERS);
+        const statusEl = document.getElementById('top-bar-status');
+        statusEl.textContent = count >= MIN_PLAYERS ? 'Si gioca! ⚽' : '';
 
-        const progressText = document.getElementById('confirm-progress-text');
-        progressText.textContent = count >= MIN_PLAYERS
-          ? `${count} confermati — si gioca! ⚽`
-          : `Servono ancora ${MIN_PLAYERS - count} giocatori`;
-
-        // Lista confermati
-        const listContainer = document.getElementById('confirmed-list');
-        const itemsContainer = document.getElementById('confirmed-items');
+        // Sync the aquarium
         if (data.confirmations && data.confirmations.length > 0) {
-          listContainer.style.display = '';
-          itemsContainer.innerHTML = '';
-          const sorted = [...data.confirmations].sort(
-            (a, b) => new Date(a.confirmedAt).getTime() - new Date(b.confirmedAt).getTime()
-          );
-          for (const conf of sorted) {
-            const isMe = String(conf.playerId) === String(myPlayerId);
-            const div = document.createElement('div');
-            div.className = 'confirmed-item';
-            div.innerHTML = `
-              <span class="confirmed-item-name ${isMe ? 'confirmed-item-you' : ''}">
-                ${isMe ? '🙋 Tu' : `Giocatore #${conf.playerId}`}
-              </span>
-              <span class="confirmed-item-time">${formatTimeAgo(conf.confirmedAt)}</span>
-            `;
-            itemsContainer.appendChild(div);
-          }
+          syncFish(data.confirmations);
         } else {
-          listContainer.style.display = 'none';
+          // Remove all fish
+          for (const id of fishMap.keys()) removeFish(id);
         }
       } catch (err) {
         console.error('Errore caricamento conferme:', err);
@@ -396,54 +716,52 @@
     }
 
     async function init() {
+      spawnBubbles();
+      spawnGodRays();
       await loadConfirmations();
-      document.getElementById('loading-state').style.display = 'none';
-      document.getElementById('confirm-state').style.display = 'block';
-
-      // Polling ogni 5s, per massimo 60s
+      showState('confirm');
       const intervalId = setInterval(loadConfirmations, 5000);
       setTimeout(() => clearInterval(intervalId), 60_000);
     }
 
     async function confirmAttendance() {
-      const btn = document.getElementById('confirm-btn');
-      btn.disabled = true;
-      btn.textContent = '⏳ Confermando...';
-      const playerId = myPlayerId;
-      const subscription = localStorage.getItem('biliardino_subscription');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '⏳ Confermando...';
 
       try {
         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/confirm-availability`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matchTime, playerId, subscription })
+          body: JSON.stringify({ matchTime, playerId: myPlayerId, subscription: localStorage.getItem('biliardino_subscription') })
         });
-
         if (!res.ok) throw new Error('Errore nella conferma');
-
-        document.getElementById('confirm-state').style.display = 'none';
-        document.getElementById('success-state').style.display = 'block';
+        showState('success');
       } catch (err) {
-        console.error('Errore durante la conferma:', err);
-        document.getElementById('confirm-state').style.display = 'none';
         document.getElementById('error-message').textContent = err.message || 'Errore nella conferma';
-        document.getElementById('error-state').style.display = 'block';
+        showState('error');
       }
     }
 
     async function autoConfirm() {
-      document.getElementById('loading-state').style.display = 'none';
-      document.getElementById('confirm-state').style.display = 'block';
+      showState('confirm');
       await confirmAttendance();
     }
 
-    document.getElementById('confirm-btn').addEventListener('click', confirmAttendance);
+    if (confirmation === 'true') {
+      await autoConfirm();
+    } else if (confirmation === 'false') {
+      showState('error');
+      document.getElementById('error-message').textContent = 'Hai rifiutato la partecipazione alla partita.';
+    }
+    document.getElementById('time-watermark').textContent = matchTime;
+    document.getElementById('top-bar-time').textContent = `⚽ ${matchTime}`;
+    confirmBtn.textContent = `🌊 Ci sono!`;
 
-    document.getElementById('retry-btn')?.addEventListener('click', () => {
-      document.getElementById('error-state').style.display = 'none';
-      document.getElementById('confirm-state').style.display = 'block';
-      document.getElementById('confirm-btn').disabled = false;
-      document.getElementById('confirm-btn').textContent = '✓ Confermo la mia presenza';
+    confirmBtn.addEventListener('click', confirmAttendance);
+    retryBtn.addEventListener('click', () => {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = `🌊 Ci sono!`;
+      showState('confirm');
     });
 
     init();
