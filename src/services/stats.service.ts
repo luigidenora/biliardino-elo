@@ -2,7 +2,7 @@ import { IMatch, ITeam } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { MatchesK } from './elo.service';
 import { getAllMatches } from './match.service';
-import { checkDerankThreshold, getClass, getPlayerById } from './player.service';
+import { checkDerankThreshold, getClass, getFirstMatchesBonus, getPlayerById } from './player.service';
 
 export type PlayerResult = { player: IPlayer; score: number };
 
@@ -109,7 +109,7 @@ export function getPlayerStats(player: number): PlayerStats {
   function updateEloResult(team: number, match: IMatch): void {
     const delta = team === 0 ? match.deltaELO[0] : match.deltaELO[1];
 
-    result.elo += delta;
+    result.elo += delta * getFirstMatchesBonus(result.matches);
 
     if (result.matches >= MatchesK - 1) {
       if (result.elo > result.bestElo) result.bestElo = result.elo;

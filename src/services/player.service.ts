@@ -155,6 +155,6 @@ function computeRanks(): void {
   rankOutdated = false;
 }
 
-function getFirstMatchesBonus(matches: number): number {
+export function getFirstMatchesBonus(matches: number): number {
   return Math.max(0, (1 - (matches / MatchesK))) * (StartK / FinalK - 1) + 1;
 }

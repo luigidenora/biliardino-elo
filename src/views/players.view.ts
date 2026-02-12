@@ -1,10 +1,9 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { getPlayerElo } from '@/services/elo.service';
+import { FinalK, MatchesK, StartK } from '@/services/elo.service';
 import { getPlayerStats, PlayerStats } from '@/services/stats.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
-import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { getPlayerById, getRank } from '../services/player.service';
 
 /**
@@ -144,7 +143,7 @@ export class PlayersView {
       };
     };
 
-    const formatMatchHistory = (match: IMatch, playerElo: number): string => {
+    const formatMatchHistory = (match: IMatch, playerElo: number, matchesPlayed: number): string => {
       const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
       const myTeam = isTeamA ? match.teamA : match.teamB;
       const opponentTeam = isTeamA ? match.teamB : match.teamA;
@@ -208,15 +207,31 @@ export class PlayersView {
       const myExpColor = myExpectedPercent === '?' ? 'inherit' : (myExpectedPercent > 50 ? 'green' : myExpectedPercent < 50 ? 'red' : 'inherit');
       const oppExpColor = oppExpectedPercent === '?' ? 'inherit' : (oppExpectedPercent > 50 ? 'green' : oppExpectedPercent < 50 ? 'red' : 'inherit');
 
-      // Calcola ELO con malus per ruolo
-      const tempPlayer: IPlayer = { ...player, elo: playerElo };
+      // Calcola ELO del giocatore preso da teamAELO o teamBELO
       const isDefence = myTeam.defence === player.id;
-      const eloWithMalus = Math.round(getPlayerElo(tempPlayer, isDefence));
-      const realElo = Math.round(getDisplayElo(tempPlayer));
+      let myPlayerElo: number | undefined = undefined;
+      if (isTeamA) {
+        myPlayerElo = isDefence ? teamAELO[0] : teamAELO[1];
+      } else {
+        myPlayerElo = isDefence ? teamBELO[0] : teamBELO[1];
+      }
+      const eloWithMalus = myPlayerElo !== undefined ? Math.round(myPlayerElo) : '?';
+
+      // ELO reale: rimuovi il malus dal valore con malus
+      // Il malus è: (isDef ? 1 - player.defence : player.defence) * 100
+      const malus = (isDefence ? 1 - player.defence : player.defence) * 100;
+      const realElo = myPlayerElo !== undefined ? Math.round(myPlayerElo + malus) : '?';
       const delta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
 
-      // Formatta delta del giocatore
-      const myDeltaFormatted = `<span style="color:${deltaColor};">(${delta >= 0 ? '+' : ''}${Math.round(delta)})</span>`;
+      // Calcola il K factor per il moltiplicatore
+      const firstMatchMultiplier = Math.max(0, (1 - (matchesPlayed / MatchesK)) * (StartK - FinalK));
+      const kFactor = FinalK + firstMatchMultiplier;
+      const multiplier = kFactor / FinalK;
+
+      // Formatta delta del giocatore con moltiplicatore
+      const deltaRounded = Math.round(delta);
+      const multiplierDisplay = multiplier !== 1 ? ` × ${multiplier.toFixed(2)}` : '';
+      const myDeltaFormatted = `<span style="color:${deltaColor};">(${delta >= 0 ? '+' : ''}${deltaRounded}${multiplierDisplay})</span>`;
 
       return `
         <tr class="${isWin ? 'match-win' : 'match-loss'}">
@@ -226,7 +241,7 @@ export class PlayersView {
           <td>${teammateNames}</td>
           <td><span style="color:${myExpColor};font-size:0.85em;">(${myExpectedPercent}%)</span> <strong>${myScore}-${oppScore}</strong> <span style="color:${oppExpColor};font-size:0.85em;">(${oppExpectedPercent}%)</span></td>
           <td>${opponentsNames}</td>
-          <td><strong>${oppTeamElo}</strong> ${oppDeltaFormatted}</td>
+          <td><strong>${oppTeamElo}</strong></td>
         </tr>
       `;
     };
@@ -487,8 +502,9 @@ export class PlayersView {
             playerElos.push(currentElo);
           }
           return stats.history.slice().reverse().map((match, idx) => {
-            const eloBeforeMatch = playerElos[stats.history.length - idx - 1];
-            return formatMatchHistory(match, eloBeforeMatch);
+            const matchIndex = stats.history.length - idx - 1;
+            const eloBeforeMatch = playerElos[matchIndex];
+            return formatMatchHistory(match, eloBeforeMatch, matchIndex);
           }).join('');
         })()}
               </tbody>
