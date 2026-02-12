@@ -119,7 +119,11 @@ export async function loadPlayers(): Promise<void> {
 }
 
 function computeRanks(): void {
-  const players = playersArray.toSorted((a, b) => b.elo - a.elo);
+  const players = playersArray.toSorted((a, b) => {
+    const classA = a.class == -1 ? Infinity : a.class;
+    const classB = b.class == -1 ? Infinity : b.class;
+    return classA - classB || b.elo - a.elo;
+  });
 
   let rank = 0;
   let previousElo = -1;

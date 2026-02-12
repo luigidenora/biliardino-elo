@@ -30,11 +30,11 @@ export class RankingView {
     return RankingView.LIVE_WINDOWS.some(w => minutes >= w.start && minutes < w.end);
   }
 
-  private static sortKey: SortKey = 'elo';
+  private static sortKey: SortKey = 'rank';
   private static sortAsc: boolean = false;
   // Indici colonne: 0=#, 1=Classe, 2=Nome, 3=Elo, 4=Ruolo, 5=Match, 6=V/S, 7=%Win, 8=Goal F/S, 9=Forma
   private static readonly sortKeys: (SortKey | null)[] = [
-    null, null, 'name', 'elo', null, 'matches', null, 'winrate', 'goaldiff', 'form'
+    'rank', null, 'name', 'elo', null, 'matches', null, 'winrate', 'goaldiff', 'form'
   ];
 
   /**
@@ -65,7 +65,7 @@ export class RankingView {
       let cmp = 0;
       switch (sortKey) {
         case 'rank':
-          cmp = b.elo - a.elo;
+          cmp = getRank(a.id) - getRank(b.id);
           break;
         case 'name':
           cmp = a.name.localeCompare(b.name);
@@ -278,47 +278,15 @@ export class RankingView {
     const tbody = table.querySelector('tbody')!;
     const fragment = document.createDocumentFragment();
 
-    const playerIdToRank = RankingView.buildRankMap(players, p => getDisplayElo(p));
     const playerIdToStartRank = RankingView.buildRankMap(
       players,
       p => Math.round(p.elo - (todayDeltas.get(p.id)?.delta ?? 0))
     );
 
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i];
-      const rank = playerIdToRank.get(player.id) ?? (i + 1);
-
-      // Conta quanti giocatori hanno lo stesso Elo (guardando avanti e indietro)
+    for (const player of players) {
+      const rank = getRank(player.id);
+      const rankDisplay = `${rank}`;
       const elo = getDisplayElo(player);
-      let sameEloCount = 1;
-      let rankStart = rank;
-      // Conta quanti prima hanno lo stesso Elo (per trovare l'inizio del range)
-      let backCount = 0;
-      for (let j = i - 1; j >= 0; j--) {
-        if (getDisplayElo(players[j]) === elo) {
-          backCount++;
-        } else {
-          break;
-        }
-      }
-      if (backCount > 0) {
-        rankStart = rank;
-        sameEloCount += backCount;
-      }
-      // Conta quanti dopo hanno lo stesso Elo
-      for (let j = i + 1; j < players.length; j++) {
-        if (getDisplayElo(players[j]) === elo) {
-          sameEloCount++;
-        } else {
-          break;
-        }
-      }
-      let rankDisplay = '';
-      if (sameEloCount > 1) {
-        rankDisplay = `${rankStart}-${rankStart + sameEloCount - 1}`;
-      } else {
-        rankDisplay = `${rank}`;
-      }
 
       const isFirst = rank === 1;
       const isSecond = rank === 2;
