@@ -4,7 +4,7 @@ import { MatchesK } from './elo.service';
 import { fetchPlayers } from './repository.service';
 
 const playersMap = new Map<number, IPlayer>();
-const derankTreshold = 30;
+const derankTreshold = Math.round(125 * 0.3);
 let playersArray: IPlayer[] = [];
 let rankOutdated = true;
 
@@ -94,19 +94,28 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 
   if (win) {
     newClass = Math.min(newClass, currentClass === -1 ? Infinity : currentClass); // to avoid to derank after win if in the treshold
-  } else if (player.elo % 100 >= 100 - derankTreshold && player.elo >= 800) { // treshold per non derankare subito se hai rankato e perdi una partita (deranki se perdi più di 30 punti)
+  } else if (checkDerankThreshold(player.elo)) {
     newClass--;
   }
 
   player.class = newClass;
 }
 
+export function checkDerankThreshold(elo: number): boolean {
+  elo = Math.round(elo);
+  if (elo >= 1125) return elo >= 1250 - derankTreshold;
+  if (elo >= 1000) return elo >= 1125 - derankTreshold;
+  if (elo >= 875) return elo >= 1000 - derankTreshold;
+  if (elo < 875) return elo >= 875 - derankTreshold;
+  return false;
+}
+
 export function getClass(elo: number): number {
-  // TODO if you update this, edit also updatePlayerClass method
-  if (elo >= 1200) return 0;
-  if (elo >= 1100) return 1;
+  elo = Math.round(elo);
+  if (elo >= 1250) return 0;
+  if (elo >= 1125) return 1;
   if (elo >= 1000) return 2;
-  if (elo >= 900) return 3;
+  if (elo >= 875) return 3;
   return 4;
 }
 

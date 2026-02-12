@@ -2,8 +2,8 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerById } from './player.service';
 
-export const StartK = 40 * 1; // TODO nella new season mettere 2 o 1.5
-export const FinalK = 40;
+export const StartK = 50 * 1; // TODO nella new season mettere 2 o 1.5
+export const FinalK = 50;
 export const MatchesK = 10;
 
 export function updateMatch(match: IMatch): void {
@@ -80,6 +80,6 @@ export function expectedScore(eloA: number, eloB: number): number {
 }
 
 function marginMultiplier(goalsA: number, goalsB: number): number {
-  const diff = Math.abs(goalsA - goalsB);
-  return 1 + (diff / 8 * 0.5); // pesato al 50%
+  const diff = Math.abs(goalsA - goalsB) - 1;
+  return 1 + (diff / 7) * 0.5; // da 1 a 1.5
 }
