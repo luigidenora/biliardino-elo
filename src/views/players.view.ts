@@ -267,7 +267,7 @@ export class PlayersView {
             <h2 class="pp-name">${player.name}</h2>
           </div>
           <div class="pp-badges">
-            <span class="pp-rank-badge">${formatRank(getRank(player.id))}</span>
+            ${player.class !== -1 ? `<span class="pp-rank-badge">${formatRank(getRank(player.id))}</span>` : ''}
             <span class="pp-winrate-badge ${winRateClass}">Win ${winPercentage}%</span>
           </div>
         </div>

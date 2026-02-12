@@ -406,8 +406,13 @@ export class RankingView {
         </div>
       ` : '';
 
+      // Mostra posizione solo se ha classe
+      const rankCell = player.class !== -1
+        ? `<td title="Posizione in classifica"><strong>${rankDisplay}°</strong> ${todayRankBadge}</td>`
+        : `<td title="Nessuna classe">${todayRankBadge}</td>`;
+
       tr.innerHTML = `
-        <td title="Posizione in classifica"><strong>${rankDisplay}°</strong> ${todayRankBadge}</td>
+        ${rankCell}
         <td title="Classe">${classImageHTML}</td>
         <td title="Nome giocatore"><div class="player-info">${avatarHTML}<span>${playerNameDisplay}</span></div></td>
         <td title="ELO rating attuale"><strong>${elo}</strong> ${todayBadge}</td>
@@ -807,7 +812,7 @@ export class RankingView {
                       ${defA.class !== -1 ? `<img src="/biliardino-elo/class/${defA.class}.webp" alt="Class ${defA.class}" class="live-class-icon" />` : ''}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">🛡️ ${defA.name} <span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefA)})</span></span>
+                      <span class="live-player-name">🛡️ ${defA.name} ${defA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefA)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercA}%</span>
                         <span class="live-player-elo">${Math.round(getPlayerElo(defA, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
@@ -822,7 +827,7 @@ export class RankingView {
                       ${attA.class !== -1 ? `<img src="/biliardino-elo/class/${attA.class}.webp" alt="Class ${attA.class}" class="live-class-icon" />` : ''}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">⚔️ ${attA.name} <span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttA)})</span></span>
+                      <span class="live-player-name">⚔️ ${attA.name} ${attA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttA)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercA}%</span>
                         <span class="live-player-elo">${Math.round(getPlayerElo(attA, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
@@ -847,7 +852,7 @@ export class RankingView {
                       ${defB.class !== -1 ? `<img src="/biliardino-elo/class/${defB.class}.webp" alt="Class ${defB.class}" class="live-class-icon" />` : ''}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">🛡️ ${defB.name} <span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefB)})</span></span>
+                      <span class="live-player-name">🛡️ ${defB.name} ${defB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefB)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercB}%</span>
                         <span class="live-player-elo">${Math.round(getPlayerElo(defB, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
@@ -862,7 +867,7 @@ export class RankingView {
                       ${attB.class !== -1 ? `<img src="/biliardino-elo/class/${attB.class}.webp" alt="Class ${attB.class}" class="live-class-icon" />` : ''}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">⚔️ ${attB.name} <span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttB)})</span></span>
+                      <span class="live-player-name">⚔️ ${attB.name} ${attB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttB)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercB}%</span>
                         <span class="live-player-elo">${Math.round(getPlayerElo(attB, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
