@@ -171,7 +171,12 @@ export class RankingView {
    * @returns A map of player IDs to their rank numbers.
    */
   private static buildRankMap(players: IPlayer[], getElo: (player: IPlayer) => number): Map<number, number> {
-    const sorted = players.toSorted((a, b) => getElo(b) - getElo(a));
+    const sorted = players.toSorted((a, b) => {
+      const classA = a.class === -1 ? Infinity : a.class;
+      const classB = b.class === -1 ? Infinity : b.class;
+      if (classA !== classB) return classA - classB;
+      return getElo(b) - getElo(a);
+    });
     const ranks = new Map<number, number>();
     let currentRank = 1;
     let prevElo: number | null = null;
