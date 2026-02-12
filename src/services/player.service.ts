@@ -1,6 +1,6 @@
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { MatchesK } from './elo.service';
+import { FinalK, MatchesK, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
 
 const playersMap = new Map<number, IPlayer>();
@@ -48,7 +48,7 @@ export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppo
   const player = getPlayerById(id);
   if (!player) return;
 
-  player.elo += delta;
+  player.elo += delta * getFirstMatchesBonus(player.matches);
   player.bestElo = Math.max(player.bestElo ?? player.elo, player.elo);
   player.matches++;
   player.wins += delta > 0 ? 1 : 0;
@@ -101,15 +101,6 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
   player.class = newClass;
 }
 
-export function checkDerankThreshold(elo: number): boolean {
-  elo = Math.round(elo);
-  if (elo >= 1125) return elo >= 1250 - derankTreshold;
-  if (elo >= 1000) return elo >= 1125 - derankTreshold;
-  if (elo >= 875) return elo >= 1000 - derankTreshold;
-  if (elo < 875) return elo >= 875 - derankTreshold;
-  return false;
-}
-
 export function getClass(elo: number): number {
   elo = Math.round(elo);
   if (elo >= 1250) return 0;
@@ -117,6 +108,15 @@ export function getClass(elo: number): number {
   if (elo >= 1000) return 2;
   if (elo >= 875) return 3;
   return 4;
+}
+
+export function checkDerankThreshold(elo: number): boolean {
+  elo = Math.round(elo);
+  if (elo >= 1125) return elo >= 1250 - derankTreshold;
+  if (elo >= 1000) return elo >= 1125 - derankTreshold;
+  if (elo >= 875) return elo >= 1000 - derankTreshold;
+  if (elo < 875) return elo >= 875 - derankTreshold;
+  return false;
 }
 
 export async function loadPlayers(): Promise<void> {
@@ -153,4 +153,8 @@ function computeRanks(): void {
   }
 
   rankOutdated = false;
+}
+
+function getFirstMatchesBonus(matches: number): number {
+  return Math.max(0, (1 - (matches / MatchesK))) * (StartK / FinalK - 1) + 1;
 }

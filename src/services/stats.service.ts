@@ -2,7 +2,7 @@ import { IMatch, ITeam } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { MatchesK } from './elo.service';
 import { getAllMatches } from './match.service';
-import { getClass, getPlayerById } from './player.service';
+import { checkDerankThreshold, getClass, getPlayerById } from './player.service';
 
 export type PlayerResult = { player: IPlayer; score: number };
 
@@ -126,12 +126,16 @@ export function getPlayerStats(player: number): PlayerStats {
     result.avgOpponentElo += team === 0 ? match.teamELO[1] : match.teamELO[0];
   }
 
+  // must be the same as player.service.ts
   function updatePlayerClass(win: boolean): void {
+    const currentClass = result.class;
     let newClass = getClass(result.elo);
 
-    if (result.class === newClass) return;
+    if (currentClass === newClass) return;
 
-    if (!win && result.elo % 100 >= 70 && result.elo >= 800) { // treshold per non derankare subito se hai rankato e perdi una partita (deranki se perdi più di 30 punti)
+    if (win) {
+      newClass = Math.min(newClass, currentClass === -1 ? Infinity : currentClass); // to avoid to derank after win if in the treshold
+    } else if (checkDerankThreshold(result.elo)) {
       newClass--;
     }
 

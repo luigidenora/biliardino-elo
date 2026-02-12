@@ -35,11 +35,8 @@ export function updateMatch(match: IMatch): void {
   const scoreA = goalsA > goalsB ? 1 : goalsA === goalsB ? 0.5 : 0;
   const scoreB = 1 - scoreA;
 
-  const kA = getTeamK(teamAP1, teamAP2);
-  const kB = getTeamK(teamBP1, teamBP2);
-
-  const deltaA = kA * goalMultiplier * (scoreA - expA);
-  const deltaB = kB * goalMultiplier * (scoreB - expB);
+  const deltaA = FinalK * goalMultiplier * (scoreA - expA);
+  const deltaB = FinalK * goalMultiplier * (scoreB - expB);
 
   match.expectedScore[0] = expA;
   match.expectedScore[1] = expB;
@@ -64,15 +61,6 @@ export function updateMatch(match: IMatch): void {
 
 export function getPlayerElo(player: IPlayer, isDef: boolean): number {
   return player.elo - (isDef ? 1 - player.defence : player.defence) * 100;
-}
-
-function getPlayerK(matches: number): number {
-  const firstMatchMultiplier = Math.max(0, (1 - (matches / MatchesK)) * (StartK - FinalK));
-  return FinalK + firstMatchMultiplier;
-}
-
-function getTeamK(p1: IPlayer, p2: IPlayer): number {
-  return (getPlayerK(p1.matches) + getPlayerK(p2.matches)) / 2;
 }
 
 export function expectedScore(eloA: number, eloB: number): number {
