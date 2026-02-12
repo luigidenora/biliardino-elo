@@ -27,13 +27,10 @@ export function updateMatch(match: IMatch): void {
   const eloA = (teamAP1Elo + teamAP2Elo) / 2;
   const eloB = (teamBP1Elo + teamBP2Elo) / 2;
 
-  const expA = expectedScore(eloA, eloB);
+  const expA = expectedScore(eloA * 2, eloB * 2); // * 2 to increase percentage
   const expB = 1 - expA;
 
   const goalMultiplier = marginMultiplier(goalsA, goalsB);
-  const winnerExp = goalsA > goalsB ? expA : expB;
-  const winnerSign = winnerExp > 0.5 ? -1 : 1;
-  const surpriseFactor = 1 + (3 * Math.pow(Math.abs(0.5 - winnerExp), 1.5)) * winnerSign;
 
   const scoreA = goalsA > goalsB ? 1 : goalsA === goalsB ? 0.5 : 0;
   const scoreB = 1 - scoreA;
@@ -41,8 +38,8 @@ export function updateMatch(match: IMatch): void {
   const kA = getTeamK(teamAP1, teamAP2);
   const kB = getTeamK(teamBP1, teamBP2);
 
-  const deltaA = kA * goalMultiplier * (scoreA - expA) * surpriseFactor;
-  const deltaB = kB * goalMultiplier * (scoreB - expB) * surpriseFactor;
+  const deltaA = kA * goalMultiplier * (scoreA - expA);
+  const deltaB = kB * goalMultiplier * (scoreB - expB);
 
   match.expectedScore[0] = expA;
   match.expectedScore[1] = expB;
