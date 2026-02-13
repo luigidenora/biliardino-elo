@@ -516,23 +516,27 @@ export class MatchmakingView {
         <div class="heuristic-items">
           <div class="heuristic-item" title="Bilanciamento ELO tra i team">
             <span class="heuristic-label">⚖️ Bilanciamento partita</span>
-            <span class="heuristic-value">${match.heuristicData.matchBalance.score.toFixed(3)} / ${match.heuristicData.matchBalance.max.toFixed(2)}</span>
+            <span class="heuristic-value">${match.heuristicData.matchBalance.score.toFixed(2)} / ${match.heuristicData.matchBalance.max.toFixed(2)}</span>
           </div>
           <div class="heuristic-item" title="Priorità ai giocatori con meno partite">
             <span class="heuristic-label">⭐ Priorità</span>
-            <span class="heuristic-value">${match.heuristicData.priority.score.toFixed(3)} / ${match.heuristicData.priority.max.toFixed(2)}</span>
+            <span class="heuristic-value">${match.heuristicData.priority.score.toFixed(2)} / ${match.heuristicData.priority.max.toFixed(2)}</span>
           </div>
           <div class="heuristic-item" title="Varietà nelle combinazioni di giocatori">
             <span class="heuristic-label">🎲 Diversità</span>
-            <span class="heuristic-value">${match.heuristicData.diversity.score.toFixed(3)} / ${match.heuristicData.diversity.max.toFixed(2)}</span>
+            <span class="heuristic-value">${match.heuristicData.diversity.score.toFixed(2)} / ${match.heuristicData.diversity.max.toFixed(2)}</span>
           </div>
           <div class="heuristic-item" title="Fattore di casualità">
             <span class="heuristic-label">🎰 Casualità</span>
-            <span class="heuristic-value">${match.heuristicData.randomness.score.toFixed(3)} / ${match.heuristicData.randomness.max.toFixed(2)}</span>
+            <span class="heuristic-value">${match.heuristicData.randomness.score.toFixed(2)} / ${match.heuristicData.randomness.max.toFixed(2)}</span>
+          </div>
+          <div class="heuristic-item" title="Bilanciamento classi tra i team">
+            <span class="heuristic-label">🏆 Class Bonus</span>
+            <span class="heuristic-value">${match.heuristicData.classBalance.score.toFixed(2)} / ${match.heuristicData.classBalance.max.toFixed(2)}</span>
           </div>
           <div class="heuristic-item heuristic-total" title="Punteggio totale della partita">
             <span class="heuristic-label">🏆 Totale</span>
-            <span class="heuristic-value">${match.heuristicData.total.score.toFixed(3)} / ${match.heuristicData.total.max.toFixed(2)}</span>
+            <span class="heuristic-value">${match.heuristicData.total.score.toFixed(2)} / ${match.heuristicData.total.max.toFixed(2)}</span>
           </div>
         </div>
       `;

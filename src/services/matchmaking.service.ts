@@ -2,7 +2,7 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerElo } from './elo.service';
 import { getAllMatches } from './match.service';
-import { getClass, getPlayerById } from './player.service';
+import { getAllPlayers, getClass, getPlayerById } from './player.service';
 
 export interface IMatchmakingConfig {
   /**
@@ -30,11 +30,12 @@ export interface IMatchProposal {
 }
 
 export interface IHeuristicData {
-  matchBalance: { score: number; max: number }; // Punteggio bilanciamento partita
-  priority: { score: number; max: number }; // Punteggio priorità giocatori
-  diversity: { score: number; max: number }; // Punteggio diversità
-  randomness: { score: number; max: number }; // Punteggio randomness
-  total: { score: number; max: number }; // Punteggio totale
+  matchBalance: { score: number; max: number };
+  priority: { score: number; max: number };
+  diversity: { score: number; max: number };
+  randomness: { score: number; max: number };
+  classBalance: { score: number; max: number };
+  total: { score: number; max: number };
 }
 
 // TODO: consider early exit if bad performance (too many players)
@@ -58,9 +59,9 @@ export function findBestMatch(playersId: number[], priorityPlayersId: number[]):
     throw new Error('Some player IDs are invalid');
   }
 
-  const maxEloDiff = getMaxEloDifference(players);
-  const maxMatches = getMaxMatchesPlayed(players);
-  const maxDiversity = getMaxDiversity(players, playersId);
+  const maxEloDiff = getMaxEloDifference(getAllPlayers());
+  const maxMatches = getMaxMatchesPlayed(getAllPlayers());
+  const maxDiversity = getMaxDiversity(getAllPlayers(), playersId);
   const defArray: IPlayer[] = [];
   const attArray: IPlayer[] = [];
   getPlayersRolesArray(getAllMatches(), players, defArray, attArray);
@@ -89,9 +90,10 @@ function generateBestMatch(maxEloDiff: number, maxMatches: number, maxDiversity:
           const p4 = att[l];
           if (p4 === p1 || p4 === p2 || p4 === p3) continue;
 
-          if (!validateClass(p1, p2, p3, p4) || !validatePriority(p1, p2, p3, p4, priorityPlayers)) continue;
+          const classDiff = getClassDiff(p1, p2, p3, p4);
+          if (classDiff > 2 || !validatePriority(p1, p2, p3, p4, priorityPlayers)) continue;
 
-          bestScore = checkProposal(p1, p2, p3, p4, maxEloDiff, maxMatches, maxDiversity, bestScore, bestProposal);
+          bestScore = checkProposal(p1, p2, p3, p4, maxEloDiff, maxMatches, maxDiversity, bestScore, bestProposal, classDiff);
         }
       }
     }
@@ -112,7 +114,7 @@ function validatePriority(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer, pr
   return true;
 }
 
-function validateClass(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): boolean {
+function getClassDiff(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): number {
   const class1 = p1.class === -1 ? getClass(p1.elo) : p1.class;
   const class2 = p2.class === -1 ? getClass(p2.elo) : p2.class;
   const class3 = p3.class === -1 ? getClass(p3.elo) : p3.class;
@@ -121,10 +123,10 @@ function validateClass(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): bool
   const maxClass = Math.max(class1, class2, class3, class4);
   const minClass = Math.min(class1, class2, class3, class4);
 
-  return maxClass - minClass <= 1;
+  return maxClass - minClass;
 }
 
-function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlayer, maxEloDiff: number, maxMatches: number, maxDiversity: Diversity, bestScore: number, proposal: IMatchProposal): number {
+function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlayer, maxEloDiff: number, maxMatches: number, maxDiversity: Diversity, bestScore: number, proposal: IMatchProposal, classDiff: number): number {
   // MATCH ELO DIFFERENCE SCORE
   const teamAElo = (getPlayerElo(defA, true) + getPlayerElo(attA, false)) / 2; // il / 2 può essere tolgo se usiamo la somma
   const teamBElo = (getPlayerElo(defB, true) + getPlayerElo(attB, false)) / 2;
@@ -159,6 +161,7 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
       priority: { score: priorityScore, max: config.priorityWeight },
       diversity: { score: diversityScore, max: config.diversityWeight },
       randomness: { score: randomness, max: config.randomness },
+      classBalance: { score: classDiff <= 1 ? 1 : 0, max: 1 },
       total: { score: score, max: 1 }
     };
 
