@@ -2,7 +2,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(config => ({
-  base: '/biliardino-elo/',
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')
