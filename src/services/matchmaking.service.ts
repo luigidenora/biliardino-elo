@@ -148,7 +148,9 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   const diversityScore = diversityNormalized * config.diversityWeight;
   const randomness = Math.random() * config.randomness;
 
-  const score = diversityScore + matchBalanceScore + priorityScore + randomness;
+  const classBalance = classDiff <= 1 ? 1 : 0;
+
+  const score = diversityScore + matchBalanceScore + priorityScore + randomness + classBalance;
 
   if (score > bestScore) {
     proposal.teamA.defence = defA;
@@ -161,8 +163,8 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
       priority: { score: priorityScore, max: config.priorityWeight },
       diversity: { score: diversityScore, max: config.diversityWeight },
       randomness: { score: randomness, max: config.randomness },
-      classBalance: { score: classDiff <= 1 ? 1 : 0, max: 1 },
-      total: { score: score, max: 1 }
+      classBalance: { score: classBalance, max: 1 },
+      total: { score: score, max: 2 }
     };
 
     bestScore = score;
