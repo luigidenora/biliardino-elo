@@ -4,7 +4,6 @@ import { FinalK, MatchesK, StartK } from '@/services/elo.service';
 import { getPlayerStats, PlayerStats } from '@/services/stats.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
-import { BASE_PATH } from '../config/env.config';
 import { getPlayerById, getRank } from '../services/player.service';
 
 /**

@@ -94,7 +94,7 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 
   if (win) {
     newClass = Math.min(newClass, currentClass === -1 ? Infinity : currentClass); // to avoid to derank after win if in the treshold
-  } else if (checkDerankThreshold(player.elo)) {
+  } else if (currentClass !== -1 && checkDerankThreshold(player.elo)) {
     newClass--;
   }
 
@@ -136,6 +136,7 @@ function computeRanks(): void {
 
   let rank = 0;
   let previousElo = -1;
+  let previousClass = -1;
   let count = 0;
 
   for (const player of players) {
@@ -144,9 +145,10 @@ function computeRanks(): void {
     count++;
     const elo = getDisplayElo(player);
 
-    if (elo !== previousElo) {
+    if (elo !== previousElo || player.class !== previousClass) {
       rank = count;
       previousElo = elo;
+      previousClass = player.class;
     }
 
     player.rank = rank;

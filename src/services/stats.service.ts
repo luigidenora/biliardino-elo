@@ -4,6 +4,9 @@ import { MatchesK } from './elo.service';
 import { getAllMatches } from './match.service';
 import { checkDerankThreshold, getClass, getFirstMatchesBonus, getPlayerById } from './player.service';
 
+// vittoria contro avversari più forti, sconfitta contro avversari più deboli
+// compagni e avversari storico
+
 export type PlayerResult = { player: IPlayer; score: number };
 
 export interface PlayerStats {
@@ -135,7 +138,7 @@ export function getPlayerStats(player: number): PlayerStats {
 
     if (win) {
       newClass = Math.min(newClass, currentClass === -1 ? Infinity : currentClass); // to avoid to derank after win if in the treshold
-    } else if (checkDerankThreshold(result.elo)) {
+    } else if (currentClass !== -1 && checkDerankThreshold(result.elo)) {
       newClass--;
     }
 
