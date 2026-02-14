@@ -911,5 +911,16 @@ export class RankingView {
       const matchTime = RankingView.getNextMatchTime();
       window.location.href = `./confirm.html?time=${matchTime}`;
     });
+
+    // Mostra pulsante Matchmaking solo per admin (id: 25, 18, 22, 13)
+    const adminMatchmakingBtn = document.getElementById('admin-matchmaking-btn');
+    if (adminMatchmakingBtn) {
+      const playerId = localStorage.getItem('biliardino_player_id');
+      const adminIds = [25, 18, 22, 13];
+
+      if (playerId && adminIds.includes(Number(playerId))) {
+        adminMatchmakingBtn.style.display = 'inline-block';
+      }
+    }
   }
 }

@@ -4,9 +4,10 @@
  */
 export const ADMIN_PLAYER_IDS = [
   25, // Andrea Gargaro
-  1, // Admin 1
-  5 // Admin 2
-  // Aggiungere altri ID admin qui
+  18, // Admin 2
+  22, // Admin 3
+  13, // Admin 4
+  21, // Admin 5
 ];
 
 /**
