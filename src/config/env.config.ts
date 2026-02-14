@@ -1,11 +1,7 @@
 /**
  * Environment configuration
- * Controls whether to use Firebase or mock data for development
+ * Variabili pubbliche esposte al frontend
  */
-export const isDev = import.meta.env.DEV;
-export const useMockData = isDev; // Use mock data in development
-
-// Public environment variables (exposed to frontend)
 export const VAPID_PUBLIC_KEY: string | null = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 export const API_BASE_URL: string | null = import.meta.env.VITE_API_BASE_URL;
 

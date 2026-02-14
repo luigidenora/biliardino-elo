@@ -1,4 +1,3 @@
-import { useMockData } from '@/config/env.config';
 import { onAuthStateChanged } from 'firebase/auth';
 import { API_BASE_URL } from '../config/env.config';
 import { AUTH } from '../utils/firebase.util';
@@ -19,13 +18,19 @@ export class BroadcastAdminView {
    * Inizializza il sistema di broadcast admin
    */
   public static init(): void {
-    // In mock mode, crea subito il FAB
-    if (useMockData || !AUTH) {
+    // In dev mode (__DEV_MODE__) crea subito il FAB senza attendere auth Firebase.
+    // In produzione questo blocco viene eliminato da Rollup.
+    if (__DEV_MODE__) {
       BroadcastAdminView.createUI();
       return;
     }
 
-    // Altrimenti aspetta l'autenticazione Firebase
+    // In produzione aspetta l'autenticazione Firebase
+    if (!AUTH) {
+      console.error('Firebase AUTH instance is not initialized. Broadcast admin UI will not be created.');
+      return;
+    }
+
     onAuthStateChanged(AUTH, (user) => {
       if (user && !BroadcastAdminView.floatingButton) {
         BroadcastAdminView.createUI();

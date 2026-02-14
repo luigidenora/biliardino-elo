@@ -1,13 +1,11 @@
 /**
  * Lista hardcoded di playerIds admin
- * Solo questi utenti hanno accesso alla pagina matchmaking.html
+ * Solo questi utenti possono vedere il pulsante match making
  */
 export const ADMIN_PLAYER_IDS = [
   25, // Andrea Gargaro
   18, // Admin 2
   22, // Admin 3
-  13, // Admin 4
-  21, // Admin 5
 ];
 
 /**

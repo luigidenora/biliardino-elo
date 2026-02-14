@@ -32,13 +32,149 @@
       position: relative;
     }
 
+    /* ====== STATE SYSTEM: 3 stati della pagina ====== */
+    /* LOBBY_FOUND: acqua + pesci + onde */
+    /* NO_LOBBY: ampolla isolata */
+    /* ERROR: pesci morti */
+
+    body[data-state="NO_LOBBY"] .only-lobby-found {
+      display: none !important;
+    }
+
+    body[data-state="LOBBY_FOUND"] .only-no-lobby,
+    body[data-state="ERROR"] .only-no-lobby {
+      display: none !important;
+    }
+
+    body[data-state="NO_LOBBY"] #cta-footer {
+      display: none !important;
+    }
+
+    /* ====== WATER LAYER (70% vertical in LOBBY_FOUND state) ====== */
+    #water-layer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70vh;
+      background: linear-gradient(180deg,
+          rgba(60, 150, 255, 0.15) 0%,
+          rgba(30, 120, 220, 0.25) 50%,
+          rgba(10, 80, 180, 0.35) 100%);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body[data-state="LOBBY_FOUND"] #water-layer,
+    body[data-state="ERROR"] #water-layer {
+      opacity: 1;
+    }
+
+    /* ====== WAVES SVG (animato in cima all'acqua) ====== */
+    #waves {
+      position: fixed;
+      bottom: 70vh;
+      left: 0;
+      right: 0;
+      height: 80px;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body[data-state="LOBBY_FOUND"] #waves,
+    body[data-state="ERROR"] #waves {
+      opacity: 1;
+    }
+
+    #waves svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ====== AMPOLLA SVG (stato NO_LOBBY) ====== */
+    #ampolla-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      text-align: center;
+    }
+
+    body[data-state="NO_LOBBY"] #ampolla-container {
+      opacity: 1;
+    }
+
+    #ampolla-svg {
+      width: 250px;
+      height: 320px;
+      margin: 0 auto 1.5rem;
+      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.12));
+    }
+
+    .ampolla-message {
+      max-width: 320px;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .ampolla-message h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #1d1d1f;
+    }
+
+    .ampolla-message p {
+      font-size: 0.95rem;
+      color: #6e6e73;
+      line-height: 1.5;
+    }
+
+    /* Animazione pesce nell'ampolla */
+    #ampolla-fish {
+      animation: swim-in-ampolla 8s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    @keyframes swim-in-ampolla {
+
+      0%,
+      100% {
+        transform: translate(0, 0);
+      }
+
+      75% {
+        transform: translate(0px, 7px);
+      }
+    }
+
     /* ====== Aquarium layer (behind content) ====== */
     #aquarium {
       position: fixed;
       inset: 0;
+      top: 30%;
+      bottom: 0;
       z-index: 0;
       pointer-events: none;
-      overflow: hidden;
+      overflow: visible;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body[data-state="LOBBY_FOUND"] #aquarium,
+    body[data-state="ERROR"] #aquarium {
+      opacity: 1;
     }
 
     /* ====== Each fish wrapper ====== */
@@ -123,7 +259,8 @@
 
     /* ====== Dead fish (error state) ====== */
     .fish.dead {
-      animation: dead-float 3s ease-in-out infinite, dead-rise 12s linear forwards !important;
+      animation: dead-float var(--dead-float-dur, 3s) ease-in-out var(--dead-delay, 0s) infinite !important;
+      transition: top var(--dead-rise-dur, 12s) ease-out var(--dead-delay, 0s);
       opacity: 0.55;
     }
 
@@ -131,21 +268,11 @@
 
       0%,
       100% {
-        transform: translateY(0) rotate(-3deg);
+        transform: translateY(0) rotate(var(--dead-rot-a, -3deg));
       }
 
       50% {
-        transform: translateY(-10px) rotate(3deg);
-      }
-    }
-
-    @keyframes dead-rise {
-      0% {
-        margin-top: 0;
-      }
-
-      100% {
-        margin-top: -25vh;
+        transform: translateY(var(--dead-bob, -10px)) rotate(var(--dead-rot-b, 3deg));
       }
     }
 
@@ -163,14 +290,21 @@
     /* ====== God rays ====== */
     .god-rays {
       position: fixed;
-      top: -40%;
+      top: 20%;
       left: 50%;
       width: 200%;
-      height: 140%;
+      height: 70%;
       transform: translateX(-50%);
       pointer-events: none;
-      z-index: 0;
+      z-index: 1;
       overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body[data-state="LOBBY_FOUND"] .god-rays,
+    body[data-state="ERROR"] .god-rays {
+      opacity: 1;
     }
 
     .god-ray {
@@ -179,25 +313,25 @@
       width: var(--ray-w, 120px);
       height: 120%;
       background: linear-gradient(180deg,
-          rgba(100, 180, 255, 0.12) 0%,
-          rgba(100, 180, 255, 0.04) 40%,
-          transparent 80%);
+          rgba(255, 255, 255, 0.4) 0%,
+          rgba(0, 132, 255, 0.18) 40%,
+          transparent 85%);
       transform-origin: top center;
       transform: rotate(var(--ray-angle, 0deg));
       animation: ray-sway var(--ray-dur, 8s) ease-in-out infinite alternate;
-      opacity: var(--ray-opacity, 0.5);
-      filter: blur(8px);
+      opacity: var(--ray-opacity, 0.6);
+      filter: blur(4px);
     }
 
     @keyframes ray-sway {
       0% {
         transform: rotate(var(--ray-angle, 0deg)) translateX(-10px);
-        opacity: var(--ray-opacity, 0.5);
+        opacity: var(--ray-opacity, 0.6);
       }
 
       100% {
         transform: rotate(var(--ray-angle, 0deg)) translateX(10px);
-        opacity: calc(var(--ray-opacity, 0.5) * 0.6);
+        opacity: calc(var(--ray-opacity, 0.6) * 0.7);
       }
     }
 
@@ -235,33 +369,35 @@
       100% {
         opacity: 0;
         transform: translateX(var(--drift, 15px)) scale(1.05);
-        bottom: 105%;
+        bottom: 70%;
       }
     }
 
-    /* ====== Seabed hint ====== */
+    /* ====== Seabed SVG ====== */
     .seabed {
       position: fixed;
-      bottom: 0;
+      bottom: 0px;
       left: 0;
       right: 0;
-      height: 60px;
-      background: linear-gradient(180deg, transparent 0%, rgba(100, 160, 220, 0.06) 50%, rgba(100, 160, 220, 0.12) 100%);
-      z-index: 1;
+      height: 120px;
+      z-index: 3;
       pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
     }
 
-    .seabed-deco {
-      position: absolute;
-      bottom: 4px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      font-size: 1.2rem;
-      letter-spacing: 2.5rem;
-      opacity: 0.3;
-      pointer-events: none;
+    body[data-state="LOBBY_FOUND"] .seabed,
+    body[data-state="ERROR"] .seabed {
+      opacity: 1;
     }
+
+    .seabed svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Alghe statiche */
 
     /* ====== Top status bar ====== */
     .top-bar {
@@ -331,6 +467,13 @@
       line-height: 1;
       white-space: nowrap;
       user-select: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body[data-state="LOBBY_FOUND"] .time-watermark,
+    body[data-state="ERROR"] .time-watermark {
+      opacity: 1;
     }
 
     /* ====== Status (in top bar) ====== */
@@ -369,10 +512,6 @@
       right: 0;
       padding: 0.75rem 1rem;
       padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-      background: rgba(249, 249, 249, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(0, 0, 0, 0.06);
       z-index: 100;
       display: flex;
       justify-content: center;
@@ -545,6 +684,62 @@
       color: #1d1d1f;
     }
 
+    /* ====== Dev Panel ====== */
+    .dev-panel {
+      position: fixed;
+      bottom: 80px;
+      right: 12px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      max-width: 160px;
+    }
+
+    .dev-panel-title {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+
+    .dev-panel button {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .dev-panel button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .dev-panel button:active {
+      transform: scale(0.96);
+    }
+
+    .dev-panel button.active {
+      background: rgba(59, 130, 246, 0.5);
+      border-color: rgba(59, 130, 246, 0.6);
+    }
+
     /* ====== Responsive ====== */
     @media (max-width: 380px) {
       .time-watermark {
@@ -577,6 +772,98 @@
 </head>
 
 <body>
+  <!-- Water layer (70% dello schermo in LOBBY_FOUND) -->
+  <div id="water-layer" class="only-lobby-found"></div>
+
+  <!-- Waves SVG (onde animate sopra l'acqua) -->
+  <div id="waves" class="only-lobby-found">
+    <svg viewBox="0 0 1200 80" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="wave-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:rgba(100, 180, 255, 0.3);stop-opacity:1" />
+          <stop offset="100%" style="stop-color:rgba(60, 150, 255, 0.2);stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <!-- Onda layer 1 -->
+      <path d="M0,40 Q150,20 300,40 T600,40 T900,40 T1200,40 L1200,80 L0,80 Z" fill="url(#wave-gradient)" opacity="0.6">
+        <animate attributeName="d" dur="8s" repeatCount="indefinite" values="
+            M0,40 Q150,20 300,40 T600,40 T900,40 T1200,40 L1200,80 L0,80 Z;
+            M0,40 Q150,60 300,40 T600,40 T900,40 T1200,40 L1200,80 L0,80 Z;
+            M0,40 Q150,20 300,40 T600,40 T900,40 T1200,40 L1200,80 L0,80 Z" />
+      </path>
+      <!-- Onda layer 2 -->
+      <path d="M0,50 Q200,35 400,50 T800,50 T1200,50 L1200,80 L0,80 Z" fill="url(#wave-gradient)" opacity="0.4">
+        <animate attributeName="d" dur="12s" repeatCount="indefinite" values="
+            M0,50 Q200,35 400,50 T800,50 T1200,50 L1200,80 L0,80 Z;
+            M0,50 Q200,65 400,50 T800,50 T1200,50 L1200,80 L0,80 Z;
+            M0,50 Q200,35 400,50 T800,50 T1200,50 L1200,80 L0,80 Z" />
+      </path>
+      <!-- Onda layer 3 (più veloce) -->
+      <path d="M0,55 Q100,45 200,55 T400,55 T600,55 T800,55 T1000,55 T1200,55 L1200,80 L0,80 Z"
+        fill="rgba(255, 255, 255, 0.3)" opacity="0.5">
+        <animate attributeName="d" dur="6s" repeatCount="indefinite" values="
+            M0,55 Q100,45 200,55 T400,55 T600,55 T800,55 T1000,55 T1200,55 L1200,80 L0,80 Z;
+            M0,55 Q100,65 200,55 T400,55 T600,55 T800,55 T1000,55 T1200,55 L1200,80 L0,80 Z;
+            M0,55 Q100,45 200,55 T400,55 T600,55 T800,55 T1000,55 T1200,55 L1200,80 L0,80 Z" />
+      </path>
+    </svg>
+  </div>
+
+  <!-- Ampolla isolata (stato NO_LOBBY) -->
+  <div id="ampolla-container" class="only-no-lobby">
+    <svg id="ampolla-svg" viewBox="355 130 80 80" xmlns="http://www.w3.org/2000/svg">
+      <!-- Sfondo acqua dentro l'ampolla -->
+      <path style="opacity:0.2;fill:#7AABAB;"
+        d="M413.764,137.923h-42.049c-8.678,6.437-14.304,16.755-14.304,28.39
+        c0,19.511,15.817,35.328,35.328,35.328c19.511,0,35.328-15.817,35.328-35.328C428.067,154.678,422.441,144.36,413.764,137.923z" />
+
+      <!-- Corpo acqua -->
+      <path style="opacity:0.3;fill:#66a2e7;"
+        d="M363.885,148.048c-3.354,5.284-5.306,11.544-5.306,18.265
+        c0,18.866,15.294,34.16,34.16,34.16c18.866,0,34.16-15.294,34.16-34.16c0-6.721-1.952-12.981-5.306-18.265H363.885z" />
+
+      <!-- Riflesso -->
+      <path style="opacity:0.5;fill:#FFFFFF;" d="M368.667,188.96c-5.592-5.918-9.001-13.895-9.001-22.648
+        c0-10.182,4.771-19.891,12.804-26.135h10.868C366.057,148.446,362.231,170.914,368.667,188.96z" />
+
+      <!-- Bordo superiore -->
+      <path style="opacity:0.3;fill:#7AABAB;" d="M414.558,137.102c0,0.453-0.367,0.82-0.82,0.82h-41.933c-0.453,0-0.82-0.367-0.82-0.82
+        l0,0c0-0.453,0.367-0.82,0.82-0.82h41.933C414.19,136.282,414.558,136.649,414.558,137.102L414.558,137.102z" />
+
+
+
+      <!-- Bolle animate -->
+      <circle cx="376" cy="175" r="2.5" fill="rgba(255, 255, 255, 0.6)">
+        <animate attributeName="cy" values="175;171;175" dur="12s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.6;0.3;0.6" dur="12s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="408" cy="165" r="1.8" fill="rgba(255, 255, 255, 0.5)">
+        <animate attributeName="cy" values="165;161;165" dur="15s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.5;0.25;0.5" dur="15s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="385" cy="185" r="3" fill="rgba(255, 255, 255, 0.7)">
+        <animate attributeName="cy" values="185;181;185" dur="18s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.7;0.35;0.7" dur="18s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="402" cy="152" r="1.5" fill="rgba(255, 255, 255, 0.45)">
+        <animate attributeName="cy" values="152;148;152" dur="14s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.45;0.2;0.45" dur="14s" repeatCount="indefinite" />
+      </circle>
+
+
+      <!-- Pesce dentro l'ampolla -->
+      <text id="ampolla-fish" x="392.7" y="170" font-size="20" text-anchor="middle"
+        style="animation: swim-in-ampolla 8s ease-in-out infinite;">🦈</text>
+    </svg>
+
+    <div class="ampolla-message">
+      <h2>Nessuna lobby attiva</h2>
+      <p>Non ci sono partite programmate al momento. Aspetta la notifica per giocare!</p>
+      <a href="./index.html" class="btn-secondary" style="margin-top: 1rem; display: inline-block;">← Torna alla
+        Home</a>
+    </div>
+  </div>
+
   <!-- God rays -->
   <div class="god-rays" id="god-rays"></div>
 
@@ -586,13 +873,195 @@
   <!-- Time watermark behind fish -->
   <div class="time-watermark" id="time-watermark">--:--</div>
 
-  <!-- Sandy seabed at bottom -->
-  <div class="seabed">
-    <div class="seabed-deco">🪸🌿🐚🪨🌊</div>
+  <!-- Fondale marino SVG animato -->
+  <div class="seabed only-lobby-found">
+    <svg viewBox="0 1800 6000 2200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Gradiente corallo base -->
+        <linearGradient id="coral-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#a0522d" stop-opacity="0.6" />
+          <stop offset="40%" stop-color="#8b4513" stop-opacity="0.7" />
+          <stop offset="100%" stop-color="#6b3410" stop-opacity="0.8" />
+        </linearGradient>
+        <!-- Gradiente alga scura -->
+        <linearGradient id="seaweed-dark" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2d7a3a" />
+          <stop offset="100%" stop-color="#1a5c28" />
+        </linearGradient>
+        <!-- Gradiente alga chiara -->
+        <linearGradient id="seaweed-light" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5cb85c" />
+          <stop offset="100%" stop-color="#3a8a3a" />
+        </linearGradient>
+        <!-- Gradiente alga oliva -->
+        <linearGradient id="seaweed-olive" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#6b8e23" />
+          <stop offset="100%" stop-color="#556b2f" />
+        </linearGradient>
+        <!-- Gradiente corallo rosso -->
+        <linearGradient id="red-coral-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e74c3c" />
+          <stop offset="100%" stop-color="#c0392b" />
+        </linearGradient>
+        <!-- Gradiente corallo rosso chiaro -->
+        <linearGradient id="red-coral-light" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff6b6b" />
+          <stop offset="100%" stop-color="#e55039" />
+        </linearGradient>
+        <!-- Gradiente corallo rosa -->
+        <linearGradient id="pink-coral-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f8a5c2" />
+          <stop offset="100%" stop-color="#e07aad" />
+        </linearGradient>
+      </defs>
+
+      <!-- Barriera corallina -->
+      <path fill="url(#coral-grad)" fill-rule="nonzero"
+        d="M 6000 1923.960938 L 6000 4000 L 0.00390625 4000 L 0.00390625 2432.070312 C 20.839844 2472.121094 42.242188 2511.890625 64.191406 2551.359375 C 134.203125 2677.25 240.28125 2816.691406 383.773438 2804.109375 C 403.5625 2802.371094 425.660156 2798.199219 441.582031 2810.070312 C 460.320312 2824.03125 459.703125 2851.640625 458.800781 2874.988281 C 452.390625 3042.511719 535.941406 3208.378906 706.230469 3300.859375 C 760.511719 3330.351562 823.609375 3352.371094 895.410156 3364.621094 C 981.28125 3594.019531 1288.351562 3707.890625 1503.03125 3589.929688 C 1544.671875 3567.050781 1583.570312 3536.800781 1629.929688 3526.421875 C 1734.570312 3503 1829.660156 3585.46875 1929.660156 3624.160156 C 2095.019531 3688.128906 2279.988281 3630.75 2457.21875 3635.679688 C 2529.558594 3637.6875 2600.609375 3650.179688 2671.210938 3666.390625 C 2684.53125 3669.449219 2697.828125 3672.640625 2711.128906 3675.921875 C 2788.359375 3694.960938 2865.261719 3716.9375 2942.941406 3732.949219 C 2994.679688 3743.621094 3046.769531 3751.648438 3099.53125 3754.398438 C 3156.078125 3757.351562 3212.171875 3754.210938 3267.988281 3747.308594 C 3389.101562 3732.308594 3508.941406 3699.539062 3629.410156 3672.488281 C 3669.199219 3663.558594 3709.050781 3655.25 3749.039062 3648.410156 C 3883.890625 3625.359375 4021.570312 3619.261719 4154.519531 3622.460938 C 4283.160156 3625.550781 4407.378906 3637.351562 4520.328125 3650.898438 C 4770.550781 3688.648438 5064.601562 3712.359375 5238.078125 3528.140625 C 5289.519531 3473.519531 5327.058594 3403.148438 5368.320312 3338.671875 C 5413.589844 3267.949219 5463.308594 3204.320312 5540.710938 3176.371094 C 5590.578125 3158.359375 5649.25 3156.988281 5688.011719 3120.800781 C 5704.878906 3105.050781 5714.851562 3086.820312 5720.078125 3066.820312 C 5739.550781 2992.449219 5693.53125 2893.71875 5693.300781 2807.890625 C 5692.78125 2618.589844 5930.28125 2458.101562 5839.21875 2220.761719 C 5892.808594 2121.828125 5946.398438 2022.890625 6000 1923.960938" />
+
+      <!-- Dettaglio corallo chiaro -->
+      <path fill="#c4764a" fill-opacity="0.3" fill-rule="nonzero"
+        d="M 6000 2200 L 6000 4000 L 0 4000 L 0 2700 C 100 2750 250 2850 400 2830 C 500 2820 470 2900 700 3320 C 850 3370 1000 3580 1500 3600 C 1650 3540 1850 3600 2000 3640 C 2200 3690 2500 3640 2700 3680 C 2900 3740 3100 3760 3300 3750 C 3500 3710 3700 3660 3900 3640 C 4100 3620 4300 3630 4500 3660 C 4800 3700 5100 3720 5250 3540 C 5350 3420 5450 3250 5550 3180 C 5650 3160 5720 3070 5700 2820 C 5700 2650 5930 2460 5850 2230 L 6000 2200" />
+
+      <!-- Alghe decorative (statiche) -->
+
+      <!-- Alga 1: ciuffo grande a sinistra -->
+      <g opacity="0.85">
+        <!-- Stelo principale -->
+        <path d="M300,2850 Q280,2650 320,2450 Q340,2300 310,2120" stroke="url(#seaweed-dark)" stroke-width="24"
+          fill="none" stroke-linecap="round" />
+        <!-- Foglia destra -->
+        <path d="M315,2600 Q380,2520 370,2400 Q365,2340 350,2300" stroke="url(#seaweed-light)" stroke-width="16"
+          fill="none" stroke-linecap="round" />
+        <!-- Foglia sinistra -->
+        <path d="M305,2720 Q240,2640 250,2520 Q255,2460 270,2420" stroke="url(#seaweed-light)" stroke-width="14"
+          fill="none" stroke-linecap="round" />
+        <!-- Fogliolina piccola -->
+        <path d="M310,2500 Q350,2460 345,2380" stroke="url(#seaweed-olive)" stroke-width="10" fill="none"
+          stroke-linecap="round" />
+      </g>
+
+      <!-- Alga 2: ciuffo sottile centro-sinistra -->
+      <g opacity="0.75">
+        <path d="M1200,3500 Q1180,3300 1220,3100 Q1240,2980 1210,2850" stroke="url(#seaweed-olive)" stroke-width="18"
+          fill="none" stroke-linecap="round" />
+        <path d="M1215,3250 Q1270,3170 1255,3040" stroke="url(#seaweed-light)" stroke-width="13" fill="none"
+          stroke-linecap="round" />
+        <path d="M1205,3380 Q1150,3310 1165,3180" stroke="url(#seaweed-dark)" stroke-width="11" fill="none"
+          stroke-linecap="round" />
+      </g>
+
+      <!-- Alga 3: cespuglio basso al centro -->
+      <g opacity="0.8">
+        <path d="M2800,3700 Q2790,3550 2820,3420" stroke="url(#seaweed-dark)" stroke-width="16" fill="none"
+          stroke-linecap="round" />
+        <path d="M2830,3680 Q2860,3560 2845,3460" stroke="url(#seaweed-light)" stroke-width="13" fill="none"
+          stroke-linecap="round" />
+        <path d="M2770,3690 Q2740,3580 2760,3480" stroke="url(#seaweed-olive)" stroke-width="12" fill="none"
+          stroke-linecap="round" />
+      </g>
+
+      <!-- Alga 4: alta e ondulata a destra -->
+      <g opacity="0.85">
+        <path d="M4400,3660 Q4380,3440 4420,3220 Q4440,3090 4410,2920" stroke="url(#seaweed-dark)" stroke-width="22"
+          fill="none" stroke-linecap="round" />
+        <path d="M4415,3350 Q4470,3260 4455,3120" stroke="url(#seaweed-light)" stroke-width="15" fill="none"
+          stroke-linecap="round" />
+        <path d="M4405,3500 Q4350,3420 4370,3280" stroke="url(#seaweed-olive)" stroke-width="14" fill="none"
+          stroke-linecap="round" />
+        <path d="M4420,3180 Q4460,3130 4450,3040" stroke="url(#seaweed-light)" stroke-width="10" fill="none"
+          stroke-linecap="round" />
+      </g>
+
+      <!-- Alga 5: piccola all'estrema destra -->
+      <g opacity="0.7">
+        <path d="M5400,3200 Q5385,3020 5420,2850" stroke="url(#seaweed-light)" stroke-width="15" fill="none"
+          stroke-linecap="round" />
+        <path d="M5410,3050 Q5450,2980 5440,2900" stroke="url(#seaweed-dark)" stroke-width="11" fill="none"
+          stroke-linecap="round" />
+      </g>
+
+      <!-- Coralli rossi ramificati -->
+
+      <!-- Corallo rosso 1: grande, tra le alghe a sinistra -->
+      <g opacity="0.8">
+        <!-- Tronco principale -->
+        <path d="M700,3320 Q710,3200 690,3080 Q680,3000 700,2920" stroke="url(#red-coral-grad)" stroke-width="28"
+          fill="none" stroke-linecap="round" />
+        <!-- Ramo destro -->
+        <path d="M695,3100 Q760,3020 780,2920 Q790,2860 770,2800" stroke="url(#red-coral-light)" stroke-width="18"
+          fill="none" stroke-linecap="round" />
+        <!-- Ramo sinistro -->
+        <path d="M695,3150 Q640,3060 620,2960 Q610,2900 630,2840" stroke="url(#red-coral-grad)" stroke-width="16"
+          fill="none" stroke-linecap="round" />
+        <!-- Rametto piccolo -->
+        <path d="M770,2960 Q810,2920 800,2860" stroke="url(#red-coral-light)" stroke-width="10" fill="none"
+          stroke-linecap="round" />
+        <path d="M630,3000 Q600,2960 610,2900" stroke="url(#red-coral-light)" stroke-width="10" fill="none"
+          stroke-linecap="round" />
+        <!-- Punte arrotondate (polypi) -->
+        <circle cx="700" cy="2910" r="18" fill="url(#red-coral-light)" opacity="0.7" />
+        <circle cx="770" cy="2790" r="14" fill="url(#red-coral-light)" opacity="0.6" />
+        <circle cx="630" cy="2830" r="14" fill="url(#red-coral-grad)" opacity="0.6" />
+        <circle cx="800" cy="2850" r="10" fill="url(#red-coral-light)" opacity="0.5" />
+        <circle cx="610" cy="2890" r="10" fill="url(#red-coral-light)" opacity="0.5" />
+      </g>
+
+      <!-- Corallo rosso 2: medio, al centro -->
+      <g opacity="0.75">
+        <path d="M2200,3640 Q2210,3520 2190,3400 Q2180,3340 2200,3280" stroke="url(#red-coral-grad)" stroke-width="22"
+          fill="none" stroke-linecap="round" />
+        <path d="M2195,3440 Q2250,3370 2260,3280 Q2265,3230 2250,3190" stroke="url(#red-coral-light)" stroke-width="14"
+          fill="none" stroke-linecap="round" />
+        <path d="M2195,3480 Q2140,3410 2130,3320 Q2125,3270 2140,3230" stroke="url(#red-coral-grad)" stroke-width="13"
+          fill="none" stroke-linecap="round" />
+        <circle cx="2200" cy="3270" r="15" fill="url(#red-coral-light)" opacity="0.7" />
+        <circle cx="2250" cy="3180" r="11" fill="url(#red-coral-light)" opacity="0.6" />
+        <circle cx="2140" cy="3220" r="11" fill="url(#red-coral-grad)" opacity="0.6" />
+      </g>
+
+      <!-- Corallo rosa: forma a ventaglio, centro-destra -->
+      <g opacity="0.7">
+        <path d="M3400,3700 Q3410,3580 3390,3460" stroke="url(#pink-coral-grad)" stroke-width="20" fill="none"
+          stroke-linecap="round" />
+        <path d="M3395,3540 Q3450,3470 3460,3380" stroke="url(#pink-coral-grad)" stroke-width="14" fill="none"
+          stroke-linecap="round" />
+        <path d="M3395,3560 Q3340,3490 3330,3400" stroke="url(#pink-coral-grad)" stroke-width="13" fill="none"
+          stroke-linecap="round" />
+        <path d="M3450,3420 Q3480,3380 3475,3340" stroke="url(#pink-coral-grad)" stroke-width="9" fill="none"
+          stroke-linecap="round" />
+        <path d="M3340,3440 Q3310,3400 3315,3360" stroke="url(#pink-coral-grad)" stroke-width="9" fill="none"
+          stroke-linecap="round" />
+        <circle cx="3390" cy="3450" r="14" fill="url(#pink-coral-grad)" opacity="0.5" />
+        <circle cx="3460" cy="3370" r="10" fill="url(#pink-coral-grad)" opacity="0.5" />
+        <circle cx="3330" cy="3390" r="10" fill="url(#pink-coral-grad)" opacity="0.5" />
+        <circle cx="3475" cy="3330" r="8" fill="url(#pink-coral-grad)" opacity="0.4" />
+        <circle cx="3315" cy="3350" r="8" fill="url(#pink-coral-grad)" opacity="0.4" />
+      </g>
+
+      <!-- Corallo dettagliato a destra -->
+      <g opacity="0.75" transform="translate(0, 2460)">
+        <path fill-rule="nonzero" fill="rgb(12.205505%, 36.888123%, 48.997498%)" fill-opacity="1"
+          d="M 5031.941406 1119.160156 L 4971.769531 1086.609375 C 4955.640625 1077.871094 4937.359375 1068.859375 4919.710938 1073.878906 C 4916.601562 1074.769531 4913.621094 1076.070312 4910.488281 1076.910156 C 4894.398438 1081.210938 4877.609375 1072.558594 4860.980469 1073.558594 C 4853.238281 1074.019531 4845.679688 1076.589844 4837.929688 1076.429688 C 4830.171875 1076.28125 4821.558594 1072.25 4819.828125 1064.691406 C 4822.929688 1060.03125 4830 1062.570312 4835.359375 1064.191406 C 4842.429688 1066.328125 4850.28125 1065.808594 4860.398438 1064.179688 C 4847.320312 1059.53125 4837.5 1046.789062 4836.328125 1032.960938 C 4836.269531 1032.300781 4836.25 1031.601562 4836.550781 1031.011719 C 4837.429688 1029.359375 4839.929688 1029.960938 4841.519531 1030.929688 C 4855.089844 1039.238281 4861.128906 1058.558594 4876.628906 1062.160156 C 4882.789062 1063.578125 4889.191406 1062.089844 4895.378906 1060.839844 C 4909.941406 1057.898438 4925.058594 1056.28125 4940.210938 1059.480469 C 4929.589844 1055.769531 4921.429688 1045.808594 4919.878906 1034.660156 C 4919.050781 1028.691406 4921.761719 1020.828125 4927.800781 1020.851562 C 4933.101562 1020.859375 4936.011719 1026.808594 4938.039062 1031.710938 C 4942.199219 1041.75 4947.910156 1051.328125 4955.960938 1058.621094 C 4963.671875 1065.609375 4973.179688 1070.210938 4982.550781 1074.71875 C 4992.101562 1079.320312 5001.648438 1083.921875 5011.589844 1087.300781 C 4998.039062 1066.96875 4983.738281 1047.148438 4968.71875 1027.890625 C 4963.980469 1021.820312 4958.980469 1015.628906 4952.179688 1012.019531 C 4942.859375 1007.070312 4931.628906 1007.691406 4921.210938 1009.308594 C 4910.371094 1011 4899.679688 1013.648438 4889.300781 1017.210938 C 4879.171875 1020.679688 4868.109375 1025.039062 4858.140625 1021.121094 C 4848.039062 1017.148438 4842.628906 1005.941406 4833.21875 1000.53125 C 4820.730469 993.359375 4804.710938 998.078125 4790.871094 994.058594 C 4782.578125 991.648438 4775.289062 985.980469 4770.910156 978.539062 C 4769.691406 976.480469 4768.660156 974.128906 4768.949219 971.75 C 4769.230469 969.359375 4771.261719 967.050781 4773.660156 967.238281 C 4776.429688 967.460938 4777.910156 970.46875 4779.570312 972.710938 C 4784.671875 979.570312 4794.429688 980.519531 4802.988281 980.558594 C 4811.539062 980.589844 4821.109375 980.671875 4828.871094 987.730469 C 4825.128906 984.128906 4821.710938 979.96875 4820.191406 975.011719 C 4818.660156 970.039062 4819.351562 964.148438 4822.960938 960.421875 C 4828.070312 966.710938 4831.03125 974.449219 4835.550781 981.171875 C 4844.859375 995.03125 4861.039062 1004.019531 4877.730469 1004.589844 C 4881.71875 1004.71875 4885.839844 1004.421875 4889.5 1006.441406 C 4879.828125 999.460938 4871.839844 990.179688 4866.351562 979.578125 C 4865.371094 977.679688 4864.441406 975.539062 4864.941406 973.449219 C 4865.441406 971.371094 4868.089844 969.761719 4871.589844 973.171875 C 4874.871094 970.320312 4880.109375 971.519531 4883.570312 974.140625 C 4887.03125 976.761719 4889.480469 980.511719 4892.851562 983.238281 C 4897.808594 987.261719 4904.390625 988.75 4910.769531 989.019531 C 4917.148438 989.300781 4923.53125 988.5 4929.921875 988.511719 C 4932.878906 988.511719 4935.929688 988.710938 4938.589844 990 C 4943.730469 992.488281 4946.429688 998.519531 4954.339844 1003.550781 C 4942.46875 981.738281 4928.441406 961.101562 4912.511719 942.050781 C 4910.308594 939.410156 4908 936.75 4905.011719 935.039062 C 4901.859375 933.238281 4898.199219 932.628906 4894.621094 932.058594 C 4878.839844 929.519531 4862.921875 926.96875 4846.960938 927.699219 C 4839.300781 928.050781 4831.558594 929.160156 4824.019531 927.808594 C 4821.300781 927.328125 4818.5 926.441406 4816.640625 924.398438 C 4814.78125 922.359375 4814.28125 918.890625 4816.191406 916.898438 C 4817.070312 915.988281 4818.300781 915.511719 4819.5 915.101562 C 4830.800781 911.25 4843.328125 911.101562 4857.378906 915.140625 C 4855.511719 910.28125 4851.859375 906.289062 4847.769531 903.058594 C 4841.328125 897.96875 4833.609375 894.519531 4825.53125 893.109375 C 4816.671875 891.558594 4807.539062 892.429688 4798.628906 891.21875 C 4789.710938 890.019531 4780.359375 886.050781 4776.328125 878.011719 C 4776.070312 877.480469 4775.820312 876.910156 4775.839844 876.308594 C 4775.878906 874.949219 4777.308594 873.988281 4778.671875 873.910156 C 4780.03125 873.839844 4781.328125 874.390625 4782.609375 874.839844 C 4789.878906 877.378906 4797.851562 876.601562 4805.441406 875.371094 C 4813.03125 874.128906 4820.699219 872.46875 4828.351562 873.328125 C 4835.988281 874.199219 4843.808594 878.179688 4849.851562 887.941406 C 4848.570312 881.871094 4846.089844 876.058594 4842.601562 870.941406 C 4840.328125 867.601562 4837.589844 864.460938 4836.378906 860.609375 C 4835.179688 856.761719 4836.078125 851.828125 4839.648438 849.949219 C 4849.371094 859.03125 4854.011719 872.109375 4859.371094 884.269531 C 4864.730469 896.441406 4871.960938 908.980469 4887.808594 916.339844 C 4884.148438 911.121094 4881.21875 905.398438 4879.128906 899.390625 C 4878.578125 897.828125 4878.089844 896.179688 4878.371094 894.550781 C 4878.640625 892.921875 4879.921875 891.351562 4881.570312 891.289062 C 4882.558594 891.25 4883.488281 891.738281 4884.28125 892.328125 C 4887.679688 894.839844 4889.308594 899.019531 4891.300781 902.75 C 4895.589844 910.738281 4902.300781 917.390625 4913.851562 921.898438 C 4907.230469 915.070312 4902.308594 905.859375 4903.179688 896.390625 C 4903.5 892.929688 4904.570312 889.578125 4905.628906 886.269531 C 4906.210938 884.460938 4907.078125 882.359375 4908.929688 881.929688 C 4910.601562 881.53125 4912.210938 882.710938 4913.429688 883.921875 C 4916.621094 887.089844 4919.039062 891.019531 4920.460938 895.289062 C 4922.191406 900.53125 4922.539062 906.519531 4929.628906 910.628906 C 4926.289062 907.351562 4927.320312 901.570312 4930.070312 897.789062 C 4932.820312 894.011719 4936.871094 891.371094 4939.839844 887.769531 C 4944.980469 881.550781 4946.398438 872.480469 4943.421875 864.988281 C 4940.820312 858.429688 4935.070312 851.78125 4937.871094 845.308594 C 4949.941406 852.808594 4956.808594 867.871094 4954.558594 881.898438 C 4952.609375 894.101562 4944.601562 904.601562 4942.101562 916.699219 C 4939.148438 931.050781 4944.261719 945.75 4949.960938 959.25 C 4958.019531 978.328125 4967.429688 996.851562 4975.179688 1017.851562 C 4980.941406 1009.800781 4986.710938 1001.75 4992.46875 993.699219 C 4993.210938 992.660156 4993.988281 991.53125 4994.03125 990.25 C 4994.078125 988.699219 4993.050781 987.351562 4992.039062 986.179688 C 4986.449219 979.699219 4979.511719 973.699219 4977.46875 965.390625 C 4976.621094 961.921875 4977.910156 956.96875 4981.480469 957.089844 C 4983.960938 957.171875 4985.480469 959.71875 4986.910156 961.761719 C 4990.199219 966.421875 4995.390625 969.679688 5001.011719 970.628906 C 4991.640625 959.960938 4986.429688 945.71875 4986.710938 931.519531 C 4990.28125 930.960938 4993.28125 934.070312 4995.5 936.921875 C 5001.871094 945.070312 5007.851562 953.511719 5013.421875 962.21875 C 5017.988281 959.898438 5019.890625 954.300781 5020.160156 949.179688 C 5020.429688 944.058594 5019.519531 938.871094 5020.410156 933.828125 C 5021.320312 928.730469 5024 924.140625 5026.628906 919.679688 C 5027.398438 918.371094 5028.289062 916.96875 5029.730469 916.488281 C 5030.808594 916.121094 5032 916.359375 5033.078125 916.71875 C 5040.289062 919.148438 5044.730469 926.921875 5045.089844 934.519531 C 5045.429688 942.121094 5042.390625 949.488281 5038.511719 956.03125 C 5034.289062 963.160156 5029 969.648438 5025.128906 976.171875 C 5017.859375 978.820312 5013.660156 987.839844 5016.308594 995.109375 C 5016.808594 996.449219 5017.5 997.859375 5017.148438 999.238281 C 5016.929688 1000.070312 5016.371094 1000.75 5015.808594 1001.410156 C 5011.449219 1006.578125 5007.089844 1011.75 5002.730469 1016.921875 C 5000.96875 1019 4999.160156 1021.171875 4998.390625 1023.789062 C 4997.570312 1026.570312 4998 1029.558594 4998.589844 1032.398438 C 5002.691406 1052.191406 5014.148438 1070.378906 5032.441406 1083.328125 C 5029.738281 1075.378906 5031.441406 1066.511719 5034.828125 1058.820312 C 5038.210938 1051.128906 5043.179688 1044.25 5047.359375 1036.96875 C 5057.78125 1018.839844 5063.339844 997.960938 5063.328125 977.058594 C 5063.308594 948.578125 5053.179688 921.019531 5040.539062 895.5 C 5037.679688 889.730469 5034.648438 883.96875 5030.460938 879.089844 C 5025.609375 873.449219 5019.261719 869.121094 5014.351562 867.550781 C 5007.949219 867.5 5001.449219 867.449219 4995.28125 865.730469 C 4989.101562 864 4983.191406 860.371094 4980.121094 854.75 C 4978.660156 852.089844 4977.898438 849.109375 4977.289062 846.140625 C 4977.078125 845.109375 4976.929688 843.890625 4977.648438 843.121094 C 4978.269531 842.449219 4979.289062 842.390625 4980.210938 842.398438 C 4989.679688 842.53125 4999.101562 845.410156 5007.03125 850.601562 C 5010.03125 852.570312 5012.988281 854.941406 5016.550781 855.421875 C 5013.351562 852.800781 5010.101562 850.128906 5007.761719 846.710938 C 5005.421875 843.300781 5004.070312 838.980469 5005.078125 834.96875 C 5005.359375 833.890625 5005.839844 832.800781 5006.75 832.160156 C 5008.859375 830.671875 5011.691406 832.351562 5013.699219 833.980469 C 5026 843.96875 5038.628906 854.351562 5049.539062 868.980469 C 5036.558594 859.148438 5027.5 844.269531 5024.71875 828.230469 C 5023.328125 820.269531 5023.441406 812.121094 5022.328125 804.121094 C 5019.910156 786.730469 5011.53125 770.230469 4998.921875 758.019531 C 4986.238281 745.738281 4968.121094 735.21875 4967.039062 717.609375 C 4975.648438 713.769531 4985.730469 718.890625 4992.398438 725.558594 C 4999.058594 732.230469 5004.148438 740.628906 5014.230469 752.21875 C 5018.53125 740.421875 5027.058594 730.21875 5037.910156 723.890625 C 5043.078125 720.878906 5049.519531 718.738281 5054.929688 721.289062 C 5057.078125 722.289062 5059.03125 724.390625 5058.710938 726.738281 C 5058.519531 728.070312 5057.648438 729.191406 5056.800781 730.238281 C 5052.308594 735.789062 5047.710938 741.25 5043.78125 748.171875 C 5062.789062 750.46875 5082.71875 742.789062 5095.289062 728.328125 C 5096.140625 727.351562 5097.03125 726.289062 5098.269531 725.878906 C 5102.101562 724.609375 5104.601562 730.210938 5103.828125 734.179688 C 5102.480469 741.109375 5097.339844 746.710938 5091.660156 750.910156 C 5079.550781 759.878906 5064.011719 764.089844 5049.03125 762.449219 C 5046.191406 762.140625 5043 761.71875 5040.769531 763.5 C 5039.339844 764.640625 5038.640625 766.449219 5038.070312 768.191406 C 5030.660156 790.808594 5034.109375 816.730469 5048.980469 843.410156 C 5045.390625 829.71875 5046.75 814.800781 5052.761719 801.988281 C 5053.171875 801.101562 5053.660156 800.171875 5054.511719 799.691406 C 5057.339844 798.089844 5059.710938 802.449219 5060.019531 805.679688 C 5060.988281 815.539062 5061.300781 825.46875 5060.960938 835.371094 C 5064.171875 825.960938 5069.488281 817.269531 5076.429688 810.140625 C 5079.050781 807.441406 5082.109375 804.859375 5085.820312 804.191406 C 5089.53125 803.53125 5093.941406 805.488281 5094.761719 809.171875 C 5095.191406 811.058594 5094.621094 813.039062 5093.789062 814.78125 C 5090.320312 822.078125 5082.421875 826.660156 5079.46875 834.179688 C 5085.230469 827.140625 5097.320312 826.699219 5103.578125 833.289062 C 5104.5 834.269531 5105.339844 835.429688 5105.480469 836.769531 C 5105.890625 840.429688 5101.519531 842.488281 5098.039062 843.699219 C 5088.609375 846.980469 5079.910156 852.320312 5072.710938 859.238281 C 5069.761719 862.078125 5066.96875 865.351562 5065.96875 869.320312 C 5065.199219 872.378906 5065.558594 875.589844 5066.070312 878.699219 C 5067.921875 889.910156 5071.761719 900.789062 5080.488281 911.769531 C 5079.238281 904.800781 5082.730469 897.550781 5088.179688 893.039062 C 5093.628906 888.53125 5100.75 886.46875 5107.800781 885.871094 C 5110.320312 885.648438 5113.25 885.789062 5114.789062 887.800781 C 5116.371094 889.859375 5115.578125 892.988281 5113.828125 894.929688 C 5112.089844 896.859375 5109.628906 897.949219 5107.378906 899.261719 C 5096.121094 905.800781 5089.570312 918.109375 5084.941406 930.269531 C 5078.199219 947.949219 5074.429688 968.359375 5080.578125 990.46875 C 5066.710938 1009.621094 5065.609375 1034.839844 5058.628906 1057.441406 C 5055.460938 1067.730469 5050.980469 1077.621094 5045.351562 1086.800781 C 5056.039062 1080.328125 5067.101562 1074.480469 5080.351562 1071.121094 C 5076.398438 1048.949219 5076.769531 1026.019531 5081.460938 1004 C 5081.910156 1001.890625 5082.410156 999.738281 5083.519531 997.878906 C 5085 995.410156 5087.410156 993.671875 5089.769531 992.03125 C 5100.210938 984.78125 5111.019531 978.058594 5123.679688 973.230469 C 5123.519531 968.28125 5121.308594 963.671875 5119.691406 959 C 5118.058594 954.328125 5117.03125 949.019531 5119.140625 944.550781 C 5119.738281 943.28125 5120.648438 942.070312 5121.960938 941.578125 C 5124.921875 940.488281 5127.710938 943.46875 5129.359375 946.160156 C 5132.5 951.261719 5135.179688 956.640625 5138.191406 964.769531 C 5137.691406 949.421875 5139.601562 933.988281 5143.820312 919.21875 C 5136.378906 903.949219 5130.460938 887.949219 5126.148438 871.519531 C 5124.609375 865.621094 5123.460938 858.710938 5127.269531 853.941406 C 5135.980469 866.078125 5141.980469 880.148438 5144.851562 898.699219 C 5148.03125 882.910156 5148.320312 866.53125 5145.71875 850.628906 C 5144.78125 844.890625 5143.820312 838.019531 5148.140625 834.121094 C 5149.261719 833.109375 5150.828125 832.398438 5152.28125 832.808594 C 5153.558594 833.171875 5154.449219 834.289062 5155.199219 835.390625 C 5160.960938 843.878906 5162.730469 854.539062 5162.429688 864.800781 C 5162.121094 875.070312 5159.890625 885.160156 5158.289062 895.300781 C 5155.859375 910.800781 5154.910156 926.5 5157.628906 946.308594 C 5171.53125 935.160156 5179.300781 916.800781 5177.609375 899.058594 C 5177.03125 892.910156 5176.789062 884.480469 5182.789062 883 C 5187.148438 892.398438 5189.699219 902.628906 5190.25 912.980469 C 5196.808594 904.859375 5203.371094 896.75 5209.929688 888.640625 C 5211.851562 886.269531 5214.570312 883.628906 5217.46875 884.570312 C 5218.710938 884.96875 5219.660156 885.980469 5220.421875 887.039062 C 5225.621094 894.21875 5224.25 904.601562 5219.378906 912 C 5214.5 919.390625 5206.789062 924.390625 5199.109375 928.808594 C 5189.480469 934.339844 5178.839844 940.019531 5174.328125 950.160156 C 5172.929688 953.308594 5172.179688 956.789062 5170.179688 959.578125 C 5168.359375 962.101562 5165.679688 963.839844 5163 965.421875 C 5144.109375 976.578125 5120.941406 984.191406 5110.828125 1004.359375 C 5109.351562 1007.820312 5107.871094 1011.269531 5106.390625 1014.730469 L 5138.769531 1007.21875 C 5140.660156 1006.789062 5142.621094 1006.320312 5144.140625 1005.109375 C 5146.238281 1003.441406 5147.101562 1000.710938 5148.441406 998.390625 C 5152.738281 990.949219 5162.660156 986.558594 5163.421875 977.988281 C 5163.78125 974.011719 5161.941406 969.808594 5163.46875 966.121094 C 5165.300781 961.679688 5171.980469 960.511719 5175.539062 963.730469 C 5179.101562 966.949219 5178.949219 973.199219 5175.589844 976.621094 C 5183.230469 964.398438 5190.871094 952.171875 5198.511719 939.949219 C 5198.988281 939.179688 5199.480469 938.390625 5200.21875 937.859375 C 5202.648438 936.089844 5206.339844 938.269531 5207.148438 941.171875 C 5207.960938 944.058594 5206.820312 947.109375 5205.609375 949.871094 C 5197.328125 968.769531 5184.769531 985.789062 5169.140625 999.28125 C 5176.96875 995.53125 5184.800781 991.78125 5192.628906 988.019531 C 5194.859375 989.789062 5194.789062 993.398438 5193.210938 995.761719 C 5191.640625 998.128906 5188.980469 999.519531 5186.390625 1000.679688 C 5176.671875 1005.039062 5166.179688 1007.570312 5156.601562 1012.21875 C 5147.011719 1016.878906 5137.988281 1024.28125 5134.980469 1034.5 C 5124.320312 1032.488281 5113.660156 1030.488281 5103.011719 1028.488281 C 5101.691406 1028.238281 5100.101562 1028.078125 5099.238281 1029.101562 C 5098.769531 1029.648438 5098.648438 1030.398438 5098.550781 1031.121094 C 5096.621094 1044.761719 5094.691406 1058.410156 5092.761719 1072.050781 C 5092.121094 1076.558594 5091.441406 1081.179688 5089.210938 1085.140625 C 5086.929688 1089.191406 5083.199219 1092.210938 5079.449219 1094.96875 C 5069.148438 1102.519531 5057.941406 1108.828125 5031.941406 1119.160156" />
+      </g>
+
+      <!-- Stelle marine sulla barriera -->
+      <g opacity="0.6">
+        <g transform="translate(900, 3340) scale(3)">
+          <path d="M0,-12 L3,-4 L12,-4 L5,2 L7,10 L0,6 L-7,10 L-5,2 L-12,-4 L-3,-4 Z" fill="#e07a5f" />
+        </g>
+        <g transform="translate(3100, 3740) scale(2.5) rotate(30)">
+          <path d="M0,-12 L3,-4 L12,-4 L5,2 L7,10 L0,6 L-7,10 L-5,2 L-12,-4 L-3,-4 Z" fill="#d4725c" />
+        </g>
+        <g transform="translate(5000, 3600) scale(2) rotate(-15)">
+          <path d="M0,-12 L3,-4 L12,-4 L5,2 L7,10 L0,6 L-7,10 L-5,2 L-12,-4 L-3,-4 Z" fill="#e8967a" />
+        </g>
+      </g>
+    </svg>
   </div>
 
   <!-- Top status bar -->
-  <div class="top-bar" id="top-bar" style="display:none">
+  <div class="top-bar only-lobby-found" id="top-bar" style="display:none">
     <span class="top-bar-time" id="top-bar-time">⚽ 11:00</span>
     <div class="count-pill">
       <span>🐟</span>
@@ -638,6 +1107,82 @@
   </div>
 
   <script type="module">
+    // ===============================================
+    // STATE MANAGER - 3 stati della pagina
+    // ===============================================
+    const AppState = {
+      LOADING: 'LOADING',
+      LOBBY_FOUND: 'LOBBY_FOUND',
+      NO_LOBBY: 'NO_LOBBY',
+      ERROR: 'ERROR'
+    };
+
+    let currentState = AppState.LOADING;
+
+    function setState(newState) {
+      currentState = newState;
+      document.body.dataset.state = newState;
+      console.log(`🎯 Stato cambiato: ${newState}`);
+
+      // Gestione display degli elementi UI
+      const loadingEl = document.getElementById('loading-state');
+      const confirmStateEl = document.getElementById('confirm-state');
+      const topBar = document.getElementById('top-bar');
+      const ctaFooter = document.getElementById('cta-footer');
+      const confirmBtn = document.getElementById('confirm-btn');
+      const confirmedMsg = document.getElementById('confirmed-msg');
+      const errorMsg = document.getElementById('error-msg');
+
+      // Reset display
+      loadingEl.style.display = 'none';
+      confirmStateEl.style.display = 'none';
+      confirmBtn.style.display = 'none';
+      confirmedMsg.style.display = 'none';
+      errorMsg.style.display = 'none';
+
+      switch (newState) {
+        case AppState.LOADING:
+          loadingEl.style.display = 'block';
+          ctaFooter.style.display = 'none';
+          topBar.style.display = 'none';
+          break;
+
+        case AppState.LOBBY_FOUND:
+          confirmStateEl.style.display = 'block';
+          confirmBtn.style.display = 'block';
+          ctaFooter.style.display = 'flex';
+          topBar.style.display = 'flex';
+          reviveFish();
+          break;
+
+        case AppState.NO_LOBBY:
+          // Mostra solo l'ampolla, nasconde tutto il resto
+          ctaFooter.style.display = 'none';
+          topBar.style.display = 'none';
+          // Popola il pesce nell'ampolla
+          populateAmpollaFish();
+          break;
+
+        case AppState.ERROR:
+          errorMsg.style.display = 'flex';
+          ctaFooter.style.display = 'flex';
+          topBar.style.display = 'flex';
+          killFish();
+          break;
+      }
+    }
+
+    function populateAmpollaFish() {
+      const ampollaFish = document.getElementById('ampolla-fish');
+      if (ampollaFish) {
+        // Usa il pesce del giocatore (squalo)
+        ampollaFish.textContent = '🦈';
+      }
+    }
+
+    // ===============================================
+    // CONFIGURAZIONE
+    // ===============================================
     const urlParams = new URLSearchParams(window.location.search);
     const matchTime = urlParams.get('time') || getNextMatchTime();
     const confirmation = urlParams.get('c');
@@ -650,7 +1195,7 @@
     const topBar = document.getElementById('top-bar');
 
     // ─── Fish / sea creature emoji pool ──────────────────────────────────
-    const FISH_POOL = ['🐟', '🐠', '🐡', '🦈', '🐙', '🦑', '🐳', '🐬', '🦐', '🐚'];
+    const FISH_POOL = ['🐟', '🐠', '🐡', '🦈', '🐙', '🦑', '🐳', '🐬', '🦐', '🦭', '🪼'];
     // Figma-style label colors — one per fish, cycling
     const LABEL_COLORS = [
       '#1e90ff', '#e74c3c', '#8e44ad', '#e67e22', '#2ecc71',
@@ -659,6 +1204,9 @@
 
     // Track current fish on screen: Map<playerId, HTMLElement>
     const fishMap = new Map();
+
+    // Expose spawnFish for dev panel
+    window.__devSpawnFish = (id, name, idx) => spawnFish(id, name, idx);
 
     function getNextMatchTime() {
       const now = new Date();
@@ -679,28 +1227,6 @@
     const confirmedMsg = document.getElementById('confirmed-msg');
     const errorMsg = document.getElementById('error-msg');
 
-    function showState(state) {
-      ['loading-state', 'confirm-state', 'success-state', 'error-state'].forEach(id => {
-        document.getElementById(id).style.display = 'none';
-      });
-      // success & error live in the footer — only show loading/confirm in page
-      if (state === 'loading' || state === 'confirm') {
-        document.getElementById(`${state}-state`).style.display = 'block';
-      }
-      confirmBtn.style.display = state === 'confirm' ? 'block' : 'none';
-      confirmedMsg.style.display = state === 'success' ? 'flex' : 'none';
-      errorMsg.style.display = state === 'error' ? 'flex' : 'none';
-      ctaFooter.style.display = state !== 'loading' ? 'flex' : 'none';
-      topBar.style.display = state !== 'loading' ? 'flex' : 'none';
-
-      // Kill/revive fish
-      if (state === 'error') {
-        killFish();
-      } else {
-        reviveFish();
-      }
-    }
-
     function killFish() {
       for (const fish of fishMap.values()) {
         // Freeze current position so animation starts from here
@@ -710,8 +1236,19 @@
         const currentLeft = ((rect.left - parentRect.left) / parentRect.width) * 100;
         fish.style.top = currentTop + '%';
         fish.style.left = currentLeft + '%';
-        fish.offsetHeight;
+        // Randomize dead animation per fish
+        fish.style.setProperty('--dead-float-dur', rand(2, 5).toFixed(1) + 's');
+        fish.style.setProperty('--dead-rise-dur', rand(8, 18).toFixed(1) + 's');
+        fish.style.setProperty('--dead-delay', rand(0, 2).toFixed(1) + 's');
+        fish.style.setProperty('--dead-bob', rand(-6, -16).toFixed(0) + 'px');
+        fish.style.setProperty('--dead-rot-a', rand(-6, -1).toFixed(0) + 'deg');
+        fish.style.setProperty('--dead-rot-b', rand(1, 6).toFixed(0) + 'deg');
+        // Apply the 'dead' class, then force a reflow so the subsequent top change
+        // reliably triggers the CSS transition without relying on nested rAF.
         fish.classList.add('dead');
+        void fish.offsetHeight;
+        // Rise to surface (top:0%) via CSS transition
+        fish.style.top = '5px';
       }
     }
 
@@ -741,8 +1278,8 @@
       const goRight = Math.random() > 0.5;
       const startX = goRight ? rand(-10, 15) : rand(60, 95);
       const endX = goRight ? rand(60, 95) : rand(-10, 15);
-      // Swim across entire screen, no restricted bands
-      const yPos = rand(5, 85);
+      // Pesci position:absolute dentro #aquarium (overflow:hidden), top 0-80%
+      const yPos = rand(0, 80);
       const dur = rand(10, 22);
       const bobDur = rand(2.5, 5);
       const bobY = rand(-8, -18);
@@ -821,17 +1358,19 @@
 
     function spawnGodRays() {
       const container = document.getElementById('god-rays');
-      const rays = 5;
+      const rays = 4;
       for (let i = 0; i < rays; i++) {
         const r = document.createElement('div');
         r.className = 'god-ray';
-        const angle = rand(-25, 25);
+        // Raggi tutti dalla stessa direzione (alto-sinistra), leggera variazione
+        const baseAngle = -15;
+        const angle = baseAngle + rand(-5, 5);
         r.style.cssText = `
-          left: ${rand(10, 90)}%;
-          --ray-w: ${rand(80, 200)}px;
+          left: ${20 + i * 18 + rand(-5, 5)}%;
+          --ray-w: ${rand(100, 220)}px;
           --ray-angle: ${angle}deg;
-          --ray-dur: ${rand(6, 14)}s;
-          --ray-opacity: ${rand(0.3, 0.7)};
+          --ray-dur: ${rand(7, 14)}s;
+          --ray-opacity: ${rand(0.4, 0.7)};
         `;
         container.appendChild(r);
       }
@@ -863,6 +1402,9 @@
     }
 
     async function init() {
+      // Inizializza lo stato loading
+      setState(AppState.LOADING);
+
       spawnBubbles();
       spawnGodRays();
 
@@ -870,12 +1412,13 @@
       const lobbyExists = await checkLobby();
 
       if (!lobbyExists) {
-        showNoLobbyState();
+        setState(AppState.NO_LOBBY);
+        showNoLobbyMessage();
         return; // Non avviare polling
       }
 
       await loadConfirmations();
-      showState('confirm');
+      setState(AppState.LOBBY_FOUND);
       const intervalId = setInterval(loadConfirmations, 5000);
       setTimeout(() => clearInterval(intervalId), 60_000);
     }
@@ -903,8 +1446,21 @@
       }
     }
 
+    function showNoLobbyMessage() {
+      // Il messaggio è già nell'HTML dentro #ampolla-container
+      // Aggiorniamo solo il testo se necessario
+      const ampollaMessage = document.querySelector('.ampolla-message h2');
+      const ampollaText = document.querySelector('.ampolla-message p');
+
+      if (ampollaMessage && ampollaText) {
+        ampollaMessage.textContent = 'Nessuna lobby attiva';
+        ampollaText.textContent = `Non ci sono partite programmate per le ${matchTime}. Aspetta la notifica per giocare!`;
+      }
+    }
+
+    // Deprecato: usa showNoLobbyMessage() o setState(AppState.NO_LOBBY)
     function showNoLobbyState() {
-      showState('error');
+      setState(AppState.ERROR);
 
       const errorTitle = document.getElementById('error-title');
       errorTitle.textContent = '❌ Nessuna lobby attiva';
@@ -931,22 +1487,22 @@
           body: JSON.stringify({ matchTime, playerId: myPlayerId, subscription: localStorage.getItem('biliardino_subscription') })
         });
         if (!res.ok) throw new Error('Errore nella conferma');
-        showState('success');
+        setState(AppState.LOBBY_FOUND);
       } catch (err) {
         document.getElementById('error-title').textContent = '❌ ' + (err.message || 'Errore nella conferma');
-        showState('error');
+        setState(AppState.ERROR);
       }
     }
 
     async function autoConfirm() {
-      showState('confirm');
+      setState(AppState.LOBBY_FOUND);
       await confirmAttendance();
     }
 
     if (confirmation === 'true') {
       await autoConfirm();
     } else if (confirmation === 'false') {
-      showState('error');
+      setState(AppState.ERROR);
       document.getElementById('error-title').textContent = '❌ Hai rifiutato la partecipazione alla partita.';
     }
     document.getElementById('time-watermark').textContent = matchTime;
@@ -957,10 +1513,128 @@
     document.getElementById('retry-btn').addEventListener('click', () => {
       confirmBtn.disabled = false;
       confirmBtn.textContent = `🌊 Ci sono!`;
-      showState('confirm');
+      setState(AppState.LOBBY_FOUND);
     });
 
     init();
+  </script>
+
+  <!-- Dev Panel: solo in development -->
+  <script type="module">
+    // Mostra il dev panel solo in ambiente di sviluppo (localhost)
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isDev) { /* skip in produzione */ } else {
+      const panel = document.createElement('div');
+      panel.className = 'dev-panel';
+      panel.innerHTML = `
+        <div class="dev-panel-title">DEV</div>
+        <button data-state="LOADING">Loading</button>
+        <button data-state="LOBBY_FOUND">Lobby Found</button>
+        <button data-state="NO_LOBBY">No Lobby</button>
+        <button data-state="ERROR">Error</button>
+        <button data-action="add-fish">+ Pesce</button>
+        <button data-action="clear-fish">Clear Pesci</button>
+      `;
+      document.body.appendChild(panel);
+
+      let devFishCount = 0;
+      const devNames = ['Mario', 'Luigi', 'Peach', 'Toad', 'Yoshi', 'Bowser', 'Wario', 'Daisy', 'Rosalina', 'Koopa'];
+
+      function updateActiveBtn(state) {
+        panel.querySelectorAll('button[data-state]').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.state === state);
+        });
+      }
+
+      // Osserva cambiamenti stato
+      const observer = new MutationObserver(() => {
+        updateActiveBtn(document.body.dataset.state);
+      });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['data-state'] });
+
+      panel.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        const state = btn.dataset.state;
+        const action = btn.dataset.action;
+
+        if (state) {
+          // Forza state change senza API
+          const loadingEl = document.getElementById('loading-state');
+          const confirmStateEl = document.getElementById('confirm-state');
+          const topBar = document.getElementById('top-bar');
+          const ctaFooter = document.getElementById('cta-footer');
+          const confirmBtn = document.getElementById('confirm-btn');
+          const confirmedMsg = document.getElementById('confirmed-msg');
+          const errorMsg = document.getElementById('error-msg');
+
+          document.body.dataset.state = state;
+
+          loadingEl.style.display = 'none';
+          confirmStateEl.style.display = 'none';
+          confirmBtn.style.display = 'none';
+          confirmedMsg.style.display = 'none';
+          errorMsg.style.display = 'none';
+
+          switch (state) {
+            case 'LOADING':
+              loadingEl.style.display = 'block';
+              ctaFooter.style.display = 'none';
+              topBar.style.display = 'none';
+              break;
+            case 'LOBBY_FOUND':
+              confirmStateEl.style.display = 'block';
+              confirmBtn.style.display = 'block';
+              ctaFooter.style.display = 'flex';
+              topBar.style.display = 'flex';
+              // Spawn demo fish se non ce ne sono
+              if (document.querySelectorAll('#aquarium .fish').length === 0) {
+                for (let i = 0; i < 3; i++) {
+                  devFishCount++;
+                  const name = devNames[(devFishCount - 1) % devNames.length];
+                  window.__devSpawnFish?.(`dev-${devFishCount}`, name, devFishCount - 1);
+                }
+              }
+              // Revive fish in caso venissero da ERROR
+              document.querySelectorAll('#aquarium .fish').forEach(f => {
+                f.classList.remove('dead');
+                f.style.marginTop = '';
+                f.style.top = '';
+                f.style.left = '';
+              });
+              break;
+            case 'NO_LOBBY':
+              ctaFooter.style.display = 'none';
+              topBar.style.display = 'none';
+              break;
+            case 'ERROR':
+              errorMsg.style.display = 'flex';
+              ctaFooter.style.display = 'flex';
+              topBar.style.display = 'flex';
+              document.getElementById('error-title').textContent = '❌ Errore di test (dev)';
+              // Kill fish using shared logic
+              killFish();
+              break;
+          }
+          updateActiveBtn(state);
+        }
+
+        if (action === 'add-fish') {
+          devFishCount++;
+          const name = devNames[(devFishCount - 1) % devNames.length];
+          window.__devSpawnFish?.(`dev-${devFishCount}`, name, devFishCount - 1);
+          document.getElementById('queue-count').textContent =
+            document.querySelectorAll('#aquarium .fish').length;
+        }
+
+        if (action === 'clear-fish') {
+          document.querySelectorAll('#aquarium .fish').forEach(f => f.remove());
+          devFishCount = 0;
+          document.getElementById('queue-count').textContent = '0';
+        }
+      });
+    }
   </script>
 </body>
 

@@ -1,4 +1,4 @@
-import { API_BASE_URL, useMockData } from '@/config/env.config';
+import { API_BASE_URL } from '@/config/env.config';
 import { browserSessionPersistence, onAuthStateChanged, setPersistence } from 'firebase/auth';
 import { AUTH, login } from './firebase.util';
 
@@ -96,9 +96,10 @@ export function withAuthentication(
   action: () => void | Promise<void>,
   requireAdmin: boolean = false
 ): void {
-  // In dev/mock mode AUTH is null — skip Firebase auth entirely
-  if (useMockData || !AUTH) {
-    console.log('[MOCK] Skipping authentication, executing action directly');
+  // In dev mode (__DEV_MODE__) salta completamente l'autenticazione Firebase.
+  // In produzione questo blocco viene eliminato da Rollup (dead-code elimination).
+  if (__DEV_MODE__) {
+    console.log('[DEV] Skipping authentication, executing action directly');
     void action();
     return;
   }

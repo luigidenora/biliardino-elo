@@ -1,12 +1,14 @@
 /**
  * Dev Toolbar — pannello flottante visibile solo in development.
  *
+ * Questo modulo viene importato SOLO quando __DEV_MODE__ è true (import dinamico).
+ * In produzione non viene mai importato né incluso nel bundle.
+ *
  * Permette di:
  * - Simulare conferme di giocatori mock (chiamando le API reali su Redis)
  * - Inviare broadcast di notifica (usa l'admin token)
  * - Pulire le conferme Redis per il prossimo match
  */
-import { isDev } from '@/config/env.config';
 import { getAllPlayers } from '@/services/player.service';
 import { getNextMatchTime } from '@/utils/next-match-time.util';
 
@@ -290,7 +292,6 @@ function bindEvents(): void {
 // ─── Init ───────────────────────────────────────────────────────────────────
 
 export function initDevToolbar(): void {
-  if (!isDev) return;
   if (!API) {
     console.warn('[DevToolbar] VITE_API_BASE_URL non configurato, toolbar disabilitato');
     return;
@@ -303,5 +304,5 @@ export function initDevToolbar(): void {
     createToolbar();
   }
 
-  console.log('🔧 Dev Toolbar attivo');
+  console.log('[DevToolbar] Dev Toolbar attivo');
 }
