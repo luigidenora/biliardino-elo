@@ -227,8 +227,10 @@ export class PlayersView {
 
       // Formatta delta del giocatore con moltiplicatore
       const deltaRounded = Math.round(delta);
-      const multiplierDisplay = multiplier !== 1 ? ` × ${multiplier.toFixed(2)}` : '';
-      const myDeltaFormatted = `<span style="color:${deltaColor};">(${delta >= 0 ? '+' : ''}${deltaRounded}${multiplierDisplay})</span>`;
+      const totalDelta = Math.round(delta * multiplier);
+      const myDeltaFormatted = multiplier !== 1
+        ? `<span style="color:${deltaColor};">${totalDelta >= 0 ? '+' : ''}${totalDelta} <span style="font-size:0.85em;">(${multiplier.toFixed(2)})</span></span>`
+        : `<span style="color:${deltaColor};">${delta >= 0 ? '+' : ''}${deltaRounded}</span>`;
 
       return `
         <tr class="${isWin ? 'match-win' : 'match-loss'}">
