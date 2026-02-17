@@ -2,8 +2,8 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerById } from './player.service';
 
-export const StartK = 60;
-export const FinalK = 20;
+export const StartK = 50;
+export const FinalK = 25;
 export const MatchesToRank = 10;
 
 export function updateMatch(match: IMatch): void {

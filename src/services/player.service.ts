@@ -158,8 +158,6 @@ function computeRanks(): void {
 }
 
 export function getBonusK(matches: number): number {
-  // Decadimento esponenziale da K=60 (partita 0) a K=20 (partita 60+)
-  // Formula: K = max(20, 60 * e^(-matches/α)) dove α ≈ 54.59
-  const alpha = StartK / Math.log(3); // ≈ 54.59
+  const alpha = StartK / Math.log(1.785);
   return Math.max(FinalK, StartK * Math.exp(-matches / alpha)) / FinalK;
 }
