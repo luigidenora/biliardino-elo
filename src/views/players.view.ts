@@ -646,7 +646,8 @@ export class PlayersView {
       const match = history[i];
       const isTeamA = playerId === match.teamA.attack || playerId === match.teamA.defence;
       const delta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
-      currentElo += delta;
+      const bonusMultiplier = getBonusK(i);
+      currentElo += delta * bonusMultiplier;
       progression.push({
         value: currentElo,
         label: `${i + 1}`
