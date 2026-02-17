@@ -142,7 +142,7 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   // DIVERSITY SCORE
   const diversityTeammateCount = getTeammateDiversity(defA, attA, defB, attB);
   const diversityOpponentCount = getOpponentDiversity(defA, attA, defB, attB);
-  // 66% peso alla diversità dei compagni di squadra, 33% a quella degli avversari
+  // 60% peso alla diversità dei compagni di squadra, 40% a quella degli avversari
   // TODO split euristica
   const diversityNormalized = 1 - ((diversityTeammateCount / maxDiversity.teammate) * 0.6 + (diversityOpponentCount / maxDiversity.opponent) * 0.4);
   const diversityScore = diversityNormalized * config.diversityWeight;
