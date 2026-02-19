@@ -2,7 +2,7 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerById } from './player.service';
 
-export const StartK = 24 * 2.5;
+export const StartK = 24 * 3;
 export const FinalK = 24;
 export const MatchesToRank = 10;
 export const MatchesToTransition = 50; // Numero di partite dopo le quali il moltiplicatore K diventa 1
