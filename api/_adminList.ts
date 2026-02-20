@@ -4,8 +4,9 @@
  */
 export const ADMIN_PLAYER_IDS = [
   25, // Andrea Gargaro
-  18, // Admin 2
-  22, // Admin 3
+  18, // Francesco Molinari
+  22, // Michele Sette
+  13 // Michele Lillo
 ];
 
 /**

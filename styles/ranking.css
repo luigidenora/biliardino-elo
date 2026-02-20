@@ -357,19 +357,23 @@ tbody tr.podium-last {
 
 /* Selected player highlighting */
 tbody tr.selected-player {
-  box-shadow: inset 3px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.25),
-    0 1px 0 0 rgba(92, 159, 216, 0.25);
+  background: linear-gradient(90deg,
+      rgba(92, 159, 216, 0.12) 0%,
+      rgba(92, 159, 216, 0.06) 4px,
+      rgba(255, 255, 255, 0.05) 4px);
+  box-shadow: inset 4px 0 0 0 #5C9FD8,
+    0 -1px 0 0 rgba(92, 159, 216, 0.35),
+    0 1px 0 0 rgba(92, 159, 216, 0.35);
   scroll-margin-top: 100px;
 }
 
 tbody tr.selected-player:hover {
   transform: translateX(4px);
-  box-shadow: inset 3px 0 0 0 #5C9FD8,
+  box-shadow: inset 4px 0 0 0 #5C9FD8,
     -4px 0 0 0 rgba(6, 44, 125, 0.3),
     0 2px 12px rgba(6, 44, 125, 0.08),
-    0 -1px 0 0 rgba(92, 159, 216, 0.4),
-    0 1px 0 0 rgba(92, 159, 216, 0.4);
+    0 -1px 0 0 rgba(92, 159, 216, 0.5),
+    0 1px 0 0 rgba(92, 159, 216, 0.5);
 }
 
 tbody tr.selected-player .player-name {
@@ -384,21 +388,21 @@ tbody tr.selected-player .player-avatar {
 }
 
 tbody tr:nth-child(1).selected-player {
-  box-shadow: inset 3px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.25),
-    0 1px 0 0 rgba(92, 159, 216, 0.25);
+  box-shadow: inset 4px 0 0 0 #5C9FD8,
+    0 -1px 0 0 rgba(92, 159, 216, 0.35),
+    0 1px 0 0 rgba(92, 159, 216, 0.35);
 }
 
 tbody tr:nth-child(2).selected-player {
-  box-shadow: inset 3px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.25),
-    0 1px 0 0 rgba(92, 159, 216, 0.25);
+  box-shadow: inset 4px 0 0 0 #5C9FD8,
+    0 -1px 0 0 rgba(92, 159, 216, 0.35),
+    0 1px 0 0 rgba(92, 159, 216, 0.35);
 }
 
 tbody tr:nth-child(3).selected-player {
-  box-shadow: inset 3px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.25),
-    0 1px 0 0 rgba(92, 159, 216, 0.25);
+  box-shadow: inset 4px 0 0 0 #5C9FD8,
+    0 -1px 0 0 rgba(92, 159, 216, 0.35),
+    0 1px 0 0 rgba(92, 159, 216, 0.35);
 }
 
 @keyframes fadeInRow {
