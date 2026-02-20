@@ -356,53 +356,112 @@ tbody tr.podium-last {
 }
 
 /* Selected player highlighting */
-tbody tr.selected-player {
-  background: linear-gradient(90deg,
-      rgba(92, 159, 216, 0.12) 0%,
-      rgba(92, 159, 216, 0.06) 4px,
-      rgba(255, 255, 255, 0.05) 4px);
-  box-shadow: inset 4px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.35),
-    0 1px 0 0 rgba(92, 159, 216, 0.35);
+tbody tr.selected-player:not(.podium) {
   scroll-margin-top: 100px;
+  animation: playerBlink 2.4s ease-in-out 1;
 }
 
-tbody tr.selected-player:hover {
-  transform: translateX(4px);
-  box-shadow: inset 4px 0 0 0 #5C9FD8,
-    -4px 0 0 0 rgba(6, 44, 125, 0.3),
-    0 2px 12px rgba(6, 44, 125, 0.08),
-    0 -1px 0 0 rgba(92, 159, 216, 0.5),
-    0 1px 0 0 rgba(92, 159, 216, 0.5);
+tbody tr.selected-player.podium-1 {
+  scroll-margin-top: 100px;
+  animation: playerBlinkPodium1 2.4s ease-in-out 1;
 }
 
-tbody tr.selected-player .player-name {
-  color: #5C9FD8;
-  font-weight: 700;
+tbody tr.selected-player.podium-2 {
+  scroll-margin-top: 100px;
+  animation: playerBlinkPodium2 2.4s ease-in-out 1;
 }
 
-tbody tr.selected-player .player-avatar {
-  border-color: rgba(92, 159, 216, 0.5);
-  box-shadow: 0 0 8px rgba(92, 159, 216, 0.3),
-    0 2px 6px rgba(92, 159, 216, 0.25);
+tbody tr.selected-player.podium-3 {
+  scroll-margin-top: 100px;
+  animation: playerBlinkPodium3 2.4s ease-in-out 1;
 }
 
-tbody tr:nth-child(1).selected-player {
-  box-shadow: inset 4px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.35),
-    0 1px 0 0 rgba(92, 159, 216, 0.35);
+@keyframes playerBlink {
+  0% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  25% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  50% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  75% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  100% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
 }
 
-tbody tr:nth-child(2).selected-player {
-  box-shadow: inset 4px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.35),
-    0 1px 0 0 rgba(92, 159, 216, 0.35);
+@keyframes playerBlinkPodium1 {
+  0% {
+    background-color: rgba(255, 215, 0, 0.15);
+  }
+
+  25% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  50% {
+    background-color: rgba(255, 215, 0, 0.15);
+  }
+
+  75% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  100% {
+    background-color: rgba(255, 215, 0, 0.15);
+  }
 }
 
-tbody tr:nth-child(3).selected-player {
-  box-shadow: inset 4px 0 0 0 #5C9FD8,
-    0 -1px 0 0 rgba(92, 159, 216, 0.35),
-    0 1px 0 0 rgba(92, 159, 216, 0.35);
+@keyframes playerBlinkPodium2 {
+  0% {
+    background-color: rgba(192, 192, 192, 0.15);
+  }
+
+  25% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  50% {
+    background-color: rgba(192, 192, 192, 0.15);
+  }
+
+  75% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  100% {
+    background-color: rgba(192, 192, 192, 0.15);
+  }
+}
+
+@keyframes playerBlinkPodium3 {
+  0% {
+    background-color: rgba(205, 127, 50, 0.15);
+  }
+
+  25% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  50% {
+    background-color: rgba(205, 127, 50, 0.15);
+  }
+
+  75% {
+    background-color: rgba(135, 206, 235, 0.4);
+  }
+
+  100% {
+    background-color: rgba(205, 127, 50, 0.15);
+  }
 }
 
 @keyframes fadeInRow {

@@ -380,14 +380,13 @@ export class RankingView {
       // Colora le prime 3 posizioni (podio)
       if (rank === 1) {
         tr.style.backgroundColor = 'rgba(255, 215, 0, 0.15)'; // oro leggero
+        tr.classList.add('podium', 'podium-1');
       } else if (rank === 2) {
         tr.style.backgroundColor = 'rgba(192, 192, 192, 0.15)'; // argento leggero
+        tr.classList.add('podium', 'podium-2');
       } else if (rank === 3) {
         tr.style.backgroundColor = 'rgba(205, 127, 50, 0.15)'; // bronzo leggero
-      }
-
-      if (rank === 3) {
-        tr.classList.add('podium-last');
+        tr.classList.add('podium', 'podium-3', 'podium-last');
       }
 
       // Highlight the selected player from notifications

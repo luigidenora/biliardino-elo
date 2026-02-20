@@ -122,19 +122,16 @@ export class MatchmakingView {
     const hasActiveLobby = MatchmakingView.confirmedPlayerIds.size > 0;
 
     // Get today's availability if there's no active lobby
-    let todaysAvailable: string[] | undefined;
-    if (!hasActiveLobby) {
-      const dayKeyMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-      const todayKey = dayKeyMap[new Date().getDay()];
-      todaysAvailable = (availabilityList as any)[todayKey] as string[] | undefined;
-    }
+    const dayKeyMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+    const todayKey = dayKeyMap[new Date().getDay()];
+    const todaysAvailable = (availabilityList as any)[todayKey] as string[];
 
     playersToRender.forEach((player) => {
       // If there's an active lobby, show only confirmed players
       // If there's no active lobby, use daily availability
       let initialState: PlayerState = 0;
       const isConfirmed = MatchmakingView.confirmedPlayerIds.has(player.id);
-      const isAvailableToday = !hasActiveLobby && Array.isArray(todaysAvailable) && todaysAvailable.includes(player.name);
+      const isAvailableToday = !hasActiveLobby && todaysAvailable.includes(player.name);
 
       if (isConfirmed || isAvailableToday) {
         initialState = 1; // queue
