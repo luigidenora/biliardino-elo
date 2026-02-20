@@ -125,7 +125,7 @@ export class AddMatchView {
         // ✏️ EDIT EXISTING MATCH
         const match = editMatch(editingId, teamA, teamB, [scoreA, scoreB]);
 
-        await saveMatch(match);
+        await saveMatch(match, true);
 
         messageEl.textContent = 'Match updated successfully.';
       } else {
