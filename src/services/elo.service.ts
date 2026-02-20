@@ -2,9 +2,10 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getPlayerById } from './player.service';
 
-export const StartK = 50 * 1; // TODO nella new season mettere 2 o 1.5
-export const FinalK = 50;
-export const MatchesK = 10;
+export const StartK = 24 * 3;
+export const FinalK = 24;
+export const MatchesToRank = 10;
+export const MatchesToTransition = 50; // Numero di partite dopo le quali il moltiplicatore K diventa 1
 
 export function updateMatch(match: IMatch): void {
   const teamAP1 = getPlayerById(match.teamA.defence);
@@ -19,15 +20,15 @@ export function updateMatch(match: IMatch): void {
 
   const [goalsA, goalsB] = match.score;
 
-  const teamAP1Elo = getPlayerElo(teamAP1, true);
-  const teamAP2Elo = getPlayerElo(teamAP2, false);
-  const teamBP1Elo = getPlayerElo(teamBP1, true);
-  const teamBP2Elo = getPlayerElo(teamBP2, false);
+  const teamAP1Elo = getMatchPlayerElo(teamAP1, true);
+  const teamAP2Elo = getMatchPlayerElo(teamAP2, false);
+  const teamBP1Elo = getMatchPlayerElo(teamBP1, true);
+  const teamBP2Elo = getMatchPlayerElo(teamBP2, false);
 
   const eloA = (teamAP1Elo + teamAP2Elo) / 2;
   const eloB = (teamBP1Elo + teamBP2Elo) / 2;
 
-  const expA = expectedScore(eloA * 2, eloB * 2); // * 2 to increase percentage
+  const expA = expectedScore(eloA, eloB);
   const expB = 1 - expA;
 
   const goalMultiplier = marginMultiplier(goalsA, goalsB);
@@ -59,12 +60,12 @@ export function updateMatch(match: IMatch): void {
   match.teamBELO[1] = teamBP2Elo;
 }
 
-export function getPlayerElo(player: IPlayer, isDef: boolean): number {
+export function getMatchPlayerElo(player: IPlayer, isDef: boolean): number {
   return player.elo - (isDef ? 1 - player.defence : player.defence) * 100;
 }
 
 export function expectedScore(eloA: number, eloB: number): number {
-  return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+  return 1 / (1 + Math.pow(10, (eloB - eloA) / 300));
 }
 
 function marginMultiplier(goalsA: number, goalsB: number): number {

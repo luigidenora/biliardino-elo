@@ -1,5 +1,6 @@
 import { IPlayer } from '@/models/player.interface';
-import { getPlayerElo } from '@/services/elo.service';
+import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
+import { getBonusK } from '@/services/player.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
@@ -116,23 +117,42 @@ export class RankingView {
     today.setHours(0, 0, 0, 0);
 
     const deltas = new Map<number, { delta: number; matches: number }>();
+    const playerMatchCounts = new Map<number, number>();
+
     const addDelta = (playerId: number, delta: number): void => {
       if (!Number.isFinite(delta)) return;
+      const matchesPlayed = playerMatchCounts.get(playerId) ?? 0;
+      const bonusMultiplier = getBonusK(matchesPlayed);
+      const adjustedDelta = delta * bonusMultiplier;
+
       const entry = deltas.get(playerId) ?? { delta: 0, matches: 0 };
-      entry.delta += delta;
+      entry.delta += adjustedDelta;
       entry.matches += 1;
       deltas.set(playerId, entry);
+
+      playerMatchCounts.set(playerId, matchesPlayed + 1);
     };
 
-    for (const match of getAllMatches()) {
+    // Ordina le partite per data per calcolare correttamente i moltiplicatori
+    const allMatches = getAllMatches().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    for (const match of allMatches) {
       const matchDate = new Date(match.createdAt);
       matchDate.setHours(0, 0, 0, 0);
-      if (matchDate.getTime() !== today.getTime()) continue;
 
-      addDelta(match.teamA.defence, match.deltaELO[0]);
-      addDelta(match.teamA.attack, match.deltaELO[0]);
-      addDelta(match.teamB.defence, match.deltaELO[1]);
-      addDelta(match.teamB.attack, match.deltaELO[1]);
+      if (matchDate.getTime() === today.getTime()) {
+        addDelta(match.teamA.defence, match.deltaELO[0]);
+        addDelta(match.teamA.attack, match.deltaELO[0]);
+        addDelta(match.teamB.defence, match.deltaELO[1]);
+        addDelta(match.teamB.attack, match.deltaELO[1]);
+      } else {
+        // Incrementa il contatore delle partite anche per i giorni precedenti
+        const players = [match.teamA.defence, match.teamA.attack, match.teamB.defence, match.teamB.attack];
+        for (const playerId of players) {
+          const count = playerMatchCounts.get(playerId) ?? 0;
+          playerMatchCounts.set(playerId, count + 1);
+        }
+      }
     }
 
     return deltas;
@@ -347,7 +367,7 @@ export class RankingView {
         goalDiff = '<span style="color:green;">∞</span>';
       } else if (goalRatio > 0) {
         const roundedRatio = parseFloat(goalRatio.toFixed(2));
-        const color = roundedRatio <= 0.8 ? 'red' : roundedRatio >= 1.2 ? 'green' : 'inherit';
+        const color = roundedRatio <= 0.8 ? 'red' : roundedRatio >= 1.15 ? 'green' : 'inherit';
         goalDiff = `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
       }
 
@@ -704,12 +724,12 @@ export class RankingView {
       const avgRating = (eloA + eloB) / 2;
       let rowBackgroundColor = '';
       let rowTextColor = '';
-      if (avgRating >= 1140) {
+      if (avgRating >= 1150) {
         rowBackgroundColor = 'background-color: #1e3a8a;'; // blu scuro
         rowTextColor = 'color: white;'; // scritta bianca
-      } else if (avgRating >= 1080) {
+      } else if (avgRating >= 1100) {
         rowBackgroundColor = 'background-color: rgba(0, 0, 255, 0.25);'; // blu leggero
-      } else if (avgRating >= 1040) {
+      } else if (avgRating >= 1050) {
         rowBackgroundColor = 'background-color: rgba(0, 127, 255, 0.1);'; // azzurro chiaro
       } else if (avgRating <= 900) {
         rowBackgroundColor = 'background-color: rgba(255, 0, 0, 0.2);'; // rosso leggero
@@ -768,8 +788,8 @@ export class RankingView {
       const rankDefB = getRank(runningMatch.teamB.defence);
       const rankAttB = getRank(runningMatch.teamB.attack);
 
-      const avgEloA = Math.round((getPlayerElo(defA, true) + getPlayerElo(attA, false)) / 2);
-      const avgEloB = Math.round((getPlayerElo(defB, true) + getPlayerElo(attB, false)) / 2);
+      const avgEloA = Math.round((getMatchPlayerElo(defA, true) + getMatchPlayerElo(attA, false)) / 2);
+      const avgEloB = Math.round((getMatchPlayerElo(defB, true) + getMatchPlayerElo(attB, false)) / 2);
 
       // Calcola percentuali dei ruoli
       const defPercA = Math.round(defA.defence * 100);
@@ -778,7 +798,7 @@ export class RankingView {
       const attPercB = 100 - Math.round(attB.defence * 100);
 
       // Calcola probabilità di vittoria
-      const winProbA = 1 / (1 + Math.pow(10, (avgEloB - avgEloA) / 400));
+      const winProbA = expectedScore(avgEloA, avgEloB);
       const winProbB = 1 - winProbA;
       const winProbAPercent = (winProbA * 100).toFixed(1);
       const winProbBPercent = (winProbB * 100).toFixed(1);
@@ -817,7 +837,7 @@ export class RankingView {
                       <span class="live-player-name">🛡️ ${defA.name} ${defA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefA)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercA}%</span>
-                        <span class="live-player-elo">${Math.round(getPlayerElo(defA, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
+                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(defA, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -832,7 +852,7 @@ export class RankingView {
                       <span class="live-player-name">⚔️ ${attA.name} ${attA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttA)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercA}%</span>
-                        <span class="live-player-elo">${Math.round(getPlayerElo(attA, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
+                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(attA, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -857,7 +877,7 @@ export class RankingView {
                       <span class="live-player-name">🛡️ ${defB.name} ${defB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefB)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercB}%</span>
-                        <span class="live-player-elo">${Math.round(getPlayerElo(defB, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
+                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(defB, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -872,7 +892,7 @@ export class RankingView {
                       <span class="live-player-name">⚔️ ${attB.name} ${attB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttB)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercB}%</span>
-                        <span class="live-player-elo">${Math.round(getPlayerElo(attB, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
+                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(attB, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
                       </div>
                     </div>
                   </a>

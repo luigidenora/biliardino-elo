@@ -1,8 +1,8 @@
 import { IMatch, ITeam } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { MatchesK } from './elo.service';
+import { MatchesToRank } from './elo.service';
 import { getAllMatches } from './match.service';
-import { checkDerankThreshold, getClass, getFirstMatchesBonus, getPlayerById } from './player.service';
+import { checkDerankThreshold, getBonusK, getClass, getPlayerById } from './player.service';
 
 // vittoria contro avversari più forti, sconfitta contro avversari più deboli
 // compagni e avversari storico
@@ -112,9 +112,9 @@ export function getPlayerStats(player: number): PlayerStats {
   function updateEloResult(team: number, match: IMatch): void {
     const delta = team === 0 ? match.deltaELO[0] : match.deltaELO[1];
 
-    result.elo += delta * getFirstMatchesBonus(result.matches);
+    result.elo += delta * getBonusK(result.matches);
 
-    if (result.matches >= MatchesK - 1) {
+    if (result.matches >= MatchesToRank - 1) {
       if (result.elo > result.bestElo) result.bestElo = result.elo;
       if (result.elo < result.worstElo) result.worstElo = result.elo;
 

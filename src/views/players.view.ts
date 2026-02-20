@@ -1,7 +1,7 @@
 import { BASE_PATH } from '@/config/env.config';
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { FinalK, MatchesK, StartK } from '@/services/elo.service';
+import { getBonusK } from '@/services/player.service';
 import { getPlayerStats, PlayerStats } from '@/services/stats.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
@@ -224,15 +224,14 @@ export class PlayersView {
       const realElo = myPlayerElo !== undefined ? Math.round(myPlayerElo + malus) : '?';
       const delta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
 
-      // Calcola il K factor per il moltiplicatore
-      const firstMatchMultiplier = Math.max(0, (1 - (matchesPlayed / MatchesK)) * (StartK - FinalK));
-      const kFactor = FinalK + firstMatchMultiplier;
-      const multiplier = kFactor / FinalK;
+      const multiplier = getBonusK(matchesPlayed);
 
       // Formatta delta del giocatore con moltiplicatore
       const deltaRounded = Math.round(delta);
-      const multiplierDisplay = multiplier !== 1 ? ` × ${multiplier.toFixed(2)}` : '';
-      const myDeltaFormatted = `<span style="color:${deltaColor};">(${delta >= 0 ? '+' : ''}${deltaRounded}${multiplierDisplay})</span>`;
+      const totalDelta = Math.round(delta * multiplier);
+      const myDeltaFormatted = multiplier !== 1
+        ? `<span style="color:${deltaColor};">${totalDelta >= 0 ? '+' : ''}${totalDelta} <span style="font-size:0.85em;">(x${multiplier.toFixed(2)})</span></span>`
+        : `<span style="color:${deltaColor};">${delta >= 0 ? '+' : ''}${deltaRounded}</span>`;
 
       return `
         <tr class="${isWin ? 'match-win' : 'match-loss'}">
@@ -650,7 +649,8 @@ export class PlayersView {
       const match = history[i];
       const isTeamA = playerId === match.teamA.attack || playerId === match.teamA.defence;
       const delta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
-      currentElo += delta;
+      const bonusMultiplier = getBonusK(i);
+      currentElo += delta * bonusMultiplier;
       progression.push({
         value: currentElo,
         label: `${i + 1}`

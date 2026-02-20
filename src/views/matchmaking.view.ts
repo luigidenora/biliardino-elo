@@ -1,7 +1,7 @@
 import { IConfirmationsResponse } from '@/models/confirmation.interface';
 import { IRunningMatchDTO } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { getPlayerElo } from '@/services/elo.service';
+import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
 import { addMatch } from '@/services/match.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { availabilityList } from '@/utils/availability.util';
@@ -442,14 +442,14 @@ export class MatchmakingView {
     const matchContent = document.createElement('div');
     matchContent.className = 'match-content';
 
-    const avgEloTeamA = (getPlayerElo(match.teamA.defence, true) + getPlayerElo(match.teamA.attack, false)) / 2;
-    const avgEloTeamB = (getPlayerElo(match.teamB.defence, true) + getPlayerElo(match.teamB.attack, false)) / 2;
+    const avgEloTeamA = (getMatchPlayerElo(match.teamA.defence, true) + getMatchPlayerElo(match.teamA.attack, false)) / 2;
+    const avgEloTeamB = (getMatchPlayerElo(match.teamB.defence, true) + getMatchPlayerElo(match.teamB.attack, false)) / 2;
 
     // Teams container con VS e form al centro
     const teamsContainer = document.createElement('div');
     teamsContainer.className = 'teams-container';
 
-    const winProbA = 1 / (1 + Math.pow(10, (avgEloTeamB - avgEloTeamA) / 400));
+    const winProbA = expectedScore(avgEloTeamA, avgEloTeamB);
     const winProbB = 1 - winProbA;
 
     // Determina i giocatori (ruoli standard)
@@ -602,7 +602,7 @@ export class MatchmakingView {
             <div class="match-player-name"><span class="player-name">${roleIcon1} ${player1.name}</span><span class="player-rank" style="font-size:0.85em;opacity:0.75;"> ${getRank(player1.id)}°</span></div>
             <div class="match-player-meta">
               <span class="role-badge ${roleBadgeClass1}" title="Percentuale partite nel ruolo assegnato">${roleLabel1}</span>
-              <span class="player-elo">${Math.round(getPlayerElo(player1, role1 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player1)})</span></span>
+              <span class="player-elo">${Math.round(getMatchPlayerElo(player1, role1 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player1)})</span></span>
               ${player1.class !== -1 ? `<img src="/class/${player1.class}.webp" alt="Class ${player1.class}" style="width:24px;height:24px;object-fit:contain;" />` : ''}
             </div>
           </div>
@@ -620,7 +620,7 @@ export class MatchmakingView {
             <div class="match-player-name"><span class="player-name">${roleIcon2} ${player2.name}</span><span class="player-rank" style="font-size:0.85em;opacity:0.75;"> ${getRank(player2.id)}°</span></div>
             <div class="match-player-meta">
               <span class="role-badge ${roleBadgeClass2}" title="Percentuale partite nel ruolo assegnato">${roleLabel2}</span>
-              <span class="player-elo">${Math.round(getPlayerElo(player2, role2 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player2)})</span></span>
+              <span class="player-elo">${Math.round(getMatchPlayerElo(player2, role2 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player2)})</span></span>
               ${player2.class !== -1 ? `<img src="/class/${player2.class}.webp" alt="Class ${player2.class}" style="width:24px;height:24px;object-fit:contain;" />` : ''}
             </div>
           </div>

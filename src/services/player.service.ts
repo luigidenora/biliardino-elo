@@ -1,10 +1,10 @@
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { FinalK, MatchesK, StartK } from './elo.service';
+import { FinalK, MatchesToRank, MatchesToTransition, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
 
 const playersMap = new Map<number, IPlayer>();
-const derankTreshold = Math.round(125 * 0.3);
+const derankTreshold = Math.round(100 * 0.3);
 let playersArray: IPlayer[] = [];
 let rankOutdated = true;
 
@@ -48,7 +48,7 @@ export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppo
   const player = getPlayerById(id);
   if (!player) return;
 
-  player.elo += delta * getFirstMatchesBonus(player.matches);
+  player.elo += delta * getBonusK(player.matches);
   player.bestElo = Math.max(player.bestElo ?? player.elo, player.elo);
   player.matches++;
   player.wins += delta > 0 ? 1 : 0;
@@ -85,7 +85,7 @@ export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppo
 }
 
 export function updatePlayerClass(player: IPlayer, win: boolean): void {
-  if (player.matches < MatchesK) return;
+  if (player.matches < MatchesToRank) return;
 
   const currentClass = player.class;
   let newClass = getClass(player.elo);
@@ -103,19 +103,19 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 
 export function getClass(elo: number): number {
   elo = Math.round(elo);
-  if (elo >= 1250) return 0;
-  if (elo >= 1125) return 1;
+  if (elo >= 1200) return 0;
+  if (elo >= 1100) return 1;
   if (elo >= 1000) return 2;
-  if (elo >= 875) return 3;
+  if (elo >= 900) return 3;
   return 4;
 }
 
 export function checkDerankThreshold(elo: number): boolean {
   elo = Math.round(elo);
-  if (elo >= 1125) return elo >= 1250 - derankTreshold;
-  if (elo >= 1000) return elo >= 1125 - derankTreshold;
-  if (elo >= 875) return elo >= 1000 - derankTreshold;
-  if (elo < 875) return elo >= 875 - derankTreshold;
+  if (elo >= 1100) return elo >= 1200 - derankTreshold;
+  if (elo >= 1000) return elo >= 1100 - derankTreshold;
+  if (elo >= 900) return elo >= 1000 - derankTreshold;
+  if (elo < 900) return elo >= 900 - derankTreshold;
   return false;
 }
 
@@ -157,6 +157,7 @@ function computeRanks(): void {
   rankOutdated = false;
 }
 
-export function getFirstMatchesBonus(matches: number): number {
-  return Math.max(0, (1 - (matches / MatchesK))) * (StartK / FinalK - 1) + 1;
+export function getBonusK(matches: number): number {
+  const alpha = MatchesToTransition / Math.log(StartK / FinalK);
+  return Math.max(FinalK, StartK * Math.exp(-matches / alpha)) / FinalK;
 }
