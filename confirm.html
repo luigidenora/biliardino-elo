@@ -167,7 +167,7 @@
     #aquarium {
       position: fixed;
       inset: 0;
-      top: 30%;
+      top: 0;
       bottom: 0;
       z-index: 0;
       pointer-events: none;
@@ -413,6 +413,28 @@
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    a.nav-link {
+      color: #1d1d1f;
+      padding: 0.6rem 1.2rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    a.nav-link:hover {
+      background: rgba(255, 255, 255, 0.98);
+      color: #000000;
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(0, 0, 0, 0.12);
     }
 
     .top-bar-time {
@@ -1056,6 +1078,7 @@
 
   <!-- Top status bar -->
   <div class="top-bar only-lobby-found" id="top-bar" style="display:none">
+    <a href="./index.html" class="nav-link">← Torna alla Classifica</a>
     <span class="top-bar-time" id="top-bar-time">⚽ 11:00</span>
     <div class="count-pill">
       <span>🐟</span>
@@ -1299,13 +1322,15 @@
       fishMap.set(playerId, fish);
 
       // Initialize fish movement
-      const waterHeight = window.innerHeight;
       const screenWidth = window.innerWidth;
-      const margin = 60;
+      const viewportHeight = window.innerHeight;
+      const aquariumStartY = viewportHeight * 0.3; // Water starts at 30%
+      const marginHorizontal = 20; // Margin on sides
+      const marginVertical = 100; // Margin on top/bottom
       const fishSprite = fish.querySelector('.fish-sprite');
       fishMovement.set(playerId, {
-        x: rand(margin, screenWidth - margin),
-        y: rand(margin, waterHeight - margin),
+        x: rand(marginHorizontal, screenWidth - marginHorizontal),
+        y: rand(aquariumStartY + marginVertical, viewportHeight - marginVertical),
         vx: rand(-1, 1),
         vy: rand(-0.5, 0.5),
         speed: rand(0.5, 1.5),
@@ -1328,13 +1353,15 @@
 
     // Fish movement animation loop
     function updateFishMovement() {
-      const waterHeight = window.innerHeight;
+      const viewportHeight = window.innerHeight;
       const screenWidth = window.innerWidth;
-      const margin = 60;
-      const minY = margin;
-      const maxY = waterHeight - margin;
-      const minX = margin;
-      const maxX = screenWidth - margin;
+      const aquariumStartY = viewportHeight * 0.3; // Water starts at 30%
+      const marginHorizontal = 20; // Margin on sides
+      const marginVertical = 50; // Margin on top/bottom
+      const minY = aquariumStartY + marginVertical;
+      const maxY = viewportHeight - marginVertical;
+      const minX = marginHorizontal;
+      const maxX = screenWidth - marginHorizontal;
 
       fishMovement.forEach((movement, playerId) => {
         const { element } = movement;
