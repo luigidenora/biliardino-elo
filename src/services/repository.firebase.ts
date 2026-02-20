@@ -137,9 +137,9 @@ export async function fetchMatches(): Promise<IMatch[]> {
   return matches;
 }
 
-export async function saveMatch(match: IMatchDTO): Promise<void> {
+export async function saveMatch(match: IMatchDTO, merge = false): Promise<void> {
   const ref = doc(collection(db, MATCHES_COLLECTION), match.id.toString());
-  await setDoc(ref, match, { merge: true });
+  await setDoc(ref, match, { merge });
   await updateMatchesHash();
 }
 

@@ -20,5 +20,10 @@
   },
   "[html]": {
     "editor.defaultFormatter": "vscode.html-language-features"
+  },
+  "window.titleBarStyle": "custom",
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#FFFF00",
+    "titleBar.activeForeground": "#1E1E1E"
   }
 }

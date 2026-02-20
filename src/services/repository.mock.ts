@@ -102,7 +102,7 @@ export async function fetchMatches(): Promise<IMatch[]> {
   return JSON.parse(JSON.stringify(mockMatches)); // Deep clone
 }
 
-export async function saveMatch(match: IMatchDTO): Promise<void> {
+export async function saveMatch(match: IMatchDTO, merge = false): Promise<void> {
   console.log('[MOCK] Saving match:', match.id);
   await simulateDelay();
 
