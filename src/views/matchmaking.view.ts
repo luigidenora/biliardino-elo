@@ -122,16 +122,19 @@ export class MatchmakingView {
     const hasActiveLobby = MatchmakingView.confirmedPlayerIds.size > 0;
 
     // Get today's availability if there's no active lobby
-    const dayKeyMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-    const todayKey = dayKeyMap[new Date().getDay()];
-    const todaysAvailable = (availabilityList as any)[todayKey] as string[];
+    let todaysAvailable: string[] | undefined;
+    if (!hasActiveLobby) {
+      const dayKeyMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+      const todayKey = dayKeyMap[new Date().getDay()];
+      todaysAvailable = (availabilityList as any)[todayKey] as string[] | undefined;
+    }
 
     playersToRender.forEach((player) => {
       // If there's an active lobby, show only confirmed players
       // If there's no active lobby, use daily availability
       let initialState: PlayerState = 0;
       const isConfirmed = MatchmakingView.confirmedPlayerIds.has(player.id);
-      const isAvailableToday = !hasActiveLobby && todaysAvailable.includes(player.name);
+      const isAvailableToday = !hasActiveLobby && Array.isArray(todaysAvailable) && todaysAvailable.includes(player.name);
 
       if (isConfirmed || isAvailableToday) {
         initialState = 1; // queue
@@ -940,8 +943,19 @@ export class MatchmakingView {
   }
 
   /**
+   * Formatta un timestamp ISO come "Xm fa" o "adesso"
+   */
+  private static formatTimeAgo(isoDate: string): string {
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return 'adesso';
+    if (mins === 1) return '1 min fa';
+    return `${mins} min fa`;
+  }
+
+  /**
    * Auto-seleziona i giocatori che hanno confermato tramite app
-   * e aggiorna indica visivamente nella lista principale.
+   * e aggiorna badge inline nella lista principale.
    */
   private static autoSelectConfirmedPlayers(): void {
     const playersList = document.getElementById('players-list');
@@ -976,10 +990,30 @@ export class MatchmakingView {
         if (!label.classList.contains('confirmed')) {
           label.classList.add('confirmed');
         }
+
+        // Badge inline con tempo relativo
+        MatchmakingView.upsertConfirmationBadge(label, playerId);
       }
     });
 
     MatchmakingView.updateUI();
+  }
+
+  /**
+   * Aggiunge o aggiorna il badge "📱 confermato Xm fa" dentro la label.
+   */
+  private static upsertConfirmationBadge(label: HTMLLabelElement, playerId: number): void {
+    const isoDate = MatchmakingView.confirmationTimes.get(playerId);
+    const timeText = isoDate ? MatchmakingView.formatTimeAgo(isoDate) : '';
+
+    let badge = label.querySelector('.confirmation-badge') as HTMLSpanElement | null;
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'confirmation-badge';
+      label.appendChild(badge);
+    }
+    badge.textContent = `📱`;
+    badge.title = 'Confermato tramite app';
   }
 
   /**
@@ -999,6 +1033,8 @@ export class MatchmakingView {
       if (!label) continue;
 
       label.classList.remove('confirmed');
+      const badge = label.querySelector('.confirmation-badge');
+      if (badge) badge.remove();
     }
   }
 
