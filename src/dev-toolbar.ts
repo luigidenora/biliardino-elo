@@ -182,11 +182,7 @@ function createToolbar(): void {
       }
       #dev-toolbar .dev-log-entry.ok { color: #4caf50; }
       #dev-toolbar .dev-log-entry.err { color: #f44336; }
-      #dev-toolbar .dev-matchtime {
-        font-weight: 700;
-        color: #00d4ff;
-        font-size: 13px;
-      }
+     
     </style>
 
     <div class="dev-panel" id="dev-panel">
@@ -194,7 +190,6 @@ function createToolbar(): void {
 
       <div class="dev-row">
         <span style="color:#888">Match:</span>
-        <span class="dev-matchtime" id="dev-matchtime">${getLobbyKey()}</span>
       </div>
 
       <div class="dev-row">
@@ -306,9 +301,6 @@ function bindEvents(): void {
 
   fab.addEventListener('click', () => {
     panel.classList.toggle('open');
-    // Aggiorna lobby key quando si apre
-    const mtEl = document.getElementById('dev-matchtime');
-    if (mtEl) mtEl.textContent = getLobbyKey();
   });
 
   document.getElementById('dev-add-1')!.addEventListener('click', () => addConfirmations(1));

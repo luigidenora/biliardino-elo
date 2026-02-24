@@ -6,10 +6,9 @@ console.log(
   !!(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN),
 );
 
-const vercelEnv = (process.env.VERCEL_ENV || process.env.NODE_ENV || 'production').toLowerCase();
+const vercelEnv = (process.env.VERCEL_ENV || process.env.NODE_ENV || 'development').toLowerCase();
 
 function makeVercelPrefix(): string {
-  if (vercelEnv === 'production') return '';
   const id = process.env.VERCEL_GIT_COMMIT_REF
     || process.env.VERCEL_GIT_BRANCH
     || process.env.VERCEL_URL
@@ -19,9 +18,11 @@ function makeVercelPrefix(): string {
 }
 
 export const redisPrefix = makeVercelPrefix();
-console.log('Redis key prefix:', redisPrefix || '<none>');
 
-export const prefixed = (key: string) => `${redisPrefix}${key}`;
+export const prefixed = (key: string) => {
+  console.log('Prefissando chiave Redis:', key, '->', `${redisPrefix}${key}`);
+  return `${redisPrefix}${key}`
+};
 
 // underlying client from environment
 const _redis = Redis.fromEnv();

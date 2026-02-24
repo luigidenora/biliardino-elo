@@ -927,17 +927,6 @@ export class RankingView {
   }
 
   /**
-   * Calcola il prossimo matchTime basato sull'ora corrente
-   */
-  private static getNextMatchTime(): string {
-    const now = new Date();
-    const mins = now.getHours() * 60 + now.getMinutes();
-    if (mins < 660) return '11:00'; // Prima delle 11:00
-    if (mins < 960) return '16:00'; // Prima delle 16:00
-    return '11:00'; // Default giorno dopo
-  }
-
-  /**
    * Inizializza il pulsante "Gioca" per redirect a confirm.html
    */
   private static initPlayButton(): void {

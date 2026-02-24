@@ -353,7 +353,7 @@ export class ConfirmView {
 
   private static startPolling(): void {
     this.loadConfirmations();
-    this.pollingIntervalId = window.setInterval(() => this.loadConfirmations(), 5000);
+    // this.pollingIntervalId = window.setInterval(() => this.loadConfirmations(), 10_000);
     const remainingTime = 60_000 - this.pollingElapsedTime;
     this.pollingStartTime = Date.now();
     this.pollingTimeoutId = window.setTimeout(() => {

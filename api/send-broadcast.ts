@@ -41,7 +41,6 @@ interface NotificationAction {
  *
  * POST /api/send-broadcast
  * Body: {
- *   matchTime: string (es: "14:30"),
  *   title?: string (opzionale),
  *   body?: string (opzionale)
  * }
@@ -64,7 +63,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
     // Valida e sanitizza input (se mancante, sarà usata la chiave 'default')
     const customTitle = rawTitle ? validateString(rawTitle, 'title', 100) : undefined;
-    // matchTime is ignored: lobby is global
     const customBody = rawBody ? validateString(rawBody, 'body', 500) : undefined;
 
     // Verifica configurazione
@@ -167,27 +165,26 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
     console.log(`✅ Broadcast completato: ${sent}/${validSubscriptions.length} inviati`);
 
-    if (!process.env.VITE_DEV_MODE)
-      // Crea registry lobby in Redis
-      try {
-        const lobbyKey = `lobby`;
-        await redis.set(
-          lobbyKey,
-          {
-            createdAt: new Date().toISOString(),
-            notificationsSent: sent,
-            active: true
-          },
-          {
-            ex: 5400 // TTL 90 minuti (5400 secondi)
-          }
-        );
+    // Crea registry lobby in Redis
+    try {
+      const lobbyKey = `lobby`;
+      await redis.set(
+        lobbyKey,
+        {
+          createdAt: new Date().toISOString(),
+          notificationsSent: sent,
+          active: true
+        },
+        {
+          ex: 5400 // TTL 90 minuti (5400 secondi)
+        }
+      );
 
-        console.log(`🏁 Lobby registry creata: ${lobbyKey} (TTL: 90 min)`);
-      } catch (err) {
-        console.error('❌ Errore creazione lobby registry:', err);
-        // Non bloccare la risposta se fallisce
-      }
+      console.log(`🏁 Lobby registry creata: ${lobbyKey} (TTL: 90 min)`);
+    } catch (err) {
+      console.error('❌ Errore creazione lobby registry:', err);
+      // Non bloccare la risposta se fallisce
+    }
 
     return res.status(200).json({
       sent,

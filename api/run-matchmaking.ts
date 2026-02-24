@@ -13,7 +13,6 @@ webpush.setVapidDetails(
 
 interface Confirmation {
   playerId: number;
-  matchTime: string;
   confirmedAt: string;
   subscription?: any;
 }
@@ -30,7 +29,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   if (handleCorsPreFlight(req, res)) return res;
 
   try {
-    // No matchTime: matchmaking uses global lobby confirmations
 
     // Ottieni tutte le conferme per la lobby globale
     const keys = await redis.keys(`availability:*`);

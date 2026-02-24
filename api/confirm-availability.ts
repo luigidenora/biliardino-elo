@@ -22,9 +22,8 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   }
 
   try {
-    const { playerId: rawPlayerId, matchTime: rawMatchTime, subscription } = req.body as {
+    const { playerId: rawPlayerId, subscription } = req.body as {
       playerId?: string | number;
-      matchTime?: string;
       subscription?: any;
     };
 

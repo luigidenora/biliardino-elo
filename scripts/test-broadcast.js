@@ -35,7 +35,6 @@ try {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${API_TOKEN}`,
     },
-    body: JSON.stringify({ matchTime: MATCH_TIME }),
   });
 
   const body = await response.text();
