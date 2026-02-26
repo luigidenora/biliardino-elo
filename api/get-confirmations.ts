@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Valida e sanitizza time per prevenire injection
     const time = validateMatchTime(rawTime);
 
-    const keys = await redis.keys(`availability:${time}:*`);
+    const keys = await redis.keys(`availability:*`);
     const confirmations = await Promise.all(
       keys.map(async (key) => {
         const data = (await redis.get(key)) as Confirmation | null;

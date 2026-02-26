@@ -161,7 +161,7 @@ describe('API Security Validation', () => {
 
   describe('sanitizeRedisKey', () => {
     it('should allow safe characters', () => {
-      expect(sanitizeRedisKey('availability:11:00:123')).toBe('availability:11:00:123');
+      expect(sanitizeRedisKey('availability:123')).toBe('availability:123');
       expect(sanitizeRedisKey('player-123')).toBe('player-123');
       expect(sanitizeRedisKey('test_key')).toBe('test_key');
     });

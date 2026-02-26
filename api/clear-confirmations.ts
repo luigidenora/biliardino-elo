@@ -22,7 +22,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     // Valida e sanitizza matchTime per prevenire injection
     const matchTime = validateMatchTime(rawMatchTime);
 
-    const keys = await redis.keys(`availability:${matchTime}:*`);
+    const keys = await redis.keys(`availability:*`);
 
     if (keys.length > 0) {
       await Promise.all(keys.map(key => redis.del(key)));

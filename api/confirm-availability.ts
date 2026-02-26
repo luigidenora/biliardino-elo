@@ -79,7 +79,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     //   return res.status(401).json({ error: 'Subscription non valida per questo utente' });
     // }
 
-    const key = `availability:${matchTime}:${playerIdNum}`;
+    const key = `availability:${playerIdNum}`;
 
     await redis.set(key, {
       playerId: playerIdNum,
@@ -90,7 +90,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       ex: 1800 // Expire dopo 30 minuti
     });
 
-    const keys = await redis.keys(`availability:${matchTime}:*`);
+    const keys = await redis.keys(`availability:*`);
     const count = keys.length;
 
     console.log(`✅ Conferma da ${sanitizeLogOutput(String(playerIdNum))} per match ${sanitizeLogOutput(matchTime)} (totale: ${count})`);
