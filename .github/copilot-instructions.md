@@ -1,51 +1,64 @@
-# Copilot Instructions — biliardino-elo (Milestone)
+# Copilot Instructions — biliardino-elo
 
-Purpose: manage player rankings, matchmaking, real-time updates and advanced web-push notifications for a PWA foosball app.
+Competitive foosball PWA: ELO rankings, matchmaking, real-time lobby, and web-push notifications. Deployed on Vercel (serverless) with Firebase Firestore + Upstash Redis.
 
-Architecture (big picture)
-- API Layer: `api/` contains edge route handlers and small helpers. Underscore-prefixed files (e.g., `_redisClient.ts`, `_middleware.ts`) are internal utilities.
-- Frontend: static HTML at repo root plus TypeScript in `src/`. UI glue lives in `src/views/` and page entrypoints at `src/*.ts`.
-- Services: `src/services/` contains the domain logic (ELO, matchmaking, players, messages). Services are the single source of truth for business rules.
-- Data & Repos: models in `src/models/`. Repositories (`repository.*.ts`) provide pluggable data backends (mock, firebase).
+## Architecture
 
-Key files and patterns (use these as examples)
-- `src/services/elo.service.ts`, `match.service.ts`, `matchmaking.service.ts` — canonical service implementations.
-- `src/views/*.view.ts` — DOM + UI rendering code; keep these thin and call services for logic.
-- `api/run-matchmaking.ts`, `api/send-notification.ts` — example API routes and how they call services.
-- `api/_redisClient.ts` — Upstash wrapper used for pub/sub and streaming.
-- `public/sw.js` — service worker; controls caching strategies for the PWA.
+```
+src/app/              → SPA frontend (vanilla TS, no framework)
+  pages/*.page.ts       Page components loaded by router (leaderboard, lobby, matchmaking, etc.)
+  components/*.ts       Shared UI: Component base class, header, layout, avatar
+  router.ts             Hash-based router (/#/path) with lazy loading & auth guards
+  state.ts              Event-emitter singleton (appState) for auth flags and route events
+  main.ts               Bootstrap entry point
+src/services/         → Domain logic (ELO, players, matches, matchmaking, stats)
+  repository.service.ts Conditional import: Firebase in prod, mock in dev (dead-code eliminated)
+  repository.firebase.ts / repository.mock.ts
+src/models/           → TypeScript interfaces (IPlayer, IMatch, IMessage, IConfirmation)
+api/                  → Vercel serverless functions (one file = one endpoint)
+  _*.ts                 Internal helpers: _middleware.ts, _auth.ts, _cors.ts, _validation.ts, _redisClient.ts
+src/views/            → Legacy (deprecated). All UI now in src/app/pages/ and src/app/components/.
+public/sw.js          → Service worker (cache-first for Firebase, network-first otherwise)
+```
 
-Developer workflows
-- Local dev: `npm run dev` (Vite). Edit `src/` and open the HTML pages.
-- Build: `npm run build` (Vite production bundle).
-- Tests: `npm test` runs API tests in `tests/api/` (they use direct HTTP calls and repository mocks).
-- Useful scripts: `scripts/generate-token.js` (admin token), `scripts/test-broadcast.js` (broadcast testing).
+## Component pattern
 
-Conventions & guidance (specific)
-- TypeScript-first: write new code in TypeScript. Scripts may be plain JS.
-- Service-first design: implement business logic in `src/services/`, call services from `api/` and `views` only.
-- API routes as small adapters: keep handlers minimal — validate inputs, call services, and return results.
-- Internal helpers: prefer underscore-prefixed files in `api/` for shared server utilities.
-- Repository pattern: use `repository.service.ts` to swap DB implementations (see `repository.mock.ts` and `repository.firebase.ts`).
+Pages extend abstract `Component` with lifecycle: `render()` → `mount()` → `destroy()`. `render()` returns an HTML string (no virtual DOM). Use `this.$('selector')` for scoped DOM queries after mount. Keep pages thin — call services for data and logic.
 
-Integrations & production constraints (must-read)
-- Vercel (Free Plan): serverless functions must complete within 12 seconds. Avoid heavy loops or blocking work in API handlers; push long work to background streams or workers.
-- Redis via Upstash: `api/_redisClient.ts` provides a lightweight Redis client. It's used for pub/sub and streaming to web workers — prefer it for real-time updates instead of long-running server processes.
-- Web Workers & Streaming: frontend uses web workers that subscribe to Upstash channels to stream live updates without keeping sockets open. Inspect `src/` for worker code and `api/_redisClient.ts` for publishing methods.
-- WebPush Notifications: advanced payload creation and subscription management live in `src/notifications.ts` and `api/send-notification.ts`. Use the helpers there to keep push messages consistent.
-- Service Worker (`public/sw.js`): controls caching strategy to optimize PWA offline behavior. Update cache names and strategies here when adding static assets.
-- Tailwind: integrated via Vite plugin (installed). Use utility classes; styles are under `styles/`.
+## Key conventions
 
-Testing, debugging, and deployment notes
-- Use `repository.mock.ts` for fast unit tests. Integration tests in `tests/api/` validate real HTTP handlers.
-- To debug APIs locally, run Vite dev and use the browser to exercise pages; for serverless-specific issues, emulate Vercel or deploy to a preview.
-- When modifying `api/` routes, run tests and ensure handlers return quickly (<12s). If a job may exceed this, offload to Redis pub/sub or background process pattern.
+- **File naming**: `{name}.page.ts`, `{name}.component.ts`, `{name}.service.ts`, `{name}.interface.ts`. API internals: `_{name}.ts`.
+- **Service-first**: business logic in `src/services/`, called from pages and API handlers. Never put domain logic in components or route handlers.
+- **API handlers as adapters**: validate input (via `_validation.ts`), call service/Redis, return JSON. Apply middleware with composable HOFs: `withSecurityMiddleware`, `withRateLimiting`, `withAuth`.
+- **Repository pattern**: `repository.service.ts` uses `__DEV_MODE__` (Vite global, `false` at build) to conditionally import mock vs Firebase. Rollup eliminates the unused branch.
+- **Auth**: Firebase email/password on frontend; JWT (HS256, `jose` library) with roles (`admin`, `cron`, `notify`) on API. Admin whitelist in `api/_adminList.ts`.
+- **Styling**: Tailwind CSS via `@tailwindcss/vite`. Animations via GSAP. Design tokens in `src/app/styles/`.
+- **Code style**: ESLint strict + `@stylistic` — single quotes, semicolons, 2-space indent, no trailing commas. Run `npm run lint` to auto-fix.
 
-PR and agent rules — how AI coding agents should act here
-- Keep changes minimal and service-oriented. Implement features in `src/services/` and wire via `api/` or `views`.
-- Respect the 12s Vercel limit: do not introduce synchronous long-running operations in API handlers.
-- Prefer using `api/_redisClient.ts` for cross-process messages and streaming; avoid adding new long-lived servers.
-- When adding new external integrations, document env variables in `config/env.config.ts` and add usage notes here.
-- Tests: add unit tests that use `repository.mock.ts` and add API tests under `tests/api/` for route coverage.
+## Developer workflows
 
-If anything is unclear or you want this file expanded into a fuller developer handbook (deploy steps, env vars, sample worker code), tell me which section to expand next.
+```bash
+npm run dev            # Vite dev server (localhost:5173)
+npm run build          # Production bundle to ./dist
+npm test               # Vitest (happy-dom). Tests in tests/api/
+npm run lint           # ESLint auto-fix
+npm run token:admin    # Generate admin JWT for API testing
+npx vercel dev         # Local API functions (localhost:3000)
+```
+
+Environment: copy `.env.example` → `.env.development.local`. Key vars: `VITE_DEV_MODE`, Firebase creds, `KV_REST_API_*` (Redis), `VAPID_*` keys, `AUTH_JWT_SECRET`.
+
+## Production constraints
+
+- **Vercel free tier**: API functions must return within **12 seconds**. Offload long work to Redis pub/sub or background patterns.
+- **Redis (Upstash)**: REST-based client in `api/_redisClient.ts`. Keys auto-prefixed per environment (`{vercelEnv}_{branch}_`). Used for real-time availability (sorted sets), lobby state, and pub/sub events.
+- **Vercel Blob**: stores push subscriptions as `{playerId}-subs/{deviceHash}.json`.
+- **Security middleware** (`api/_middleware.ts`): payload size limits (10–100KB), prototype pollution blocking, nesting depth cap (10), timeout enforcement (30s default), per-IP rate limiting (100 req/60s).
+
+## Agent rules
+
+- Implement features in `src/services/` and wire through `src/app/pages/` or `api/`. Never bypass the service layer.
+- New API endpoints: apply `withSecurityMiddleware` + `withAuth` (see `api/run-matchmaking.ts` as template).
+- Add tests under `tests/api/` using Vitest. Use `repository.mock.ts` for unit tests.
+- Document new env vars in `src/config/env.config.ts` and `.env.example`.
+- Keep changes minimal. Do not refactor surrounding code unless directly required.
