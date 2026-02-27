@@ -212,8 +212,8 @@ class MatchmakingPage extends Component {
               class="w-full py-3.5 md:py-4 rounded-xl flex items-center justify-center gap-3 transition-all duration-300
                      ${enabled ? '' : 'opacity-40 cursor-not-allowed'}"
               style="background:${enabled
-                ? 'linear-gradient(135deg, #FFD700, #F0A500)'
-                : 'rgba(255,215,0,0.1)'};
+        ? 'linear-gradient(135deg, #FFD700, #F0A500)'
+        : 'rgba(255,215,0,0.1)'};
                      border:1px solid rgba(255,215,0,0.4);
                      font-family:'Bebas Neue',sans-serif;
                      font-size:18px;
@@ -382,7 +382,7 @@ class MatchmakingPage extends Component {
 
         <!-- Defence -->
         <div class="flex items-center gap-3 mb-2">
-          ${renderPlayerAvatar({ initials: defInitials, color: defColor, size: 'sm' })}
+          ${renderPlayerAvatar({ initials: defInitials, color: defColor, size: 'sm', playerId: defence.id })}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-ui text-white truncate" style="font-size:13px">
@@ -407,7 +407,7 @@ class MatchmakingPage extends Component {
 
         <!-- Attack -->
         <div class="flex items-center gap-3">
-          ${renderPlayerAvatar({ initials: attInitials, color: attColor, size: 'sm' })}
+          ${renderPlayerAvatar({ initials: attInitials, color: attColor, size: 'sm', playerId: attack.id })}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-ui text-white truncate" style="font-size:13px">
@@ -454,8 +454,8 @@ class MatchmakingPage extends Component {
         </div>
         <div class="px-4 md:px-5 py-3 space-y-2">
           ${items.map((item) => {
-            const pct = item.max > 0 ? (item.score / item.max) * 100 : 0;
-            return `
+      const pct = item.max > 0 ? (item.score / item.max) * 100 : 0;
+      return `
               <div class="flex items-center gap-2">
                 <i data-lucide="${item.icon}" style="width:12px;height:12px;color:${item.color};flex-shrink:0"></i>
                 <span class="font-body shrink-0" style="font-size:10px; color:rgba(255,255,255,0.5); width:80px">
@@ -469,7 +469,7 @@ class MatchmakingPage extends Component {
                 </span>
               </div>
             `;
-          }).join('')}
+    }).join('')}
 
           <!-- Total -->
           <div class="flex items-center gap-2 pt-1" style="border-top:1px solid rgba(255,255,255,0.06)">

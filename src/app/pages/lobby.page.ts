@@ -405,7 +405,7 @@ class LobbyPage extends Component {
                   border:1px solid ${isConfirmed ? `${teamColor}66` : 'rgba(255,255,255,0.08)'};
                   transition:all 0.3s">
         <div class="flex items-center gap-2 min-w-0">
-          ${renderPlayerAvatar({ initials, color, size: 'sm' })}
+          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId })}
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <span class="text-white truncate font-ui"
@@ -1089,7 +1089,7 @@ class LobbyPage extends Component {
       const el = document.createElement('div');
       el.className = 'flex items-start gap-2';
       el.innerHTML = `
-        ${renderPlayerAvatar({ initials, color, size: 'xs' })}
+        ${renderPlayerAvatar({ initials, color, size: 'xs', playerId: msg.playerId })}
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-0.5">
             ${fishSvg}

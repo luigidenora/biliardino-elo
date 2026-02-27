@@ -122,7 +122,8 @@ export default class PlayerProfilePage extends Component {
     const avatarHtml = renderPlayerAvatar({
       initials: getInitials(player.name),
       color,
-      size: 'xl'
+      size: 'xl',
+      playerId: id
     });
 
     return `
@@ -159,8 +160,8 @@ export default class PlayerProfilePage extends Component {
               <div class="relative">
                 ${avatarHtml}
                 ${rank <= 3 && rank > 0
-                  ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
-                  : ''}
+        ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
+        : ''}
               </div>
               <div class="text-center lg:text-left">
                 <h2 class="font-display text-3xl md:text-4xl tracking-wide"
@@ -279,8 +280,8 @@ export default class PlayerProfilePage extends Component {
             </h3>
             <div class="flex flex-col gap-2">
               ${recentMatches.length > 0
-                ? recentMatches.map(m => this.renderMatchRow(m, id)).join('')
-                : `<p class="font-body text-xs text-center py-4"
+        ? recentMatches.map(m => this.renderMatchRow(m, id)).join('')
+        : `<p class="font-body text-xs text-center py-4"
                       style="color: var(--color-text-dim)">
                     Nessuna partita trovata
                   </p>`}
@@ -295,12 +296,12 @@ export default class PlayerProfilePage extends Component {
           ${this.renderStatCard('target', 'Gol/Partita', goalsPerMatch, `${player.goalsFor} gol totali`)}
           ${this.renderStatCard('shield', 'Difesa', `${defenceRate}%`, 'Tasso difensivo')}
           ${this.renderStatCard('trending-up', 'Serie', streakLabel,
-            streak.type === 'W'
-              ? 'Vittorie consecutive'
-              : streak.type === 'L'
-                ? 'Sconfitte consecutive'
-                : 'Nessuna serie attiva',
-            streakColor)}
+          streak.type === 'W'
+            ? 'Vittorie consecutive'
+            : streak.type === 'L'
+              ? 'Sconfitte consecutive'
+              : 'Nessuna serie attiva',
+          streakColor)}
         </div>
 
         <!-- ── Win/Loss Distribution Bar ────────────────────── -->

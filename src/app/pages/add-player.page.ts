@@ -199,7 +199,7 @@ class AddPlayerPage extends Component {
          class="player-row flex items-center justify-between p-2.5 md:p-3 rounded-lg hover:bg-white/5 transition-colors"
          style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
         <div class="flex items-center gap-3 min-w-0">
-          ${renderPlayerAvatar({ initials, color, size: 'sm' })}
+          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId: player.id })}
           <div class="min-w-0">
             <div class="text-white font-ui text-sm truncate">${player.name}</div>
             <div class="flex items-center gap-2 mt-0.5">

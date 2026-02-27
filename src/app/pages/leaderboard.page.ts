@@ -9,12 +9,12 @@
  * Route: / (default, public)
  */
 
+import { BASE_PATH } from '@/config/env.config';
 import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
 import { getAllPlayers, getBonusK, getPlayerById, getRank } from '@/services/player.service';
 import { fetchRunningMatch } from '@/services/repository.service';
 import { formatDate } from '@/utils/format-date.util';
-import { fuzzyMatch, highlightChars } from '@/utils/fuzzy-search.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
@@ -60,18 +60,18 @@ const RECENT_MATCHES_COUNT = 30;
 class LeaderboardPage extends Component {
   private sortKey: SortKey = 'rank';
   private sortAsc = false;
-  private searchQuery = '';
-  private matchIndices: Map<number, number[]> = new Map();
 
   async render(): Promise<string> {
+    let runningMatch;
+    try { runningMatch = await fetchRunningMatch(); } catch { runningMatch = null; }
+    const hasMatch = !!runningMatch;
     return `
       <div class="space-y-5 md:space-y-6" id="leaderboard-page">
         ${this.renderPageHeader()}
         ${this.renderReminderBanner()}
         ${this.renderIdentityBanner()}
-        ${await this.renderLiveMatch()}
-        ${this.renderPodium()}
-        ${this.renderSearchBar()}
+        ${this.renderLiveMatch(runningMatch ?? null)}
+        ${hasMatch ? '' : this.renderPodium()}
         ${this.renderRankingTable()}
         ${this.renderRecentMatches()}
       </div>
@@ -84,13 +84,6 @@ class LeaderboardPage extends Component {
     // Identity banner CTA
     document.getElementById('identity-banner-btn')?.addEventListener('click', () => {
       userDropdown.open();
-    });
-
-    // Bind search
-    const searchInput = this.$id('leaderboard-search') as HTMLInputElement | null;
-    searchInput?.addEventListener('input', () => {
-      this.searchQuery = searchInput.value.trim().toLowerCase();
-      this.refreshTable();
     });
 
     // Bind sortable headers
@@ -127,23 +120,7 @@ class LeaderboardPage extends Component {
   }
 
   private getSortedPlayers(): IPlayer[] {
-    const players = [...this.getAllRankedPlayers()];
-
-    this.matchIndices.clear();
-    let filtered: IPlayer[];
-
-    if (this.searchQuery) {
-      filtered = [];
-      for (const p of players) {
-        const indices = fuzzyMatch(this.searchQuery, p.name.toLowerCase());
-        if (indices) {
-          this.matchIndices.set(p.id, indices);
-          filtered.push(p);
-        }
-      }
-    } else {
-      filtered = players;
-    }
+    const filtered = [...this.getAllRankedPlayers()];
 
     const { sortKey, sortAsc } = this;
     filtered.sort((a, b) => {
@@ -274,9 +251,8 @@ class LeaderboardPage extends Component {
     `;
   }
 
-  private async renderLiveMatch(): Promise<string> {
+  private renderLiveMatch(runningMatch: Awaited<ReturnType<typeof fetchRunningMatch>>): string {
     try {
-      const runningMatch = await fetchRunningMatch();
       if (!runningMatch) return '';
 
       const defA = getPlayerById(runningMatch.teamA.defence);
@@ -295,7 +271,7 @@ class LeaderboardPage extends Component {
         const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-2 hover:bg-white/5 rounded-lg p-1.5 transition-colors">
-            ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm' })}
+            ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm', playerId: p.id })}
             <div class="min-w-0">
               <div class="text-white font-ui text-xs truncate">${p.name}</div>
               <div class="font-body" style="font-size:10px; color:rgba(255,255,255,0.4)">${role} · ${Math.round(getMatchPlayerElo(p, role === 'DIF'))}</div>
@@ -316,34 +292,34 @@ class LeaderboardPage extends Component {
           <div class="p-4 md:p-5">
             <div class="flex items-center justify-between gap-4">
               <div class="flex-1">
-                <div class="font-ui text-xs mb-2" style="color:var(--color-team-red); letter-spacing:0.1em">TEAM ROSSO</div>
+                <div class="font-ui text-xs mb-2" style="color:rgba(255,255,255,0.9); letter-spacing:0.1em">TEAM BIANCO</div>
                 <div class="space-y-1">
                   ${renderLivePlayer(defA, 'DIF')}
                   ${renderLivePlayer(attA, 'ATT')}
                 </div>
                 <div class="mt-2 font-ui text-xs" style="color:rgba(255,255,255,0.4)">
-                  ELO: <span style="color:var(--color-team-red)">${avgEloA}</span>
+                  ELO: <span style="color:rgba(255,255,255,0.9)">${avgEloA}</span>
                 </div>
               </div>
               <div class="text-center shrink-0">
                 <div class="font-display text-xl mb-2" style="color:var(--color-gold)">VS</div>
                 <div class="space-y-1">
-                  <div class="font-display text-sm" style="color:var(--color-team-red)">${(winProbA * 100).toFixed(1)}%</div>
+                  <div class="font-display text-sm" style="color:rgba(255,255,255,0.9)">${(winProbA * 100).toFixed(1)}%</div>
                   <div class="flex rounded-full overflow-hidden h-1.5 w-16">
-                    <div style="width:${winProbA * 100}%; background:var(--color-team-red)"></div>
-                    <div style="width:${winProbB * 100}%; background:var(--color-team-blue)"></div>
+                    <div style="width:${winProbA * 100}%; background:rgba(255,255,255,0.75)"></div>
+                    <div style="width:${winProbB * 100}%; background:var(--color-team-red)"></div>
                   </div>
-                  <div class="font-display text-sm" style="color:var(--color-team-blue)">${(winProbB * 100).toFixed(1)}%</div>
+                  <div class="font-display text-sm" style="color:var(--color-team-red)">${(winProbB * 100).toFixed(1)}%</div>
                 </div>
               </div>
               <div class="flex-1 text-right">
-                <div class="font-ui text-xs mb-2" style="color:var(--color-team-blue); letter-spacing:0.1em">TEAM BLU</div>
+                <div class="font-ui text-xs mb-2" style="color:var(--color-team-red); letter-spacing:0.1em">TEAM ROSSO</div>
                 <div class="space-y-1">
                   ${renderLivePlayer(defB, 'DIF')}
                   ${renderLivePlayer(attB, 'ATT')}
                 </div>
                 <div class="mt-2 font-ui text-xs" style="color:rgba(255,255,255,0.4)">
-                  ELO: <span style="color:var(--color-team-blue)">${avgEloB}</span>
+                  ELO: <span style="color:var(--color-team-red)">${avgEloB}</span>
                 </div>
               </div>
             </div>
@@ -390,9 +366,6 @@ class LeaderboardPage extends Component {
       const medal = MEDALS[rank];
       const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
       const initials = getInitials(p.name);
-      const fontSize = rank === 1 ? '18px' : '15px';
-      const eloSize = rank === 1 ? '34px' : '26px';
-      const statColor = rank === 1 ? '#FFD700' : 'white';
       const elevatedClass = elevated ? '-mt-4' : '';
       // Card bg: 15% white base gives ~50 RGB unit contrast over the dark field
       // (#0F2A20 → #1F5C3A); previous 8% was below perceptible threshold.
@@ -416,46 +389,38 @@ class LeaderboardPage extends Component {
         
         <!-- Avatar -->
         <div class="relative mb-7">
-        ${renderPlayerAvatar({ initials, color, size: rank === 1 ? 'lg' : 'md' })}
-        ${rank === 1
-          ? `
-          <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
-          style="background:#FFD700; border:2px solid #1A3D2F">
-          <i data-lucide="trophy" style="width:13px;height:13px;color:#0F2A20"></i>
-          </div>
-          `
-          : ''}
+        ${renderPlayerAvatar({ initials, color, size: 'lg', playerId: p.id })}
           <!-- Medal emoji -->
-          <span class="absolute -bottom-7 left-1/2 -translate-x-1/2" style="font-size:${rank === 1 ? '32px' : '28px'}; line-height:1">${medal}</span>
+          <span class="absolute -bottom-7 left-1/2 -translate-x-1/2" style="font-size:28px; line-height:1">${medal}</span>
           </div>
             
           <!-- Name -->
-          <div class="text-center">
+          <div class="text-center flex flex-col items-center gap-1">
             <div class="text-white"
-                 style="font-family:var(--font-ui); font-size:${fontSize}; font-weight:${rank === 1 ? 700 : 600}">
+                 style="font-family:var(--font-ui); font-size:15px; font-weight:600">
               ${p.name}
             </div>
           </div>
 
           <!-- ELO -->
           <div class="text-center">
-            <div style="font-family:var(--font-display); font-size:${eloSize}; color:${eloColor}; letter-spacing:0.1em; line-height:1">
+            <div style="font-family:var(--font-display); font-size:26px; color:${eloColor}; letter-spacing:0.1em; line-height:1">
               ${elo}
             </div>
-            <div style="font-family:var(--font-ui); font-size:10px; color:${rank === 1 ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.4)'}; letter-spacing:0.1em">
+            <div style="font-family:var(--font-ui); font-size:10px; color:rgba(255,255,255,0.4); letter-spacing:0.1em">
               ELO RATING
             </div>
           </div>
 
-          <!-- Stats: Wins + WR | Matches -->
+          <!-- Stats: WR | Matches -->
           <div class="flex gap-4 text-center">
             <div>
-              <div style="font-family:var(--font-ui); font-size:14px; color:${statColor}">${wins}W</div>
-              <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">${winRate}% WR</div>
+              <div style="font-family:var(--font-ui); font-size:14px; color:white">${winRate}%</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">WIN RATE</div>
             </div>
             <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
             <div>
-              <div style="font-family:var(--font-ui); font-size:14px; color:${statColor}">${p.matches}</div>
+              <div style="font-family:var(--font-ui); font-size:14px; color:white">${p.matches}</div>
               <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">MATCH</div>
             </div>
           </div>
@@ -478,27 +443,6 @@ class LeaderboardPage extends Component {
         ${card(second, 2)}
         ${card(first, 1, true)}
         ${card(third, 3)}
-      </div>
-    `;
-  }
-
-  // ── Search ────────────────────────────────────────────────
-
-  private renderSearchBar(): string {
-    return `
-      <div class="relative">
-        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2"
-           style="width:15px;height:15px;color:rgba(255,255,255,0.35)"></i>
-        <input id="leaderboard-search" type="text" placeholder="Cerca giocatore…"
-               class="w-full pl-10 pr-4 py-3 rounded-lg text-white placeholder:text-white/30 outline-none transition-all duration-200"
-               style="
-                 background: rgba(15,42,32,0.8);
-                 border: 1px solid rgba(255,255,255,0.12);
-                 font-family: var(--font-body);
-                 font-size: 14px;
-               "
-               onfocus="this.style.borderColor='rgba(255,215,0,0.35)'"
-               onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
       </div>
     `;
   }
@@ -555,7 +499,7 @@ class LeaderboardPage extends Component {
         <!-- Mobile header -->
         <div class="md:hidden grid gap-2 px-4 py-2.5"
              style="
-               grid-template-columns: 36px 1fr 70px 70px;
+               grid-template-columns: 36px 1fr 52px 48px;
                background: rgba(10,25,18,0.8);
                border-bottom: 1px solid rgba(255,215,0,0.2);
              ">
@@ -611,19 +555,40 @@ class LeaderboardPage extends Component {
     const borderBottom = idx < total - 1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : '';
     const eloColor = rank <= 3 ? '#FFD700' : 'white';
 
-    const indices = this.matchIndices.get(player.id);
-    const displayName = indices ? highlightChars(player.name, indices) : player.name;
+    const displayName = player.name;
 
-    const avatarAndName = `
-      <div class="flex items-center gap-2 md:gap-3">
-        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'sm' })}
+    const classBadgeDesktop = player.class >= 0
+      ? `<img src="${BASE_PATH}class/${player.class}.webp" alt="${getClassName(player.class)}"
+              title="${getClassName(player.class)}"
+              class="shrink-0" style="width:40px;height:40px;object-fit:contain" />`
+      : '<div class="shrink-0" style="width:40px;height:40px"></div>';
+    const classBadgeMobile = player.class >= 0
+      ? `<img src="${BASE_PATH}class/${player.class}.webp" alt="${getClassName(player.class)}"
+              title="${getClassName(player.class)}"
+              class="shrink-0" style="width:40px;height:40px;object-fit:contain" />`
+      : '<div class="shrink-0" style="width:40px;height:40px"></div>';
+
+    const avatarAndNameDesktop = `
+      <div class="flex items-center gap-3 min-w-0">
+        ${classBadgeDesktop}
+        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id })}
         <div class="min-w-0">
           <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
                style="font-family:var(--font-ui); font-size:14px; font-weight:600">
             ${displayName}
           </div>
-          <div style="font-family:var(--font-body); font-size:11px; color:rgba(255,255,255,0.35)">
-            ${getClassName(player.class)}
+        </div>
+      </div>
+    `;
+
+    const avatarAndNameMobile = `
+      <div class="flex items-center gap-1.5 min-w-0">
+        ${classBadgeMobile}
+        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id })}
+        <div class="min-w-0">
+          <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
+               style="font-family:var(--font-ui); font-size:13px; font-weight:600">
+            ${displayName}
           </div>
         </div>
       </div>
@@ -634,7 +599,7 @@ class LeaderboardPage extends Component {
         <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
           <div class="h-full rounded-full" style="width:${winRate}%; background:${wrColor}"></div>
         </div>
-        <span style="font-family:var(--font-ui); font-size:13px; color:rgba(255,255,255,0.8); min-width:36px">${winRate}%</span>
+        <span style="font-family:var(--font-ui); font-size:13px; color:${wrColor}; min-width:36px">${winRate}%</span>
       </div>
     `;
 
@@ -655,7 +620,7 @@ class LeaderboardPage extends Component {
         <div class="hidden md:grid gap-3 px-5 py-3.5 items-center transition-all duration-200 hover:bg-white/5"
              style="grid-template-columns: 48px 1fr 90px 90px 110px 90px">
           <div>${rankDisplay}</div>
-          <div>${avatarAndName}</div>
+          <div>${avatarAndNameDesktop}</div>
           <div>
             <span style="font-family:var(--font-display); font-size:20px; color:${eloColor}; letter-spacing:0.05em">${elo}</span>${todayBadge}
           </div>
@@ -666,15 +631,15 @@ class LeaderboardPage extends Component {
 
         <!-- Mobile row -->
         <div class="md:hidden grid gap-2 px-4 py-3 items-center transition-all duration-200 hover:bg-white/5"
-             style="grid-template-columns: 36px 1fr 70px 70px">
+             style="grid-template-columns: 36px 1fr 52px 48px">
           <div>${rankDisplay}</div>
-          <div>${avatarAndName}</div>
+          <div class="min-w-0 overflow-hidden">${avatarAndNameMobile}</div>
           <div>
             <span style="font-family:var(--font-display); font-size:17px; color:${eloColor}">${elo}</span>${todayBadge}
           </div>
           <div>
             <div style="font-family:var(--font-ui); font-size:13px; color:${wrColor}">${winRate}%</div>
-            <div class="h-1 rounded-full overflow-hidden mt-0.5" style="background:rgba(255,255,255,0.1)">
+            <div class="h-1 rounded-full overflow-hidden mt-0.5" style="background:rgba(255,255,255,0.1); max-width:42px">
               <div class="h-full rounded-full" style="width:${winRate}%; background:${wrColor}"></div>
             </div>
           </div>
@@ -735,9 +700,9 @@ class LeaderboardPage extends Component {
              style="background:rgba(255,255,255,0.03); border:1px solid ${ratingBorder}">
           <div class="flex items-center gap-2 min-w-0 flex-1">
             ${isToday
-                ? '<div class="w-2 h-2 rounded-full shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>'
-                : '<div class="w-2"></div>'
-            }
+          ? '<div class="w-2 h-2 rounded-full shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>'
+          : '<div class="w-2"></div>'
+        }
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-ui text-xs" style="color:var(--color-win)">${tA}</span>

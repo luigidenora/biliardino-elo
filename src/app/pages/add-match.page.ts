@@ -356,7 +356,7 @@ class AddMatchPage extends Component {
       const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
       return `
         <div class="flex items-center gap-2">
-          ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm' })}
+          ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm', playerId: p.id })}
           <div class="min-w-0">
             <div class="text-white font-ui text-xs truncate">${p.name}</div>
             <div class="font-body" style="font-size:10px; color:rgba(255,255,255,0.4)">${role} · ${Math.round(p.elo)}</div>

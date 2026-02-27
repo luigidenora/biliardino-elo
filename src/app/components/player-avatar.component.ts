@@ -6,12 +6,15 @@
 import { bindHtml, rawHtml } from '../utils/html-template.util';
 import template from './player-avatar.component.html?raw';
 
-export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+const BASE_PATH = import.meta.env.BASE_URL;
+
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'base' | 'lg' | 'xl';
 
 const sizeMap: Record<AvatarSize, { container: string; text: string; dot: string }> = {
   xs: { container: 'w-7 h-7', text: 'text-[10px]', dot: 'w-2 h-2' },
   sm: { container: 'w-9 h-9', text: 'text-xs', dot: 'w-2.5 h-2.5' },
   md: { container: 'w-11 h-11', text: 'text-sm', dot: 'w-3 h-3' },
+  base: { container: 'w-12 h-12', text: 'text-base', dot: 'w-3 h-3' },
   lg: { container: 'w-16 h-16', text: 'text-lg', dot: 'w-3.5 h-3.5' },
   xl: { container: 'w-24 h-24', text: 'text-2xl', dot: 'w-4 h-4' }
 };
@@ -21,26 +24,35 @@ interface AvatarOptions {
   color: string;
   size?: AvatarSize;
   online?: boolean;
+  /** Player numeric ID — when provided the avatar image is shown with initials as fallback */
+  playerId?: number;
 }
 
 /**
  * Returns an HTML string for a player avatar.
+ * If `playerId` is provided, shows the player photo (public/avatars/{id}.webp)
+ * with the initials circle as fallback when the image is missing.
  */
-export function renderPlayerAvatar({ initials, color, size = 'md', online }: AvatarOptions): string {
+export function renderPlayerAvatar({ initials, color, size = 'md', online, playerId }: AvatarOptions): string {
   const s = sizeMap[size];
 
-  const statusDot = online !== undefined
-    ? `<span
+  const statusDot = online === undefined
+    ? ''
+    : `<span
         class="absolute bottom-0 right-0 ${s.dot} rounded-full border-2 border-[#1A3D2F]"
         style="background: ${online ? '#4ADE80' : '#6B7280'}"
-      ></span>`
-    : '';
+      ></span>`;
+
+  const initialsSpan = `<span class="${s.text} text-white font-ui" style="letter-spacing: 0.05em">${initials}</span>`;
+
+  const avatarContent = playerId === undefined
+    ? initialsSpan
+    : `<img src="${BASE_PATH}avatars/${playerId}.webp" alt="${initials}" class="w-full h-full object-cover absolute inset-0" loading="lazy" onerror="this.style.display='none'" />${initialsSpan}`;
 
   return bindHtml(template)`${{
     containerClass: s.container,
-    textClass: s.text,
     color,
-    initials,
+    avatarContent: rawHtml(avatarContent),
     statusDot: rawHtml(statusDot)
   }}`;
 }
