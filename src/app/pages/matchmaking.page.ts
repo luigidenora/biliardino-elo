@@ -48,6 +48,47 @@ function getClassColor(playerClass: number): string {
   return CLASS_COLORS[playerClass] ?? '#8B7D6B';
 }
 
+/**
+ * VS Code-style fuzzy match: each query char must appear in order in the target.
+ * Returns matched indices or null if no match.
+ */
+function fuzzyMatch(query: string, target: string): number[] | null {
+  const indices: number[] = [];
+  let ti = 0;
+
+  for (let qi = 0; qi < query.length; qi++) {
+    const qc = query[qi];
+    let found = false;
+    while (ti < target.length) {
+      if (target[ti] === qc) {
+        indices.push(ti);
+        ti++;
+        found = true;
+        break;
+      }
+      ti++;
+    }
+    if (!found) return null;
+  }
+
+  return indices;
+}
+
+/** Wrap matched character positions in a highlight span. */
+function highlightChars(name: string, indices: number[]): string {
+  const set = new Set(indices);
+  let out = '';
+  for (let i = 0; i < name.length; i++) {
+    const ch = name[i].replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    if (set.has(i)) {
+      out += `<span style="color:#FFD700;font-weight:700">${ch}</span>`;
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
 // ── Page Component ───────────────────────────────────────────────
 
 class MatchmakingPage extends Component {
@@ -60,6 +101,7 @@ class MatchmakingPage extends Component {
   private availabilitySubscriber: AvailabilitySubscriber | null = null;
   private isGenerating = false;
   private isSaving = false;
+  private searchQuery = '';
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -107,6 +149,7 @@ class MatchmakingPage extends Component {
 
     this.bindToggleButtons();
     this.bindActionButtons();
+    this.bindSearchFilter();
     this.startConfirmationsPolling();
 
     // GSAP entrance animations
@@ -647,6 +690,16 @@ class MatchmakingPage extends Component {
     });
   }
 
+  private bindSearchFilter(): void {
+    const searchInput = this.$id('matchmaking-search') as HTMLInputElement | null;
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', () => {
+      this.searchQuery = searchInput.value.trim().toLowerCase();
+      this.filterPlayerRows();
+    });
+  }
+
   // ── State Cycling ─────────────────────────────────────────────
 
   private cyclePlayerState(playerId: number): void {
@@ -1075,6 +1128,39 @@ class MatchmakingPage extends Component {
   }
 
   // ── UI Refresh ────────────────────────────────────────────────
+
+  private filterPlayerRows(): void {
+    const container = this.$id('player-rows-container');
+    if (!container) return;
+
+    const rows = Array.from(container.querySelectorAll<HTMLElement>('.player-row'));
+    for (const row of rows) {
+      const nameEl = row.querySelector('.player-name') as HTMLElement | null;
+      if (!nameEl) continue;
+
+      const originalName = row.dataset.playerName ?? '';
+
+      if (!this.searchQuery) {
+        row.style.display = '';
+        const storedName = nameEl.dataset.originalName;
+        if (storedName) nameEl.innerHTML = storedName;
+        continue;
+      }
+
+      if (!nameEl.dataset.originalName) {
+        nameEl.dataset.originalName = nameEl.textContent?.trim() ?? '';
+      }
+
+      const indices = fuzzyMatch(this.searchQuery, originalName);
+      if (!indices) {
+        row.style.display = 'none';
+        continue;
+      }
+
+      row.style.display = '';
+      nameEl.innerHTML = highlightChars(nameEl.dataset.originalName!, indices);
+    }
+  }
 
   private refreshMatchPanels(): void {
     const html = this.renderMatchPanel();
