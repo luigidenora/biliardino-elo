@@ -1,0 +1,28 @@
+{
+  "rewrites": [
+    {
+      "source": "/lobby",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/stats",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/matchmaking",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/add-match",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/add-player",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/profile/:id",
+      "destination": "/index.html"
+    }
+  ]
+}

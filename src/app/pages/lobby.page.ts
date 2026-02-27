@@ -2,7 +2,7 @@
  * LobbyPage -- Real-time match lobby with team display, countdown timer,
  * chat panel, and fish aquarium.
  *
- * Route: /#/lobby
+ * Route: /lobby
  * Dynamically imported by the router.
  *
  * Ports business logic from confirm.view.ts into the Component-based SPA

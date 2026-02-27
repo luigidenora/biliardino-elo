@@ -4,41 +4,19 @@
  * The login dialog has been replaced by the UserDropdown singleton.
  */
 
+import { bindHtml, rawHtml } from '../utils/html-template.util';
 import { renderFieldBackground } from './field-background.component';
 import { HeaderComponent } from './header.component';
+import template from './layout.component.html?raw';
 
 export class LayoutComponent {
   private header = new HeaderComponent();
 
   render(): string {
-    return `
-      <div class="min-h-screen">
-        ${renderFieldBackground()}
-
-        <div class="relative z-10 flex flex-col min-h-screen">
-          <!-- Header -->
-          <div id="app-header">
-            ${this.header.render()}
-          </div>
-
-          <!-- Main content (router injects pages here) -->
-          <main
-            id="app-content"
-            class="flex-1 max-w-[var(--max-width)] mx-auto w-full px-4 py-5 md:px-6 md:py-8"
-          ></main>
-
-          <!-- Footer -->
-          <footer
-            class="text-center py-4 px-4"
-            style="border-top: 1px solid var(--color-gold-subtle)"
-          >
-            <span class="font-ui" style="font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-dim)">
-              BILIARDINO ELO RATING SYSTEM · SHARK SEASON · v<span id="pwa-version">—</span>
-            </span>
-          </footer>
-        </div>
-      </div>
-    `;
+    return bindHtml(template)`${{
+      fieldBackground: rawHtml(renderFieldBackground()),
+      headerHtml: rawHtml(this.header.render()),
+    }}`;
   }
 
   mount(): void {

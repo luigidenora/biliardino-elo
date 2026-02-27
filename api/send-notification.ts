@@ -141,8 +141,8 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
           title,
           body,
           navigate: url,
-          icon: '/icons/icon-192.jpg',
-          badge: '/icons/icon-192.jpg',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
           requireInteraction: requireInteraction,
           app_badge: '0'
         }

@@ -442,7 +442,7 @@ class UserDropdownComponent {
         this.updateIdentitySection();
         setTimeout(() => {
           gsap.from('#dd-player-list .dd-player-option', {
-            opacity: 0, x: -8, stagger: 0.04, duration: 0.2, ease: 'power2.out',
+            x: -8, stagger: 0.04, duration: 0.2, ease: 'power2.out',
           });
         }, 0);
         break;
@@ -747,7 +747,6 @@ class UserDropdownComponent {
         </div>
       </div>
       ${action}
-      <div style="clear:both"></div>
     `;
   }
 

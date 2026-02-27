@@ -1,7 +1,7 @@
 /**
  * AddPlayerPage — Form for adding new players.
  *
- * Route: /#/add-player (admin only)
+ * Route: /add-player (admin only)
  *
  * Ports business logic from add-player.view.ts with new Figma-style design.
  */
@@ -55,10 +55,8 @@ class AddPlayerPage extends Component {
     slider?.addEventListener('input', () => this.updateDefenceDisplay());
 
     // GSAP animations
-    gsap.from('.form-card', { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' });
-    gsap.from('.player-row', {
-      opacity: 0, x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.2,
-    });
+    gsap.from('.form-card', { y: 20, duration: 0.4, ease: 'power2.out' });
+    gsap.from('.player-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.2 });
   }
 
   destroy(): void { }
@@ -198,7 +196,7 @@ class AddPlayerPage extends Component {
     const defPct = Math.round(player.defence * 100);
 
     return `
-      <a href="#/profile/${player.id}"
+      <a href="/profile/${player.id}"
          class="player-row flex items-center justify-between p-2.5 md:p-3 rounded-lg hover:bg-white/5 transition-colors"
          style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
         <div class="flex items-center gap-3 min-w-0">

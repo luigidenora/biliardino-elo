@@ -1,12 +1,24 @@
 const baseUrl = import.meta.env.BASE_URL || '/';
 
-navigator.serviceWorker.register(`${baseUrl}sw.js`, { scope: baseUrl })
-  .then(() => {
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register(`${baseUrl}sw.js`, { scope: baseUrl })
+    .then(async () => {
+      await navigator.serviceWorker.ready;
+      updateSWVersionInFooter();
+      window.dispatchEvent(new CustomEvent('pwa:sw-ready'));
+    })
+    .catch((error) => {
+      console.warn(`Error registering service worker:\n${error}.`);
+      window.dispatchEvent(new CustomEvent('pwa:sw-error'));
+    });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
     updateSWVersionInFooter();
-  })
-  .catch((error) => {
-    console.warn(`Error registering service worker:\n${error}.`);
+    window.dispatchEvent(new CustomEvent('pwa:sw-ready'));
   });
+} else {
+  window.dispatchEvent(new CustomEvent('pwa:sw-unsupported'));
+}
 
 
 
@@ -19,7 +31,8 @@ async function updateSWVersionInFooter(): Promise<void> {
     const versionElement = document.getElementById('pwa-version');
     if (!versionElement) return;
 
-    const controller = navigator.serviceWorker.controller;
+    const registration = await navigator.serviceWorker.ready;
+    const controller = navigator.serviceWorker.controller || registration.active;
     if (!controller) {
       versionElement.textContent = 'offline';
       return;

@@ -1,13 +1,15 @@
 /**
- * Hash-based SPA router with lazy loading and auth guards.
+ * History-based SPA router with lazy loading and auth guards.
  *
- * Routes use the format: /#/path  (e.g. /#/profile/5)
+ * Routes use clean paths (e.g. /profile/5)
  * Each page component is loaded via dynamic import() for code splitting.
  */
 
 import gsap from 'gsap';
 import { Component } from './components/component.base';
 import { appState } from './state';
+import errorTemplate from './templates/router-error.html?raw';
+import { bindHtml } from './utils/html-template.util';
 
 // ── Route definition ──────────────────────────────────────
 
@@ -16,7 +18,7 @@ interface RouteDefinition {
   path: string;
   /** Lazy loader that returns a module with a default export of a Component class. */
   load: () => Promise<{ default: new () => Component }>;
-  /** Page title suffix (appended to "Biliardino ELO"). */
+  /** Page title suffix (appended to "CAlcio bliliardino"). */
   title: string;
   /** Requires Firebase auth. */
   requireAuth?: boolean;
@@ -35,39 +37,41 @@ const routes: RouteDefinition[] = [
   {
     path: '/',
     load: () => import('./pages/leaderboard.page'),
-    title: 'Classifica',
+    title: 'Classifica'
   },
   {
     path: '/profile/:id',
     load: () => import('./pages/player-profile.page'),
-    title: 'Profilo',
+    title: 'Profilo'
   },
   {
     path: '/matchmaking',
     load: () => import('./pages/matchmaking.page'),
     title: 'Matchmaking',
-    requireAuth: true,
-    requireAdmin: true,
+    requireAdmin: true
+  },
+  {
+    path: '/stats',
+    load: () => import('./pages/stats.page'),
+    title: 'Statistiche'
   },
   {
     path: '/lobby',
     load: () => import('./pages/lobby.page'),
-    title: 'Lobby',
+    title: 'Lobby'
   },
   {
     path: '/add-match',
     load: () => import('./pages/add-match.page'),
     title: 'Aggiungi Partita',
-    requireAuth: true,
-    requireAdmin: true,
+    requireAdmin: true
   },
   {
     path: '/add-player',
     load: () => import('./pages/add-player.page'),
     title: 'Aggiungi Giocatore',
-    requireAuth: true,
-    requireAdmin: true,
-  },
+    requireAdmin: true
+  }
 ];
 
 // ── Router class ──────────────────────────────────────────
@@ -78,7 +82,7 @@ class Router {
   private transitioning = false;
 
   /**
-   * Initialize the router: bind hashchange listener and navigate to current hash.
+   * Initialize the router: normalize legacy hash URLs and bind popstate + link interception.
    */
   init(): void {
     this.contentEl = document.getElementById('app-content');
@@ -86,30 +90,45 @@ class Router {
       throw new Error('Router: #app-content element not found');
     }
 
-    window.addEventListener('hashchange', () => this.onHashChange());
+    this.normalizeLegacyHashUrl();
+
+    window.addEventListener('popstate', () => this.onPathChange());
+    window.addEventListener('hashchange', () => {
+      this.normalizeLegacyHashUrl();
+      void this.onPathChange();
+    });
+    document.addEventListener('click', event => this.onDocumentClick(event));
 
     // Initial navigation
-    this.onHashChange();
+    this.onPathChange();
   }
 
   /**
    * Programmatic navigation.
    */
   navigate(path: string): void {
-    window.location.hash = `#${path}`;
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const targetUrl = normalizedPath;
+
+    if (window.location.pathname === normalizedPath) {
+      void this.onPathChange();
+      return;
+    }
+
+    window.history.pushState(null, '', targetUrl);
+    void this.onPathChange();
   }
 
   /**
-   * Get the current path from the hash (without the leading #).
+   * Get the current path from the browser location.
    */
   getCurrentPath(): string {
-    const hash = window.location.hash.slice(1); // remove '#'
-    return hash || '/';
+    return window.location.pathname || '/';
   }
 
   // ── Internals ─────────────────────────────────────────────
 
-  private async onHashChange(): Promise<void> {
+  private async onPathChange(): Promise<void> {
     if (this.transitioning) return;
 
     const path = this.getCurrentPath();
@@ -128,6 +147,41 @@ class Router {
     }
 
     await this.renderRoute(match);
+  }
+
+  private normalizeLegacyHashUrl(): void {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#/')) return;
+
+    const path = hash.slice(1);
+    window.history.replaceState(null, '', path);
+  }
+
+  private onDocumentClick(event: MouseEvent): void {
+    if (event.defaultPrevented) return;
+    if (event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const target = event.target as HTMLElement | null;
+    const anchor = target?.closest('a') as HTMLAnchorElement | null;
+    if (!anchor) return;
+    if (anchor.target && anchor.target !== '_self') return;
+    if (anchor.hasAttribute('download')) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+
+    if (href.startsWith('#/')) {
+      event.preventDefault();
+      this.navigate(href.slice(1));
+      return;
+    }
+
+    if (!href.startsWith('/')) return;
+    if (anchor.origin !== window.location.origin) return;
+
+    event.preventDefault();
+    this.navigate(href);
   }
 
   private matchRoute(path: string): RouteMatch | null {
@@ -214,12 +268,12 @@ class Router {
       }
 
       // 5. Mount (bind events)
-      component.el = this.contentEl;
+      component.setElement(this.contentEl);
       component.mount();
       this.currentComponent = component;
 
       // 6. Update page title
-      document.title = `${match.route.title} — Biliardino ELO`;
+      document.title = `${match.route.title} — CAlcio bliliardino`;
 
       // 7. Fade in
       if (this.contentEl) {
@@ -231,12 +285,7 @@ class Router {
     } catch (error) {
       console.error('[Router] Error rendering route:', error);
       if (this.contentEl) {
-        this.contentEl.innerHTML = `
-          <div class="text-center py-20">
-            <p class="font-display text-4xl text-[var(--color-gold)] mb-4">ERRORE</p>
-            <p class="font-body text-[var(--color-text-secondary)]">Impossibile caricare la pagina.</p>
-          </div>
-        `;
+        this.contentEl.innerHTML = bindHtml(errorTemplate)`${{}}`;
         this.contentEl.style.opacity = '1';
         this.contentEl.style.transform = '';
       }

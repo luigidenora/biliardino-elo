@@ -128,8 +128,8 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
               navigate: `${url}/confirm.html`,
               tag: `lobby`,
               requireInteraction: true,
-              icon: '/icons/icon-192.jpg',
-              badge: '/icons/icon-192.jpg',
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-192.png',
               app_badge: '0',
               actions: actions?.map(a => ({
                 action: a.action,

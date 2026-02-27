@@ -1,9 +1,12 @@
 /**
- * LeaderboardPage — Ranking table, podium, stats dashboard, recent matches.
+ * LeaderboardPage — Podium, tabella classifica, stats, ultime partite.
  *
- * Route: /#/ (default, public)
+ * Design fedele al Figma React (Leaderboard.tsx):
+ *   - Podium con emoji medaglie, gradient cards, layout mobile-first
+ *   - Tabella CSS Grid (non <table>) con progress bar WR
+ *   - Banner promemoria identità giocatore
  *
- * Ports business logic from ranking.view.ts with new Figma-style design.
+ * Route: / (default, public)
  */
 
 import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
@@ -16,6 +19,7 @@ import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
+import { userDropdown } from '../components/user-dropdown.component';
 import { refreshIcons } from '../icons';
 
 import type { IPlayer } from '@/models/player.interface';
@@ -28,7 +32,27 @@ const CLASS_COLORS: Record<number, string> = {
   4: '#8B7D6B',
 };
 
-type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate' | 'goaldiff' | 'form';
+const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+const MEDAL_BORDER: Record<number, string> = {
+  1: 'rgba(255,215,0,0.55)',
+  2: 'rgba(192,192,192,0.50)',
+  3: 'rgba(205,127,50,0.50)',
+};
+
+const MEDAL_ELO_COLOR: Record<number, string> = {
+  1: '#FFD700',
+  2: '#C0C0C0',
+  3: '#CD7F32',
+};
+
+const MEDAL_SHADOW: Record<number, string> = {
+  1: '0 0 40px rgba(255,215,0,0.20), inset 0 0 24px rgba(255,215,0,0.06)',
+  2: '0 0 24px rgba(192,192,192,0.14)',
+  3: '0 0 24px rgba(205,127,50,0.14)',
+};
+
+type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate';
 
 const RECENT_MATCHES_COUNT = 30;
 
@@ -41,10 +65,11 @@ class LeaderboardPage extends Component {
     return `
       <div class="space-y-5 md:space-y-6" id="leaderboard-page">
         ${this.renderPageHeader()}
-        ${this.renderStatsCards()}
+        ${this.renderReminderBanner()}
+        ${this.renderIdentityBanner()}
         ${await this.renderLiveMatch()}
-        ${this.renderSearchBar()}
         ${this.renderPodium()}
+        ${this.renderSearchBar()}
         ${this.renderRankingTable()}
         ${this.renderRecentMatches()}
       </div>
@@ -53,6 +78,11 @@ class LeaderboardPage extends Component {
 
   mount(): void {
     refreshIcons();
+
+    // Identity banner CTA
+    document.getElementById('identity-banner-btn')?.addEventListener('click', () => {
+      userDropdown.open();
+    });
 
     // Bind search
     const searchInput = this.$id('leaderboard-search') as HTMLInputElement | null;
@@ -79,11 +109,11 @@ class LeaderboardPage extends Component {
     }
     this.updateSortIndicators();
 
-    // GSAP animations
-    gsap.from('.podium-card', { opacity: 0, scale: 0.9, stagger: 0.1, duration: 0.4, ease: 'back.out(1.4)' });
-    gsap.from('.stat-card-new', { opacity: 0, y: 15, stagger: 0.08, duration: 0.3, ease: 'power2.out', delay: 0.1 });
-    gsap.from('.ranking-row', { opacity: 0, x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.3 });
-    gsap.from('.match-row', { opacity: 0, x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.4 });
+    // GSAP animations — no opacity (parent #app-content handles fade-in)
+    gsap.from('.podium-card', { scale: 0.9, y: 12, stagger: 0.1, duration: 0.45, ease: 'back.out(1.4)', clearProps: 'transform' });
+    gsap.from('.stat-card-new', { y: 15, stagger: 0.08, duration: 0.3, ease: 'power2.out', delay: 0.1 });
+    gsap.from('.ranking-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.3 });
+    gsap.from('.match-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.4 });
   }
 
   destroy(): void { }
@@ -96,9 +126,7 @@ class LeaderboardPage extends Component {
 
   private getSortedPlayers(): IPlayer[] {
     const players = [...this.getAllRankedPlayers()];
-    const todayDeltas = this.getTodayEloDeltas();
 
-    // Filter by search
     const filtered = this.searchQuery
       ? players.filter(p => p.name.toLowerCase().includes(this.searchQuery))
       : players;
@@ -115,18 +143,6 @@ class LeaderboardPage extends Component {
           const aR = a.matches > 0 ? (a.wins || 0) / a.matches : 0;
           const bR = b.matches > 0 ? (b.wins || 0) / b.matches : 0;
           cmp = bR - aR;
-          break;
-        }
-        case 'goaldiff': {
-          const aRat = (a.goalsAgainst || 0) > 0 ? (a.goalsFor || 0) / a.goalsAgainst : ((a.goalsFor || 0) > 0 ? Infinity : 0);
-          const bRat = (b.goalsAgainst || 0) > 0 ? (b.goalsFor || 0) / b.goalsAgainst : ((b.goalsFor || 0) > 0 ? Infinity : 0);
-          cmp = bRat - aRat;
-          break;
-        }
-        case 'form': {
-          const aD = (a.matchesDelta || []).slice(-5).reduce((s, d) => s + d, 0);
-          const bD = (b.matchesDelta || []).slice(-5).reduce((s, d) => s + d, 0);
-          cmp = bD - aD;
           break;
         }
       }
@@ -187,83 +203,52 @@ class LeaderboardPage extends Component {
           </h1>
           <p class="font-ui"
              style="font-size:12px; color:rgba(255,255,255,0.5); letter-spacing:0.1em">
-            RANKING ELO BILIARDINO
+            SEASON 2025–2026 · RANKING UFFICIALE
           </p>
         </div>
       </div>
     `;
   }
 
-  private renderStatsCards(): string {
-    const allMatches = getAllMatches();
-    const allPlayers = getAllPlayers();
-    const totalMatches = allMatches.length;
-    const totalGoals = allMatches.reduce((s, m) => s + m.score[0] + m.score[1], 0);
-
-    // Max ELO
-    let maxEloPlayer: IPlayer | null = null;
-    let maxElo = 0;
-    for (const p of allPlayers) {
-      if (p.bestElo > maxElo) { maxElo = p.bestElo; maxEloPlayer = p; }
-    }
-
-    // Best pair
-    let bestPair = { p1: '', p2: '', delta: -Infinity };
-    let worstPair = { p1: '', p2: '', delta: Infinity };
-    for (const p of allPlayers) {
-      if (!p.teammatesDelta) continue;
-      for (const [tid, d] of p.teammatesDelta) {
-        const t = getPlayerById(tid);
-        if (!t) continue;
-        if (d > bestPair.delta) bestPair = { p1: p.name, p2: t.name, delta: d };
-        if (d < worstPair.delta) worstPair = { p1: p.name, p2: t.name, delta: d };
-      }
-    }
+  private renderIdentityBanner(): string {
+    const playerId = localStorage.getItem('biliardino_player_id');
+    if (playerId) return '';
 
     return `
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div class="stat-card-new glass-card rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <i data-lucide="activity" style="width:14px;height:14px;color:var(--color-gold)"></i>
-            <span class="font-ui text-xs" style="color:rgba(255,255,255,0.5); letter-spacing:0.08em">PARTITE & GOAL</span>
-          </div>
-          <div class="font-display text-2xl text-white">${totalMatches}</div>
-          <div class="font-body text-xs" style="color:rgba(255,255,255,0.4)">${totalGoals} goal totali</div>
+      <div class="rounded-xl px-4 py-3 flex items-center gap-3"
+           style="background:rgba(255,215,0,0.07); border:1px solid rgba(255,215,0,0.25)">
+        <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+             style="background:rgba(255,215,0,0.12)">
+          <i data-lucide="user-circle" style="width:18px;height:18px;color:#FFD700"></i>
         </div>
-
-        <div class="stat-card-new glass-card rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <i data-lucide="zap" style="width:14px;height:14px;color:var(--color-gold)"></i>
-            <span class="font-ui text-xs" style="color:rgba(255,255,255,0.5); letter-spacing:0.08em">MAX ELO</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-ui text-xs" style="color:#FFD700; letter-spacing:0.08em">CHI SEI?</div>
+          <div class="font-body" style="font-size:11px; color:rgba(255,255,255,0.5)">
+            Seleziona il tuo giocatore per personalizzare la classifica e ricevere notifiche push
           </div>
-          <div class="font-display text-2xl" style="color:var(--color-gold)">${maxEloPlayer ? Math.round(maxElo) : '—'}</div>
-          <div class="font-body text-xs" style="color:rgba(255,255,255,0.4)">${maxEloPlayer?.name ?? '—'}</div>
         </div>
+        <button id="identity-banner-btn"
+                class="flex-shrink-0 px-3 py-1.5 rounded-lg font-ui text-xs whitespace-nowrap transition-all hover:brightness-110 active:scale-[0.98]"
+                style="background:linear-gradient(135deg,#FFD700,#F0A500); color:#0F2A20; letter-spacing:0.06em">
+          SCEGLI
+        </button>
+      </div>
+    `;
+  }
 
-        <div class="stat-card-new glass-card rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <i data-lucide="trending-up" style="width:14px;height:14px;color:var(--color-win)"></i>
-            <span class="font-ui text-xs" style="color:rgba(255,255,255,0.5); letter-spacing:0.08em">MIGLIOR COPPIA</span>
-          </div>
-          ${bestPair.delta > -Infinity ? `
-            <div class="font-ui text-sm text-white truncate">${bestPair.p1}</div>
-            <div class="font-body text-xs" style="color:rgba(255,255,255,0.4)">${bestPair.p2}
-              <span style="color:var(--color-win)"> +${Math.round(bestPair.delta)}</span>
-            </div>
-          ` : '<div class="font-body text-xs" style="color:rgba(255,255,255,0.3)">—</div>'}
+  private renderReminderBanner(): string {
+    return `
+      <div class="rounded-xl px-4 py-3 flex items-center gap-3"
+           style="background:rgba(255,215,0,0.07); border:1px solid rgba(255,215,0,0.25)">
+        <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+             style="background:rgba(255,215,0,0.12)">
+          <i data-lucide="user-circle" style="width:18px;height:18px;color:#FFD700"></i>
         </div>
-
-        <div class="stat-card-new glass-card rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <i data-lucide="trending-down" style="width:14px;height:14px;color:var(--color-loss)"></i>
-            <span class="font-ui text-xs" style="color:rgba(255,255,255,0.5); letter-spacing:0.08em">PEGGIOR COPPIA</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-ui text-xs" style="color:#FFD700; letter-spacing:0.08em">ATTENZIONE</div>
+          <div class="font-body" style="font-size:11px; color:rgba(255,255,255,0.5)">
+            Il biliardino non e scontato: solo in pausa e con rispetto, per evitare sanzioni.
           </div>
-          ${worstPair.delta < Infinity ? `
-            <div class="font-ui text-sm text-white truncate">${worstPair.p1}</div>
-            <div class="font-body text-xs" style="color:rgba(255,255,255,0.4)">${worstPair.p2}
-              <span style="color:var(--color-loss)"> ${Math.round(worstPair.delta)}</span>
-            </div>
-          ` : '<div class="font-body text-xs" style="color:rgba(255,255,255,0.3)">—</div>'}
         </div>
       </div>
     `;
@@ -284,13 +269,12 @@ class LeaderboardPage extends Component {
       const avgEloB = Math.round((getMatchPlayerElo(defB, true) + getMatchPlayerElo(attB, false)) / 2);
       const winProbA = expectedScore(avgEloA, avgEloB);
       const winProbB = 1 - winProbA;
-
       const isLive = this.isLiveNow();
 
       const renderLivePlayer = (p: IPlayer, role: string) => {
         const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
         return `
-          <a href="#/profile/${p.id}" class="flex items-center gap-2 hover:bg-white/5 rounded-lg p-1.5 transition-colors">
+          <a href="/profile/${p.id}" class="flex items-center gap-2 hover:bg-white/5 rounded-lg p-1.5 transition-colors">
             ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm' })}
             <div class="min-w-0">
               <div class="text-white font-ui text-xs truncate">${p.name}</div>
@@ -311,7 +295,6 @@ class LeaderboardPage extends Component {
           </div>
           <div class="p-4 md:p-5">
             <div class="flex items-center justify-between gap-4">
-              <!-- Team A -->
               <div class="flex-1">
                 <div class="font-ui text-xs mb-2" style="color:var(--color-team-red); letter-spacing:0.1em">TEAM ROSSO</div>
                 <div class="space-y-1">
@@ -322,8 +305,6 @@ class LeaderboardPage extends Component {
                   ELO: <span style="color:var(--color-team-red)">${avgEloA}</span>
                 </div>
               </div>
-
-              <!-- VS + Probs -->
               <div class="text-center flex-shrink-0">
                 <div class="font-display text-xl mb-2" style="color:var(--color-gold)">VS</div>
                 <div class="space-y-1">
@@ -335,8 +316,6 @@ class LeaderboardPage extends Component {
                   <div class="font-display text-sm" style="color:var(--color-team-blue)">${(winProbB * 100).toFixed(1)}%</div>
                 </div>
               </div>
-
-              <!-- Team B -->
               <div class="flex-1 text-right">
                 <div class="font-ui text-xs mb-2" style="color:var(--color-team-blue); letter-spacing:0.1em">TEAM BLU</div>
                 <div class="space-y-1">
@@ -368,17 +347,7 @@ class LeaderboardPage extends Component {
     return windows.some(w => minutes >= w.start && minutes < w.end);
   }
 
-  private renderSearchBar(): string {
-    return `
-      <div class="relative">
-        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2"
-           style="width:16px;height:16px;color:rgba(255,255,255,0.3)"></i>
-        <input id="leaderboard-search" type="text" placeholder="Cerca giocatore..."
-               class="w-full pl-10 pr-4 py-2.5 rounded-lg font-ui text-sm text-white placeholder:text-white/25"
-               style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); outline:none" />
-      </div>
-    `;
-  }
+  // ── Podium (fedele al React Figma) ──────────────────────────
 
   private renderPodium(): string {
     const players = this.getAllRankedPlayers()
@@ -391,99 +360,190 @@ class LeaderboardPage extends Component {
     const second = top3.find(p => getRank(p.id) === 2)!;
     const third = top3.find(p => getRank(p.id) === 3)!;
 
-    const medalColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
-
-    const renderPodiumCard = (p: IPlayer, rank: number, heightClass: string) => {
-      const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+    const card = (p: IPlayer, rank: number, elevated = false) => {
       const elo = getDisplayElo(p);
       const wins = p.wins || 0;
-      const losses = p.matches - wins;
-      const medalColor = medalColors[rank];
+      const winRate = p.matches > 0 ? Math.round((wins / p.matches) * 100) : 0;
+      const eloColor = MEDAL_ELO_COLOR[rank] ?? '#8B7D6B';
+      const border = MEDAL_BORDER[rank] ?? 'rgba(255,255,255,0.08)';
+      const shadow = MEDAL_SHADOW[rank] ?? 'none';
+      const medal = MEDALS[rank];
+      const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+      const initials = getInitials(p.name);
+      const fontSize = rank === 1 ? '18px' : '15px';
+      const eloSize = rank === 1 ? '34px' : '26px';
+      const statColor = rank === 1 ? '#FFD700' : 'white';
+      const elevatedClass = elevated ? '-mt-4' : '';
+      // Card bg: 15% white base gives ~50 RGB unit contrast over the dark field
+      // (#0F2A20 → #1F5C3A); previous 8% was below perceptible threshold.
+      // Medal gradient on top adds gold/silver/bronze identity.
+      const bg = rank === 1
+        ? 'linear-gradient(160deg, rgba(255,215,0,0.40) 0%, rgba(255,215,0,0.18) 100%), rgba(255,255,255,0.15)'
+        : rank === 2
+          ? 'linear-gradient(160deg, rgba(192,192,192,0.30) 0%, rgba(192,192,192,0.12) 100%), rgba(255,255,255,0.14)'
+          : 'linear-gradient(160deg, rgba(205,127,50,0.30) 0%, rgba(205,127,50,0.12) 100%), rgba(255,255,255,0.14)';
 
       return `
-        <a href="#/profile/${p.id}" class="podium-card flex flex-col items-center p-4 rounded-xl transition-all hover:scale-[1.02] ${heightClass}"
-           style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,215,0,${rank === 1 ? '0.3' : '0.12'})">
-          <div class="relative mb-2">
-            ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: rank === 1 ? 'lg' : 'md' })}
-            <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center font-display text-xs"
-                 style="background:${medalColor}; color:#0F2A20">
-              ${rank}
+        <a href="/profile/${p.id}"
+           class="podium-card group flex flex-col items-center p-4 md:p-5 gap-2 md:gap-3 rounded-xl h-full ${elevatedClass}"
+           style="
+             background: ${bg};
+             border: 1px solid ${border};
+             box-shadow: ${shadow};
+             backdrop-filter: blur(8px);
+           "
+        >
+        
+        <!-- Avatar -->
+        <div class="relative mb-7">
+        ${renderPlayerAvatar({ initials, color, size: rank === 1 ? 'lg' : 'md' })}
+        ${rank === 1 ? `
+          <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
+          style="background:#FFD700; border:2px solid #1A3D2F">
+          <i data-lucide="trophy" style="width:13px;height:13px;color:#0F2A20"></i>
+          </div>
+          ` : ''}
+          <!-- Medal emoji -->
+          <span class="absolute -bottom-7 left-1/2 -translate-x-1/2" style="font-size:${rank === 1 ? '32px' : '28px'}; line-height:1">${medal}</span>
+          </div>
+            
+          <!-- Name -->
+          <div class="text-center">
+            <div class="text-white"
+                 style="font-family:var(--font-ui); font-size:${fontSize}; font-weight:${rank === 1 ? 700 : 600}">
+              ${p.name}
             </div>
           </div>
-          <div class="text-white font-ui text-sm text-center truncate w-full">${p.name}</div>
-          <div class="font-display text-xl mt-1" style="color:var(--color-gold)">${elo}</div>
-          <div class="font-body text-xs mt-0.5" style="color:rgba(255,255,255,0.4)">
-            ${wins}V ${losses}S
+
+          <!-- ELO -->
+          <div class="text-center">
+            <div style="font-family:var(--font-display); font-size:${eloSize}; color:${eloColor}; letter-spacing:0.1em; line-height:1">
+              ${elo}
+            </div>
+            <div style="font-family:var(--font-ui); font-size:10px; color:${rank === 1 ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.4)'}; letter-spacing:0.1em">
+              ELO RATING
+            </div>
+          </div>
+
+          <!-- Stats: Wins + WR | Matches -->
+          <div class="flex gap-4 text-center">
+            <div>
+              <div style="font-family:var(--font-ui); font-size:14px; color:${statColor}">${wins}W</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">${winRate}% WR</div>
+            </div>
+            <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
+            <div>
+              <div style="font-family:var(--font-ui); font-size:14px; color:${statColor}">${p.matches}</div>
+              <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">MATCH</div>
+            </div>
           </div>
         </a>
       `;
     };
 
     return `
-      <div class="flex items-end justify-center gap-3 md:gap-4 px-4">
-        <!-- 2nd place -->
-        ${renderPodiumCard(second, 2, 'pt-6')}
-        <!-- 1st place -->
-        ${renderPodiumCard(first, 1, 'pt-2')}
-        <!-- 3rd place -->
-        ${renderPodiumCard(third, 3, 'pt-8')}
+      <!-- Mobile: #1 in cima, #2/#3 affiancati -->
+      <div class="flex flex-col gap-3 sm:hidden">
+        ${card(first, 1)}
+        <div class="grid grid-cols-2 gap-3">
+          ${card(second, 2)}
+          ${card(third, 3)}
+        </div>
+      </div>
+
+      <!-- Desktop: #2 | #1 (elevato) | #3 -->
+      <div class="hidden sm:grid grid-cols-3 gap-4">
+        ${card(second, 2)}
+        ${card(first, 1, true)}
+        ${card(third, 3)}
       </div>
     `;
   }
+
+  // ── Search ────────────────────────────────────────────────
+
+  private renderSearchBar(): string {
+    return `
+      <div class="relative">
+        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2"
+           style="width:15px;height:15px;color:rgba(255,255,255,0.35)"></i>
+        <input id="leaderboard-search" type="text" placeholder="Cerca giocatore…"
+               class="w-full pl-10 pr-4 py-3 rounded-lg text-white placeholder:text-white/30 outline-none transition-all duration-200"
+               style="
+                 background: rgba(15,42,32,0.8);
+                 border: 1px solid rgba(255,255,255,0.12);
+                 font-family: var(--font-body);
+                 font-size: 14px;
+               "
+               onfocus="this.style.borderColor='rgba(255,215,0,0.35)'"
+               onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+      </div>
+    `;
+  }
+
+  // ── Ranking Table (CSS Grid, fedele al React Figma) ────────
 
   private renderRankingTable(): string {
     const players = this.getSortedPlayers();
     const todayDeltas = this.getTodayEloDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
 
-    const headers = [
-      { key: 'rank', label: '#', mobile: true },
-      { key: null, label: 'CL', mobile: false },
-      { key: 'name', label: 'NOME', mobile: true },
-      { key: 'elo', label: 'ELO', mobile: true },
-      { key: null, label: 'RUOLO', mobile: false },
-      { key: 'matches', label: 'MATCH', mobile: false },
-      { key: null, label: 'V/S', mobile: false },
-      { key: 'winrate', label: '%WIN', mobile: true },
-      { key: 'goaldiff', label: 'GOAL', mobile: false },
-      { key: 'form', label: 'FORMA', mobile: false },
-    ];
+    const rows = players.map((p, idx) =>
+      this.renderRankingRow(p, idx, players.length, todayDeltas, selectedPlayerId)
+    ).join('');
 
-    const headerHTML = headers.map(h => {
-      const hiddenClass = h.mobile ? '' : 'hidden lg:table-cell';
-      const sortClass = h.key ? 'sort-header cursor-pointer hover:text-[var(--color-gold)] transition-colors' : '';
-      return `<th class="px-2 py-2.5 text-left font-ui text-xs ${hiddenClass} ${sortClass}"
-                  style="color:rgba(255,255,255,0.5); letter-spacing:0.08em"
-                  data-sort-key="${h.key || ''}">${h.label}</th>`;
-    }).join('');
-
-    const rows = players.map(p => this.renderRankingRow(p, todayDeltas, selectedPlayerId)).join('');
+    const emptyState = players.length === 0 ? `
+      <div class="text-center py-12"
+           style="color:rgba(255,255,255,0.3); font-family:var(--font-ui); letter-spacing:0.1em; font-size:13px">
+        NESSUN GIOCATORE TROVATO
+      </div>
+    ` : '';
 
     return `
-      <div class="glass-card rounded-xl overflow-hidden">
-        <div class="px-4 md:px-5 py-3 flex items-center justify-between"
-             style="background:rgba(10,25,18,0.8); border-bottom:1px solid var(--glass-border-gold)">
-          <div class="flex items-center gap-2">
-            <i data-lucide="trophy" style="width:14px;height:14px;color:var(--color-gold)"></i>
-            <span class="font-ui" style="font-size:13px; color:var(--color-gold); letter-spacing:0.1em">
-              CLASSIFICA COMPLETA
-            </span>
-          </div>
-          <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.4)">
-            ${players.length} giocatori
-          </span>
+      <div class="rounded-xl overflow-hidden"
+           style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px)">
+
+        <!-- Desktop header -->
+        <div class="hidden md:grid gap-3 px-5 py-3 sort-header-row"
+             style="
+               grid-template-columns: 48px 1fr 90px 90px 110px 90px;
+               background: rgba(10,25,18,0.8);
+               border-bottom: 1px solid rgba(255,215,0,0.2);
+             ">
+          <div class="sort-header cursor-pointer hover:text-[var(--color-gold)] transition-colors"
+               data-sort-key="rank"
+               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">#</div>
+          <div class="sort-header cursor-pointer hover:text-[var(--color-gold)] transition-colors"
+               data-sort-key="name"
+               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">GIOCATORE</div>
+          <div class="sort-header cursor-pointer hover:text-[var(--color-gold)] transition-colors"
+               data-sort-key="elo"
+               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">ELO</div>
+          <div class="sort-header cursor-pointer hover:text-[var(--color-gold)] transition-colors"
+               data-sort-key="matches"
+               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">MATCH</div>
+          <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">V / S</div>
+          <div class="sort-header cursor-pointer hover:text-[var(--color-gold)] transition-colors"
+               data-sort-key="winrate"
+               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">WIN RATE</div>
         </div>
-        <div class="overflow-x-auto">
-          <table id="ranking-table" class="w-full">
-            <thead>
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.06)">
-                ${headerHTML}
-              </tr>
-            </thead>
-            <tbody id="ranking-tbody">
-              ${rows}
-            </tbody>
-          </table>
+
+        <!-- Mobile header -->
+        <div class="md:hidden grid gap-2 px-4 py-2.5"
+             style="
+               grid-template-columns: 36px 1fr 70px 70px;
+               background: rgba(10,25,18,0.8);
+               border-bottom: 1px solid rgba(255,215,0,0.2);
+             ">
+          ${['#', 'GIOCATORE', 'ELO', 'WR'].map(col => `
+            <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">${col}</div>
+          `).join('')}
+        </div>
+
+        <!-- Rows -->
+        <div id="ranking-tbody">
+          ${rows}
+          ${emptyState}
         </div>
       </div>
     `;
@@ -491,48 +551,20 @@ class LeaderboardPage extends Component {
 
   private renderRankingRow(
     player: IPlayer,
+    idx: number,
+    total: number,
     todayDeltas: Map<number, { delta: number; matches: number }>,
     selectedPlayerId: number
   ): string {
     const rank = getRank(player.id);
     const elo = getDisplayElo(player);
     const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
-    const className = player.class >= 0 ? getClassName(player.class) : '';
-
-    // Role
-    let defenceValue = player.defence * 100;
-    let roleLabel = 'DIF';
-    let roleColor = '#3182CE';
-    if (defenceValue === 50) { roleLabel = 'BAL'; roleColor = 'rgba(255,255,255,0.4)'; }
-    else if (defenceValue < 50) { defenceValue = 100 - defenceValue; roleLabel = 'ATT'; roleColor = '#E53E3E'; }
-
-    // W/L
     const wins = player.wins || 0;
     const losses = player.matches - wins;
     const winRate = player.matches > 0 ? Math.round((wins / player.matches) * 100) : 0;
+    const wrColor = winRate >= 60 ? '#4ADE80' : winRate >= 45 ? '#FFD700' : '#F87171';
 
-    // Goal ratio
-    const gf = player.goalsFor || 0;
-    const ga = player.goalsAgainst || 0;
-    const goalRatio = ga > 0 ? (gf / ga) : (gf > 0 ? Infinity : 0);
-    let goalDisplay = '—';
-    if (goalRatio === Infinity) goalDisplay = '<span style="color:var(--color-win)">∞</span>';
-    else if (goalRatio > 0) {
-      const r = parseFloat(goalRatio.toFixed(2));
-      const gc = r <= 0.8 ? 'var(--color-loss)' : r >= 1.15 ? 'var(--color-win)' : 'rgba(255,255,255,0.6)';
-      goalDisplay = `<span style="color:${gc}">${r.toFixed(2)}</span>`;
-    }
-
-    // Form (last 5)
-    const last5 = (player.matchesDelta || []).slice(-5);
-    const formDots = last5.slice().reverse().map(d =>
-      `<div class="w-2 h-2 rounded-full" style="background:${d > 0 ? 'var(--color-win)' : 'var(--color-loss)'}"></div>`
-    ).join('');
-    const formDelta = last5.reduce((s, d) => s + d, 0);
-    const formColor = formDelta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
-    const formSign = formDelta >= 0 ? '+' : '';
-
-    // Today delta
+    // Today delta badge
     const todayInfo = todayDeltas.get(player.id);
     const todayDelta = todayInfo?.delta ?? 0;
     const todayMatches = todayInfo?.matches ?? 0;
@@ -544,62 +576,87 @@ class LeaderboardPage extends Component {
       else todayBadge = `<span class="font-body text-xs" style="color:rgba(255,255,255,0.3)"> =</span>`;
     }
 
+    const rankDisplay = rank <= 3
+      ? `<span style="font-size:${rank === 1 ? '18px' : '16px'}">${MEDALS[rank]}</span>`
+      : `<span style="font-family:var(--font-display); font-size:16px; color:rgba(255,255,255,0.5)">${rank}</span>`;
+
     const isSelected = selectedPlayerId && player.id === selectedPlayerId;
     const rowBg = isSelected
-      ? 'background:rgba(255,215,0,0.08); border-left:2px solid var(--color-gold)'
-      : rank <= 3
-        ? `background:rgba(255,215,0,${0.06 - (rank - 1) * 0.015})`
-        : 'background:rgba(255,255,255,0.02)';
+      ? 'background:rgba(255,215,0,0.06); border-left:2px solid var(--color-gold)'
+      : idx % 2 === 0 ? 'background:rgba(255,255,255,0.02)' : 'background:transparent';
+    const borderBottom = idx < total - 1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : '';
+    const eloColor = rank <= 3 ? '#FFD700' : 'white';
+
+    const avatarAndName = `
+      <div class="flex items-center gap-2 md:gap-3">
+        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'sm' })}
+        <div class="min-w-0">
+          <div class="text-white group-hover:text-[var(--color-gold)] transition-colors truncate"
+               style="font-family:var(--font-ui); font-size:14px; font-weight:600">
+            ${player.name}
+          </div>
+          <div style="font-family:var(--font-body); font-size:11px; color:rgba(255,255,255,0.35)">
+            ${getClassName(player.class)}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const winRateBar = `
+      <div class="flex items-center gap-2">
+        <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
+          <div class="h-full rounded-full" style="width:${winRate}%; background:${wrColor}"></div>
+        </div>
+        <span style="font-family:var(--font-ui); font-size:13px; color:rgba(255,255,255,0.8); min-width:36px">${winRate}%</span>
+      </div>
+    `;
+
+    const winLoss = `
+      <div class="flex items-center gap-1.5">
+        <span style="font-family:var(--font-ui); font-size:14px; color:#4ADE80">${wins}W</span>
+        <span style="color:rgba(255,255,255,0.3); font-size:12px">/</span>
+        <span style="font-family:var(--font-ui); font-size:14px; color:#F87171">${losses}S</span>
+      </div>
+    `;
 
     return `
-      <tr class="ranking-row cursor-pointer hover:bg-white/5 transition-colors"
-          style="${rowBg}; border-bottom:1px solid rgba(255,255,255,0.04)"
-          onclick="window.location.hash='#/profile/${player.id}'">
-        <td class="px-2 py-2.5">
-          <span class="font-display text-sm ${rank <= 3 ? 'text-[var(--color-gold)]' : 'text-white/60'}">${rank <= 0 ? '—' : rank + '°'}</span>
-        </td>
-        <td class="px-2 py-2.5 hidden lg:table-cell">
-          ${player.class >= 0 ? `
-            <div class="w-6 h-6 rounded-full flex items-center justify-center font-display text-xs"
-                 style="background:${color}20; color:${color}; border:1px solid ${color}40"
-                 title="${className}">
-              ${className.charAt(0)}
+      <a href="/profile/${player.id}"
+         class="ranking-row group block"
+         style="${rowBg}; ${borderBottom}">
+
+        <!-- Desktop row -->
+        <div class="hidden md:grid gap-3 px-5 py-3.5 items-center transition-all duration-200 hover:bg-white/5"
+             style="grid-template-columns: 48px 1fr 90px 90px 110px 90px">
+          <div>${rankDisplay}</div>
+          <div>${avatarAndName}</div>
+          <div>
+            <span style="font-family:var(--font-display); font-size:20px; color:${eloColor}; letter-spacing:0.05em">${elo}</span>${todayBadge}
+          </div>
+          <div style="font-family:var(--font-ui); font-size:14px; color:rgba(255,255,255,0.7)">${player.matches}</div>
+          <div>${winLoss}</div>
+          <div>${winRateBar}</div>
+        </div>
+
+        <!-- Mobile row -->
+        <div class="md:hidden grid gap-2 px-4 py-3 items-center transition-all duration-200 hover:bg-white/5"
+             style="grid-template-columns: 36px 1fr 70px 70px">
+          <div>${rankDisplay}</div>
+          <div>${avatarAndName}</div>
+          <div>
+            <span style="font-family:var(--font-display); font-size:17px; color:${eloColor}">${elo}</span>${todayBadge}
+          </div>
+          <div>
+            <div style="font-family:var(--font-ui); font-size:13px; color:${wrColor}">${winRate}%</div>
+            <div class="h-1 rounded-full overflow-hidden mt-0.5" style="background:rgba(255,255,255,0.1)">
+              <div class="h-full rounded-full" style="width:${winRate}%; background:${wrColor}"></div>
             </div>
-          ` : ''}
-        </td>
-        <td class="px-2 py-2.5">
-          <div class="flex items-center gap-2 min-w-0">
-            ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'xs' })}
-            <span class="font-ui text-sm text-white truncate ${rank <= 3 ? 'font-semibold' : ''}">${player.name}</span>
           </div>
-        </td>
-        <td class="px-2 py-2.5">
-          <span class="font-display text-base" style="color:var(--color-gold)">${elo}</span>${todayBadge}
-        </td>
-        <td class="px-2 py-2.5 hidden lg:table-cell">
-          <span class="font-ui text-xs" style="color:${roleColor}">${roleLabel} ${Math.round(defenceValue)}%</span>
-        </td>
-        <td class="px-2 py-2.5 hidden lg:table-cell">
-          <span class="font-body text-sm text-white/60">${player.matches}</span>
-        </td>
-        <td class="px-2 py-2.5 hidden lg:table-cell">
-          <span class="font-body text-sm text-white/60">${wins}/${losses}</span>
-        </td>
-        <td class="px-2 py-2.5">
-          <span class="font-ui text-sm ${winRate >= 55 ? 'text-[var(--color-win)]' : winRate <= 45 ? 'text-[var(--color-loss)]' : 'text-white/60'}">${winRate}%</span>
-        </td>
-        <td class="px-2 py-2.5 hidden lg:table-cell">
-          <span class="font-body text-sm">${goalDisplay}</span>
-        </td>
-        <td class="px-2 py-2.5 hidden lg:table-cell">
-          <div class="flex items-center gap-1">
-            <div class="flex items-center gap-0.5">${formDots || '<span class="font-body text-xs text-white/30">—</span>'}</div>
-            ${last5.length > 0 ? `<span class="font-body text-xs ml-1" style="color:${formColor}">${formSign}${Math.round(formDelta)}</span>` : ''}
-          </div>
-        </td>
-      </tr>
+        </div>
+      </a>
     `;
   }
+
+  // ── Recent Matches ─────────────────────────────────────────
 
   private renderRecentMatches(): string {
     const allMatches = getAllMatches();
@@ -629,7 +686,6 @@ class LeaderboardPage extends Component {
       let expA = m.expectedScore[0], expB = m.expectedScore[1];
       const aWon = scoreA > scoreB;
 
-      // Show winner first
       if (!aWon) {
         [tA, tB] = [tB, tA];
         [eloA, eloB] = [eloB, eloA];
@@ -651,7 +707,10 @@ class LeaderboardPage extends Component {
         <div class="match-row flex items-center justify-between p-2.5 md:p-3 rounded-lg"
              style="background:rgba(255,255,255,0.03); border:1px solid ${ratingBorder}">
           <div class="flex items-center gap-2 min-w-0 flex-1">
-            ${isToday ? '<div class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>' : '<div class="w-2"></div>'}
+            ${isToday
+          ? '<div class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>'
+          : '<div class="w-2"></div>'
+        }
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-ui text-xs" style="color:var(--color-win)">${tA}</span>
@@ -712,7 +771,21 @@ class LeaderboardPage extends Component {
     const todayDeltas = this.getTodayEloDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
 
-    tbody.innerHTML = players.map(p => this.renderRankingRow(p, todayDeltas, selectedPlayerId)).join('');
+    if (players.length === 0) {
+      tbody.innerHTML = `
+        <div class="text-center py-12"
+             style="color:rgba(255,255,255,0.3); font-family:var(--font-ui); letter-spacing:0.1em; font-size:13px">
+          NESSUN GIOCATORE TROVATO
+        </div>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = players.map((p, idx) =>
+      this.renderRankingRow(p, idx, players.length, todayDeltas, selectedPlayerId)
+    ).join('');
+
+    refreshIcons();
   }
 
   private updateSortIndicators(): void {

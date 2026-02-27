@@ -1,19 +1,38 @@
 
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '0.1.0';
-const CACHE_NAME = 'CAlcio-Balilla-cache';
+const VERSION = '0.3.0';
+const CACHE_PREFIX = 'calcio-bliliardino';
+const STATIC_CACHE = `${CACHE_PREFIX}-static-${VERSION}`;
+const DATA_CACHE = `${CACHE_PREFIX}-data-${VERSION}`;
+const APP_SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 // Firebase/API endpoints che vogliamo cachare
 const FIREBASE_PATTERN = /firebase|\.firebaseapp\.com|firestore\.googleapis\.com/i;
 
 self.addEventListener('install', (event) => {
   console.log(`[Service Worker] Installing version ${VERSION}`);
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then(cache => cache.addAll(APP_SHELL_ASSETS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   console.log(`[Service Worker] Activating version ${VERSION}`);
-  event.waitUntil(clients.claim());
+  event.waitUntil((async () => {
+    if (self.registration.navigationPreload) {
+      await self.registration.navigationPreload.enable();
+    }
+
+    const cacheKeys = await caches.keys();
+    await Promise.all(
+      cacheKeys
+        .filter(cacheName => cacheName.startsWith(CACHE_PREFIX) && cacheName !== STATIC_CACHE && cacheName !== DATA_CACHE)
+        .map(cacheName => caches.delete(cacheName))
+    );
+
+    await clients.claim();
+  })());
 });
 
 /**
@@ -37,50 +56,82 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // App-shell per navigazioni: mai pagina bianca, anche offline
+  if (request.mode === 'navigate') {
+    event.respondWith(handleNavigationRequest(event));
+    return;
+  }
+
   const url = new URL(request.url);
+
+  // Firebase/API calls: stale-while-revalidate
+  if (FIREBASE_PATTERN.test(url.href)) {
+    event.respondWith(handleFirebaseRequest(request));
+    return;
+  }
 
   // Cross-origin: passa direttamente al network
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // Firebase/API calls: cache-first (sempre disponibili offline)
-  if (FIREBASE_PATTERN.test(url.href)) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) {
-          return cached;
-        }
-        return fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-            }
-            return response;
-          })
-          .catch(() => new Response(JSON.stringify({ error: 'offline' }), { status: 503 }));
-      })
-    );
-    return;
-  }
-
-  // Tutto il resto: network-first (sempre aggiornato)
+  // Asset statici app: stale-while-revalidate
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request)
-          .then(cached => cached || new Response('Offline', { status: 503 }))
-      )
+    caches.match(request).then((cached) => {
+      const networkPromise = fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(STATIC_CACHE).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => cached || new Response('Offline', { status: 503 }));
+
+      return cached || networkPromise;
+    })
   );
 });
+
+async function handleNavigationRequest(event) {
+  try {
+    const preloadResponse = await event.preloadResponse;
+    if (preloadResponse) {
+      const copy = preloadResponse.clone();
+      caches.open(STATIC_CACHE).then(cache => cache.put('/index.html', copy));
+      return preloadResponse;
+    }
+
+    const networkResponse = await fetch(event.request);
+    if (networkResponse.ok) {
+      const copy = networkResponse.clone();
+      caches.open(STATIC_CACHE).then(cache => cache.put('/index.html', copy));
+    }
+    return networkResponse;
+  } catch {
+    const cachedShell = await caches.match('/index.html');
+    if (cachedShell) return cachedShell;
+    return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>CAlcio bliliardino</title><style>html,body{margin:0;min-height:100%;background:#0F2A20;color:#fff;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.sw-splash{min-height:100vh;display:flex;align-items:center;justify-content:center;opacity:.9;letter-spacing:.08em;font-size:12px}</style></head><body><div class="sw-splash">CARICAMENTO…</div></body></html>`, {
+      headers: { 'Content-Type': 'text/html; charset=UTF-8' },
+      status: 200,
+    });
+  }
+}
+
+async function handleFirebaseRequest(request) {
+  const cached = await caches.match(request);
+  const networkPromise = fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(DATA_CACHE).then(cache => cache.put(request, copy));
+      }
+      return response;
+    })
+    .catch(() => cached || new Response(JSON.stringify({ error: 'offline' }), { status: 503 }));
+
+  return cached || networkPromise;
+}
 
 
 self.addEventListener('push', async (event) => {

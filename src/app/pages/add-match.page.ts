@@ -1,7 +1,7 @@
 /**
  * AddMatchPage — Form for adding and editing matches.
  *
- * Route: /#/add-match (admin only)
+ * Route: /add-match (admin only)
  *
  * Ports business logic from add-match.view.ts with new Figma-style design.
  */

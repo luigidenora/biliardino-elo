@@ -3,7 +3,7 @@
  * selection, real-time availability updates, match generation via heuristic
  * algorithm, and score entry.
  *
- * Route: /#/matchmaking
+ * Route: /matchmaking
  * Auth: admin guard (handled by router)
  *
  * Ported from: src/views/matchmaking.view.ts
@@ -23,6 +23,7 @@ import gsap from 'gsap';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
 import { refreshIcons } from '../icons';
+import { router } from '../router';
 
 import type { IConfirmationsResponse } from '@/models/confirmation.interface';
 import type { IRunningMatchDTO } from '@/models/match.interface';
@@ -114,16 +115,15 @@ class MatchmakingPage extends Component {
       opacity: 0,
       y: -20,
       duration: 0.4,
-      ease: 'power2.out',
+      ease: 'power2.out'
     });
 
     gsap.from('.player-row', {
-      opacity: 0,
       x: -10,
       stagger: 0.03,
       duration: 0.25,
       ease: 'power2.out',
-      delay: 0.1,
+      delay: 0.1
     });
 
     gsap.from('.match-panel-card', {
@@ -177,7 +177,7 @@ class MatchmakingPage extends Component {
       const isConfirmed = this.confirmedPlayerIds.has(player.id);
 
       return `
-        <div class="player-row flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 transition-all duration-200
+        <div class="player-row flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 transition-all duration-200 cursor-pointer hover:bg-white/[0.08]
                     ${state > 0 ? 'bg-white/[0.04]' : idx % 2 === 0 ? 'bg-white/[0.015]' : ''}
                     ${isConfirmed ? 'confirmed-player' : ''}"
              style="border-bottom:1px solid rgba(255,255,255,0.05)"
@@ -717,13 +717,25 @@ class MatchmakingPage extends Component {
     if (!container) return;
 
     container.addEventListener('click', (e: Event) => {
-      const btn = (e.target as HTMLElement).closest('.player-toggle-btn') as HTMLButtonElement | null;
-      if (!btn) return;
+      const target = e.target as HTMLElement;
 
-      const playerId = Number(btn.dataset.playerId);
-      if (!playerId) return;
+      // Check if clicked on button
+      const btn = target.closest('.player-toggle-btn') as HTMLButtonElement | null;
+      if (btn) {
+        const playerId = Number(btn.dataset.playerId);
+        if (!playerId) return;
+        this.cyclePlayerState(playerId);
+        return;
+      }
 
-      this.cyclePlayerState(playerId);
+      // Check if clicked on row (but not on button)
+      const row = target.closest('.player-row') as HTMLElement | null;
+      if (row && !target.closest('.player-toggle-btn')) {
+        const playerId = Number(row.dataset.playerId);
+        if (!playerId) return;
+        this.cyclePlayerState(playerId);
+        return;
+      }
     });
   }
 
@@ -942,7 +954,7 @@ class MatchmakingPage extends Component {
       console.error('Error persisting match for lobby:', error);
     }
 
-    window.location.hash = '#/lobby';
+    router.navigate('/lobby');
   }
 
   private async executeMatchSave(scoreA: number, scoreB: number): Promise<void> {

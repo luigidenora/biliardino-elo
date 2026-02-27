@@ -97,8 +97,8 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
               navigate: '/matchmaking.html',
               tag: `selected`,
               requireInteraction: true,
-              icon: '/icons/icon-192.jpg',
-              badge: '/icons/icon-192.jpg',
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-192.png',
               app_badge: '0'
             }
           }),

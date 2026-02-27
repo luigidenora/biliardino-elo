@@ -1,7 +1,7 @@
 /**
  * PlayerProfilePage -- Full-screen profile for a single player.
  *
- * Route: /#/profile/:id
+ * Route: /profile/:id
  * Displays hero card, ELO chart (Chart.js), recent matches,
  * stat grid, and an animated win/loss distribution bar.
  */
@@ -81,7 +81,7 @@ export default class PlayerProfilePage extends Component {
           <p class="font-body mt-2" style="color: var(--color-text-secondary)">
             Il giocatore con ID ${id} non esiste.
           </p>
-          <a href="#/" class="inline-block mt-6 font-ui text-sm px-5 py-2 rounded-lg"
+          <a href="/" class="inline-block mt-6 font-ui text-sm px-5 py-2 rounded-lg"
              style="background: var(--color-gold-muted); color: var(--color-gold); letter-spacing: 0.08em">
             TORNA ALLA CLASSIFICA
           </a>

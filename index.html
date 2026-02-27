@@ -4,18 +4,502 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Biliardino ELO — Shark Season</title>
-  <meta name="description" content="Biliardino ELO Rating System — Shark Season" />
+  <title>CAlcio bliliardino — Shark Season</title>
+  <meta name="description" content="CAlcio bliliardino Rating System — Shark Season" />
   <meta name="theme-color" content="#0F2A20" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="icon" type="image/png" href="./icons/icon-192.jpg" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.jpg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    :root {
+      color-scheme: dark;
+      --boot-bg: #0F2A20;
+      --boot-surface: rgba(255, 255, 255, 0.03);
+      --boot-border: rgba(255, 215, 0, 0.14);
+      --boot-strong: rgba(255, 255, 255, 0.2);
+      --boot-soft: rgba(255, 255, 255, 0.12);
+      --boot-mid: rgba(255, 255, 255, 0.16);
+      --boot-max-width: 1280px;
+      --boot-header-offset: 3.5rem;
+      /* matches --header-height (h-14) */
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
+      color: #fff;
+    }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .boot-shell {
+      min-height: calc(100vh - var(--boot-header-offset));
+      max-width: var(--boot-max-width);
+      margin: 0 auto;
+      padding: 20px 16px 32px;
+      /* py-5 px-4 */
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    #app {
+      min-height: 100vh;
+    }
+
+    #app-boot {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 60;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 320ms ease, transform 320ms ease;
+      transform: translateY(0);
+    }
+
+    #app-boot.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #app-boot.is-visible.is-exiting {
+      opacity: 0;
+      visibility: visible;
+      transform: translateY(-6px);
+    }
+
+    #app-boot.is-hidden {
+      display: none !important;
+    }
+
+    .boot-row {
+      border-radius: 16px;
+      background: var(--boot-surface);
+      border: 1px solid var(--boot-border);
+    }
+
+    .boot-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .boot-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255, 215, 0, 0.28);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.18);
+      flex-shrink: 0;
+    }
+
+    .boot-search {
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .boot-pulse {
+      animation: boot-pulse 1.2s ease-in-out infinite;
+    }
+
+    .boot-line {
+      height: 12px;
+      border-radius: 999px;
+      background: var(--boot-soft);
+    }
+
+    .boot-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .boot-podium {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .boot-podium-desktop {
+      display: none;
+    }
+
+    .boot-podium-card {
+      border-radius: 16px;
+      border: 1px solid var(--boot-border);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 16px 14px;
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+      min-height: 190px;
+    }
+
+    .boot-podium-card.is-first {
+      border-color: rgba(255, 215, 0, 0.35);
+      background: rgba(255, 215, 0, 0.16);
+    }
+
+    .boot-medal {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--boot-mid);
+    }
+
+    .boot-card {
+      padding: 14px;
+    }
+
+    .boot-card-head {
+      height: 10px;
+      width: 64px;
+      border-radius: 999px;
+      background: var(--boot-mid);
+    }
+
+    .boot-card-body {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .boot-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: var(--boot-mid);
+      flex-shrink: 0;
+    }
+
+    .boot-table {
+      padding: 0;
+      display: grid;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    .boot-table-head {
+      padding: 12px 12px;
+      background: rgba(10, 25, 18, 0.8);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+      display: grid;
+      grid-template-columns: 30px 1fr 55px 40px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .boot-table-row {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 30px 1fr 55px 40px;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .boot-player {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .boot-winrate {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+    }
+
+    .boot-winrate>span {
+      display: block;
+      height: 100%;
+      width: 56%;
+      border-radius: 999px;
+      background: rgba(255, 215, 0, 0.85);
+    }
+
+    .boot-recent {
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      background: rgba(15, 42, 32, 0.55);
+    }
+
+    .boot-recent-head {
+      padding: 11px 14px;
+      background: rgba(10, 25, 18, 0.8);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .boot-recent-list {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .boot-recent-item {
+      border-radius: 9px;
+      border: 1px solid rgba(74, 144, 217, 0.3);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    @media (min-width: 768px) {
+      :root {
+        --boot-header-offset: 4rem;
+        /* matches --header-height-md (h-16) */
+      }
+
+      .boot-shell {
+        padding: 32px 24px 40px;
+        /* md:py-8 md:px-6 */
+        gap: 22px;
+      }
+
+      .boot-podium {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .boot-podium-desktop {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .boot-podium-mobile {
+        display: none;
+      }
+
+      .boot-podium-card {
+        min-height: 232px;
+      }
+
+      .boot-podium-card.is-first {
+        transform: translateY(-10px);
+      }
+
+      .boot-table-head,
+      .boot-table-row {
+        grid-template-columns: 40px 1fr 80px 70px 110px 90px;
+      }
+    }
+
+    @keyframes boot-pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.45;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <div id="app"></div>
+  <div id="app" aria-busy="true" aria-live="polite"></div>
+  <div id="app-boot" aria-hidden="true">
+    <!-- Skeleton header -->
+    <div style="
+      width: 100%; height: var(--boot-header-offset);
+      background: linear-gradient(180deg, rgba(10,25,18,0.95) 0%, rgba(10,25,18,0.85) 100%);
+      border-bottom: 1px solid rgba(255,215,0,0.2);
+      display: flex; align-items: center; padding: 0 16px;
+    ">
+      <div
+        style="max-width:var(--boot-max-width);margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,215,0,0.18);flex-shrink:0"></div>
+          <div>
+            <div style="width:90px;height:8px;border-radius:999px;background:rgba(255,215,0,0.3)"></div>
+            <div style="width:130px;height:14px;border-radius:999px;background:var(--boot-strong);margin-top:6px"></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+        </div>
+      </div>
+    </div>
+    <div class="boot-shell boot-pulse">
+      <div class="boot-heading">
+        <div class="boot-icon"></div>
+        <div>
+          <div class="boot-line" style="width: 220px; height: 30px; background: var(--boot-strong)"></div>
+          <div class="boot-line" style="width: 250px; margin-top: 10px"></div>
+        </div>
+      </div>
+
+      <div class="boot-podium boot-podium-mobile">
+        <div class="boot-podium-card is-first">
+          <div class="boot-medal"></div>
+          <div class="boot-avatar" style="width:64px;height:64px"></div>
+          <div class="boot-line" style="width: 120px; height: 16px; background: var(--boot-mid)"></div>
+          <div class="boot-line" style="width: 84px; height: 26px; background: rgba(255,215,0,0.35)"></div>
+          <div class="boot-line" style="width: 110px"></div>
+        </div>
+        <div class="boot-podium" style="grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
+          <div class="boot-podium-card">
+            <div class="boot-medal"></div>
+            <div class="boot-avatar"></div>
+            <div class="boot-line" style="width: 95px"></div>
+            <div class="boot-line" style="width: 70px; height: 22px"></div>
+            <div class="boot-line" style="width: 90px"></div>
+          </div>
+          <div class="boot-podium-card">
+            <div class="boot-medal"></div>
+            <div class="boot-avatar"></div>
+            <div class="boot-line" style="width: 95px"></div>
+            <div class="boot-line" style="width: 70px; height: 22px"></div>
+            <div class="boot-line" style="width: 90px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="boot-podium-desktop">
+        <div class="boot-podium-card">
+          <div class="boot-medal"></div>
+          <div class="boot-avatar"></div>
+          <div class="boot-line" style="width: 110px; height: 16px; background: var(--boot-mid)"></div>
+          <div class="boot-line" style="width: 74px; height: 22px"></div>
+          <div class="boot-line" style="width: 98px"></div>
+        </div>
+        <div class="boot-podium-card is-first">
+          <div class="boot-medal"></div>
+          <div class="boot-avatar" style="width:62px;height:62px"></div>
+          <div class="boot-line" style="width: 130px; height: 18px; background: var(--boot-mid)"></div>
+          <div class="boot-line" style="width: 84px; height: 28px; background: rgba(255,215,0,0.35)"></div>
+          <div class="boot-line" style="width: 112px"></div>
+        </div>
+        <div class="boot-podium-card">
+          <div class="boot-medal"></div>
+          <div class="boot-avatar"></div>
+          <div class="boot-line" style="width: 110px; height: 16px; background: var(--boot-mid)"></div>
+          <div class="boot-line" style="width: 74px; height: 22px"></div>
+          <div class="boot-line" style="width: 98px"></div>
+        </div>
+      </div>
+
+      <div class="boot-search"></div>
+
+      <div class="boot-row boot-table">
+        <div class="boot-table-head">
+          <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.45)"></div>
+          <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.3)"></div>
+          <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.3)"></div>
+          <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.3)"></div>
+          <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.3)"></div>
+          <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.3)"></div>
+        </div>
+        <div class="boot-table-row">
+          <div class="boot-medal"></div>
+          <div class="boot-player">
+            <div class="boot-avatar" style="width:34px;height:34px"></div>
+            <div class="boot-grid" style="gap:6px;flex:1">
+              <div class="boot-line" style="width: 64%"></div>
+              <div class="boot-line" style="width: 42%; height:9px"></div>
+            </div>
+          </div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-winrate"><span></span></div>
+        </div>
+        <div class="boot-table-row">
+          <div class="boot-medal"></div>
+          <div class="boot-player">
+            <div class="boot-avatar" style="width:34px;height:34px"></div>
+            <div class="boot-grid" style="gap:6px;flex:1">
+              <div class="boot-line" style="width: 64%"></div>
+              <div class="boot-line" style="width: 42%; height:9px"></div>
+            </div>
+          </div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-winrate"><span style="width:72%;background:rgba(74,222,128,0.85)"></span></div>
+        </div>
+        <div class="boot-table-row">
+          <div class="boot-medal"></div>
+          <div class="boot-player">
+            <div class="boot-avatar" style="width:34px;height:34px"></div>
+            <div class="boot-grid" style="gap:6px;flex:1">
+              <div class="boot-line" style="width: 64%"></div>
+              <div class="boot-line" style="width: 42%; height:9px"></div>
+            </div>
+          </div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-winrate"><span></span></div>
+        </div>
+        <div class="boot-table-row">
+          <div class="boot-line" style="width:12px;height:14px;background:var(--boot-mid)"></div>
+          <div class="boot-player">
+            <div class="boot-avatar" style="width:34px;height:34px"></div>
+            <div class="boot-grid" style="gap:6px;flex:1">
+              <div class="boot-line" style="width: 64%"></div>
+              <div class="boot-line" style="width: 42%; height:9px"></div>
+            </div>
+          </div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-winrate"><span style="width:26%;background:rgba(248,113,113,0.85)"></span></div>
+        </div>
+      </div>
+
+      <div class="boot-recent">
+        <div class="boot-recent-head">
+          <div class="boot-line" style="width: 130px; height: 11px; background: rgba(255,215,0,0.4)"></div>
+          <div class="boot-line" style="width: 56px; height: 10px"></div>
+        </div>
+        <div class="boot-recent-list">
+          <div class="boot-recent-item">
+            <div class="boot-line" style="width: 78%"></div>
+            <div class="boot-line" style="width: 52%; height: 9px"></div>
+          </div>
+          <div class="boot-recent-item">
+            <div class="boot-line" style="width: 72%"></div>
+            <div class="boot-line" style="width: 48%; height: 9px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.__bootRevealTimer = window.setTimeout(() => {
+      document.getElementById('app-boot')?.classList.add('is-visible');
+    }, 180);
+  </script>
   <script type="module" src="./src/app/main.ts"></script>
 </body>
 

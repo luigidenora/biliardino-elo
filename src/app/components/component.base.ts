@@ -8,12 +8,17 @@ export abstract class Component {
   /** Root element in the DOM after the component is mounted. */
   protected el: HTMLElement | null = null;
 
-  /** Route parameters (e.g. { id: '5' } for /#/profile/:id). */
+  /** Route parameters (e.g. { id: '5' } for /profile/:id). */
   protected params: Record<string, string> = {};
 
   /** Inject route params before rendering. */
   setParams(params: Record<string, string>): void {
     this.params = params;
+  }
+
+  /** Inject root element before mount lifecycle. */
+  setElement(el: HTMLElement | null): void {
+    this.el = el;
   }
 
   /**

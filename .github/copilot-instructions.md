@@ -1,4 +1,4 @@
-# Copilot Instructions — biliardino-elo
+# Copilot Instructions — calcio-bliliardino
 
 Competitive foosball PWA: ELO rankings, matchmaking, real-time lobby, and web-push notifications. Deployed on Vercel (serverless) with Firebase Firestore + Upstash Redis.
 

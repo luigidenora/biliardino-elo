@@ -35,7 +35,8 @@ let mockPlayers: IPlayer[] = playerNames.map((name, index) => {
     matchesAsDefender: 0,
     matchesDelta: [],
     wins: 0,
-    rank: -1
+    rank: -1,
+    class: -1,
   };
 });
 

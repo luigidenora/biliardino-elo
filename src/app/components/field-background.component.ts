@@ -4,69 +4,9 @@
  * Pure static SVG, rendered once in the Layout.
  */
 
+import { bindHtml } from '../utils/html-template.util';
+import template from './field-background.component.html?raw';
+
 export function renderFieldBackground(): string {
-  return `
-    <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 0">
-      <!-- Base gradient -->
-      <div
-        class="absolute inset-0"
-        style="background: radial-gradient(ellipse at 50% 30%, #1F5C3A 0%, #1A3D2F 45%, #0F2A20 100%)"
-      ></div>
-      <!-- Field markings SVG -->
-      <svg
-        class="absolute inset-0 w-full h-full"
-        viewBox="0 0 1440 900"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g opacity="0.12" stroke="white" fill="none" stroke-width="1.5">
-          <!-- Outer field border -->
-          <rect x="80" y="60" width="1280" height="780" rx="4" stroke-width="2" />
-          <!-- Inner field border -->
-          <rect x="120" y="100" width="1200" height="700" rx="2" />
-          <!-- Center vertical dashed line -->
-          <line x1="720" y1="100" x2="720" y2="800" stroke-dasharray="12,8" stroke-width="2" />
-          <!-- Center circle -->
-          <circle cx="720" cy="450" r="90" />
-          <!-- Center dot -->
-          <circle cx="720" cy="450" r="5" fill="white" opacity="0.8" />
-          <!-- Left goal area -->
-          <rect x="120" y="330" width="100" height="240" stroke-width="2" />
-          <!-- Left penalty area -->
-          <rect x="120" y="270" width="200" height="360" />
-          <!-- Left goal box -->
-          <rect x="80" y="385" width="40" height="130" fill="none" stroke-width="1.5" />
-          <!-- Right goal area -->
-          <rect x="1220" y="330" width="100" height="240" stroke-width="2" />
-          <!-- Right penalty area -->
-          <rect x="1120" y="270" width="200" height="360" />
-          <!-- Right goal box -->
-          <rect x="1320" y="385" width="40" height="130" fill="none" stroke-width="1.5" />
-          <!-- Left penalty arc -->
-          <path d="M 320 330 Q 380 450 320 570" stroke-dasharray="6,6" />
-          <!-- Right penalty arc -->
-          <path d="M 1120 330 Q 1060 450 1120 570" stroke-dasharray="6,6" />
-          <!-- Player rod position lines -->
-          <line x1="120" y1="265" x2="1320" y2="265" stroke-dasharray="4,20" opacity="0.5" />
-          <line x1="120" y1="380" x2="1320" y2="380" stroke-dasharray="4,20" opacity="0.5" />
-          <line x1="120" y1="450" x2="1320" y2="450" stroke-dasharray="4,20" opacity="0.4" />
-          <line x1="120" y1="520" x2="1320" y2="520" stroke-dasharray="4,20" opacity="0.5" />
-          <line x1="120" y1="635" x2="1320" y2="635" stroke-dasharray="4,20" opacity="0.5" />
-          <!-- Corner arcs -->
-          <path d="M 120 100 Q 140 100 140 120" />
-          <path d="M 1320 100 Q 1300 100 1300 120" />
-          <path d="M 120 800 Q 140 800 140 780" />
-          <path d="M 1320 800 Q 1300 800 1300 780" />
-        </g>
-        <!-- Subtle vignette overlay -->
-        <defs>
-          <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stop-color="transparent" />
-            <stop offset="100%" stop-color="#0A1F16" stop-opacity="0.6" />
-          </radialGradient>
-        </defs>
-        <rect x="0" y="0" width="1440" height="900" fill="url(#vignette)" />
-      </svg>
-    </div>
-  `;
+  return bindHtml(template)`${{}}`;
 }

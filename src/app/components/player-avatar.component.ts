@@ -3,6 +3,9 @@
  * Ported from Figma: PlayerAvatar.tsx
  */
 
+import { bindHtml, rawHtml } from '../utils/html-template.util';
+import template from './player-avatar.component.html?raw';
+
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 const sizeMap: Record<AvatarSize, { container: string; text: string; dot: string }> = {
@@ -33,19 +36,13 @@ export function renderPlayerAvatar({ initials, color, size = 'md', online }: Ava
       ></span>`
     : '';
 
-  return `
-    <div class="relative inline-flex flex-shrink-0">
-      <div
-        class="${s.container} rounded-full flex items-center justify-center font-bold ring-2 ring-white/20"
-        style="background: linear-gradient(135deg, ${color}dd, ${color}88)"
-      >
-        <span class="${s.text} text-white font-ui" style="letter-spacing: 0.05em">
-          ${initials}
-        </span>
-      </div>
-      ${statusDot}
-    </div>
-  `;
+  return bindHtml(template)`${{
+    containerClass: s.container,
+    textClass: s.text,
+    color,
+    initials,
+    statusDot: rawHtml(statusDot),
+  }}`;
 }
 
 /**

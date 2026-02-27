@@ -116,7 +116,7 @@ function showAdminDenied(message: string): void {
         <div style="font-size: 4rem; margin-bottom: 1rem;">🚫</div>
         <h2 style="color: var(--color-loss, #d32f2f); margin-bottom: 1rem;">Accesso Negato</h2>
         <p style="color: rgba(255,255,255,0.5); margin-bottom: 2rem; font-size: 1.1rem;">${message}</p>
-        <a href="#/" style="
+        <a href="/" style="
           display: inline-block;
           padding: 0.75rem 2rem;
           background: linear-gradient(135deg, #FFD700, #F0A500);
@@ -133,6 +133,6 @@ function showAdminDenied(message: string): void {
 
   // Redirect automatico dopo 5 secondi
   setTimeout(() => {
-    window.location.hash = '#/';
+    window.location.assign('/');
   }, 5000);
 }

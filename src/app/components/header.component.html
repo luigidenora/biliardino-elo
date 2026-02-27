@@ -1,0 +1,99 @@
+<header id="app-header-inner" class="relative z-50 w-full" style="
+    background: linear-gradient(180deg, var(--color-bg-header-from) 0%, var(--color-bg-header-to) 100%);
+    border-bottom: 1px solid var(--glass-border-gold);
+    backdrop-filter: blur(12px);
+  ">
+  <div class="max-w-[var(--max-width)] mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 md:gap-3 group" data-nav>
+      <div class="flex-shrink-0 transition-transform duration-300 group-hover:scale-105">
+        {{logoSvg}}
+      </div>
+      <div class="hidden sm:block">
+        <div class="text-[var(--color-gold)] tracking-[0.15em] font-ui" style="font-size: 11px; font-weight: 500">
+          CALCIO BLILIARDINO
+        </div>
+        <div class="text-white tracking-[0.2em] font-display" style="font-size: 20px; line-height: 1">
+          SHARK SEASON
+        </div>
+      </div>
+      <div class="sm:hidden">
+        <div class="text-white tracking-[0.15em] font-display" style="font-size: 17px; line-height: 1">
+          CALCIO BLILIARDINO
+        </div>
+      </div>
+    </a>
+
+    <nav class="hidden md:flex items-center gap-1" id="desktop-nav">
+      {{desktopNav}}
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <button id="user-pill"
+        class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10"
+        style="border: 1px solid var(--glass-border-gold)" aria-label="Apri profilo utente">
+        <div class="relative flex-shrink-0">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center ring-2 ring-[#FFD700]/40"
+            style="background: linear-gradient(135deg, #E8A020dd, #E8A02088)">
+            <span class="font-ui text-white" data-user-initials style="font-size: 11px">{{playerInitials}}</span>
+          </div>
+          <div id="notif-state-dot" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+            style="background:transparent;ring:2px solid var(--color-bg-deep);display:none;box-shadow:0 0 0 2px var(--color-bg-deep)">
+          </div>
+        </div>
+        <span class="text-white/90 font-ui" data-user-name style="font-size: 13px">{{playerName}}</span>
+        <svg id="user-pill-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-white/50 transition-transform">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      <button id="user-pill-mobile"
+        class="md:hidden relative flex items-center justify-center w-8 h-8 rounded-full ring-2 ring-[#FFD700]/40 transition-all duration-200 hover:ring-[#FFD700]/70"
+        style="background: linear-gradient(135deg, #E8A020dd, #E8A02088)" aria-label="Apri profilo utente">
+        <span class="font-ui text-white" data-user-initials style="font-size: 12px">{{playerInitials}}</span>
+        <div id="notif-state-dot-mobile" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+          style="background:transparent;display:none;box-shadow:0 0 0 2px var(--color-bg-deep)"></div>
+      </button>
+
+      <button id="mobile-menu-toggle"
+        class="md:hidden flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 hover:bg-white/10"
+        style="border: 1px solid rgba(255,255,255,0.1)" aria-label="Toggle menu">
+        <i data-lucide="menu" style="width:18px;height:18px" class="text-white" id="menu-icon-open"></i>
+        <i data-lucide="x" style="width:18px;height:18px;display:none" class="text-white" id="menu-icon-close"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="absolute bottom-0 left-0 right-0 h-px gold-line"></div>
+</header>
+
+<div id="mobile-menu" class="md:hidden fixed left-0 right-0 z-40" style="
+    top: 3.5rem;
+    background: rgba(10,22,16,0.97);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--glass-border-gold);
+    display: none;
+  ">
+  <nav class="flex flex-col p-3 gap-1">
+    {{mobileNav}}
+  </nav>
+
+  <button id="mobile-menu-user"
+    class="mx-3 mb-3 px-4 py-3 rounded-lg flex items-center gap-3 w-[calc(100%-24px)] transition-all hover:bg-white/[0.06]"
+    style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08)">
+    <div class="w-9 h-9 rounded-full flex items-center justify-center ring-2 ring-[#FFD700]/40 flex-shrink-0"
+      style="background: linear-gradient(135deg, #E8A020dd, #E8A02088)">
+      <span class="font-ui text-white" data-user-initials style="font-size: 13px">{{playerInitials}}</span>
+    </div>
+    <div class="flex-1 text-left">
+      <div class="font-ui text-white" data-user-name style="font-size: 14px">{{playerName}}</div>
+      <div class="font-body" style="font-size: 11px; color: rgba(255,215,0,0.6)">
+        Tocca per profilo e notifiche
+      </div>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      class="text-white/30">
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  </button>
+</div>
