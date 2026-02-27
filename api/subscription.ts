@@ -106,13 +106,12 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       const playerIdNum = validatePlayerId(rawPlayerId);
 
       const { blobs } = await list({
-        prefix: `${playerIdNum}-subs/`,
+        prefix: `${playerIdNum}-subs/`
       });
 
       // Since blobs are public at storage level, avoid returning raw URLs or payloads
-      const subscriptionsMeta = blobs.map((b) => ({
+      const subscriptionsMeta = blobs.map(b => ({
         pathname: b.pathname,
-        name: b.name,
         size: (b as any).size ?? null,
         lastModified: (b as any).lastModified ?? null
       }));
@@ -177,5 +176,5 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 export default combineMiddlewares(
   handler,
   withSecurityMiddleware,
-  (h) => withRateLimiting(h, { maxRequests: 10, windowMs: 60000 })
+  h => withRateLimiting(h, { maxRequests: 10, windowMs: 60000 })
 );

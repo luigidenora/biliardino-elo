@@ -16,7 +16,6 @@ import {
 } from '../../api/_validation';
 
 describe('API Security Validation', () => {
-
   describe('validatePlayerId', () => {
     it('should accept valid player IDs', () => {
       expect(validatePlayerId(1)).toBe(1);
@@ -303,7 +302,7 @@ describe('API Security Validation', () => {
       });
 
       it('should block quotes and escapes', () => {
-        expect(() => sanitizeCommandArg("file'test")).toThrow();
+        expect(() => sanitizeCommandArg('file\'test')).toThrow();
         expect(() => sanitizeCommandArg('file"test')).toThrow();
         expect(() => sanitizeCommandArg('file\\test')).toThrow();
       });
@@ -347,7 +346,7 @@ describe('API Security Validation', () => {
     describe('Combined JSON Validation', () => {
       it('should reject payload with prototype pollution AND size issues', () => {
         const maliciousLargePayload = {
-          '__proto__': { isAdmin: true },
+          __proto__: { isAdmin: true },
           data: 'x'.repeat(200 * 1024)
         };
 

@@ -29,7 +29,7 @@ const CLASS_COLORS: Record<number, string> = {
   1: '#4A90D9',
   2: '#27AE60',
   3: '#C0C0C0',
-  4: '#8B7D6B',
+  4: '#8B7D6B'
 };
 
 const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -37,19 +37,19 @@ const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const MEDAL_BORDER: Record<number, string> = {
   1: 'rgba(255,215,0,0.55)',
   2: 'rgba(192,192,192,0.50)',
-  3: 'rgba(205,127,50,0.50)',
+  3: 'rgba(205,127,50,0.50)'
 };
 
 const MEDAL_ELO_COLOR: Record<number, string> = {
   1: '#FFD700',
   2: '#C0C0C0',
-  3: '#CD7F32',
+  3: '#CD7F32'
 };
 
 const MEDAL_SHADOW: Record<number, string> = {
   1: '0 0 40px rgba(255,215,0,0.20), inset 0 0 24px rgba(255,215,0,0.06)',
   2: '0 0 24px rgba(192,192,192,0.14)',
-  3: '0 0 24px rgba(205,127,50,0.14)',
+  3: '0 0 24px rgba(205,127,50,0.14)'
 };
 
 type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate';
@@ -242,9 +242,10 @@ class LeaderboardPage extends Component {
            style="background:rgba(255,215,0,0.07); border:1px solid rgba(255,215,0,0.25)">
         <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
              style="background:rgba(255,215,0,0.12)">
-          <i data-lucide="user-circle" style="width:18px;height:18px;color:#FFD700"></i>
+        <i data-lucide="shield" style="width:18px;height:18px;color:#FFD700;flex-shrink:0;margin-top:1px"></i>
         </div>
         <div class="flex-1 min-w-0">
+        
           <div class="font-ui text-xs" style="color:#FFD700; letter-spacing:0.08em">ATTENZIONE</div>
           <div class="font-body" style="font-size:11px; color:rgba(255,255,255,0.5)">
             Il biliardino non e scontato: solo in pausa e con rispetto, per evitare sanzioni.
@@ -342,7 +343,7 @@ class LeaderboardPage extends Component {
       { start: 11 * 60, end: 11 * 60 + 15 },
       { start: 13 * 60, end: 14 * 60 },
       { start: 16 * 60, end: 16 * 60 + 15 },
-      { start: 18 * 60, end: 20 * 60 },
+      { start: 18 * 60, end: 20 * 60 }
     ];
     return windows.some(w => minutes >= w.start && minutes < w.end);
   }
@@ -397,12 +398,14 @@ class LeaderboardPage extends Component {
         <!-- Avatar -->
         <div class="relative mb-7">
         ${renderPlayerAvatar({ initials, color, size: rank === 1 ? 'lg' : 'md' })}
-        ${rank === 1 ? `
+        ${rank === 1
+          ? `
           <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
           style="background:#FFD700; border:2px solid #1A3D2F">
           <i data-lucide="trophy" style="width:13px;height:13px;color:#0F2A20"></i>
           </div>
-          ` : ''}
+          `
+          : ''}
           <!-- Medal emoji -->
           <span class="absolute -bottom-7 left-1/2 -translate-x-1/2" style="font-size:${rank === 1 ? '32px' : '28px'}; line-height:1">${medal}</span>
           </div>
@@ -492,12 +495,14 @@ class LeaderboardPage extends Component {
       this.renderRankingRow(p, idx, players.length, todayDeltas, selectedPlayerId)
     ).join('');
 
-    const emptyState = players.length === 0 ? `
+    const emptyState = players.length === 0
+      ? `
       <div class="text-center py-12"
            style="color:rgba(255,255,255,0.3); font-family:var(--font-ui); letter-spacing:0.1em; font-size:13px">
         NESSUN GIOCATORE TROVATO
       </div>
-    ` : '';
+    `
+      : '';
 
     return `
       <div class="rounded-xl overflow-hidden"
@@ -666,7 +671,7 @@ class LeaderboardPage extends Component {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const rows = matches.map(m => {
+    const rows = matches.map((m) => {
       const matchDate = new Date(m.createdAt);
       matchDate.setHours(0, 0, 0, 0);
       const isToday = matchDate.getTime() === today.getTime();

@@ -15,7 +15,7 @@ export class LayoutComponent {
   render(): string {
     return bindHtml(template)`${{
       fieldBackground: rawHtml(renderFieldBackground()),
-      headerHtml: rawHtml(this.header.render()),
+      headerHtml: rawHtml(this.header.render())
     }}`;
   }
 

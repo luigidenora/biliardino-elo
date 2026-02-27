@@ -28,7 +28,7 @@ const navItems: NavItem[] = [
   { path: '/lobby', label: 'Lobby', icon: 'users' },
   { path: '/stats', label: 'Stats', icon: 'bar-chart-3' },
   { path: '/add-match', label: 'Partita', icon: 'plus-circle', adminOnly: true },
-  { path: '/add-player', label: 'Giocatore', icon: 'user-plus', adminOnly: true },
+  { path: '/add-player', label: 'Giocatore', icon: 'user-plus', adminOnly: true }
 ];
 
 export class HeaderComponent {
@@ -45,12 +45,12 @@ export class HeaderComponent {
       desktopNav: rawHtml(this.renderDesktopNav(currentPath)),
       mobileNav: rawHtml(this.renderMobileNav(currentPath)),
       playerInitials,
-      playerName,
+      playerName
     }}`;
   }
 
   private renderDesktopNav(currentPath: string): string {
-    return navItems.map(item => {
+    return navItems.map((item) => {
       const isActive = this.isActive(item.path, currentPath);
       const hiddenClass = item.adminOnly ? 'data-admin-only' : '';
       return `
@@ -58,9 +58,9 @@ export class HeaderComponent {
           href="${item.path}"
           ${hiddenClass}
           class="nav-link flex items-center gap-1.5 px-3 py-2 rounded-md transition-all duration-200 ${isActive
-          ? 'text-(--color-gold) bg-[rgba(255,215,0,0.12)]'
-          : 'text-white/90 hover:text-white hover:bg-white/8'
-        }"
+              ? 'text-(--color-gold) bg-[rgba(255,215,0,0.12)]'
+              : 'text-white/90 hover:text-white hover:bg-white/8'
+          }"
           style="font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.08em"
         >
           <i data-lucide="${item.icon}" style="width:15px;height:15px"></i>
@@ -71,7 +71,7 @@ export class HeaderComponent {
   }
 
   private renderMobileNav(currentPath: string): string {
-    return navItems.map(item => {
+    return navItems.map((item) => {
       const isActive = this.isActive(item.path, currentPath);
       const hiddenAttr = item.adminOnly ? 'data-admin-only' : '';
       return `
@@ -79,9 +79,9 @@ export class HeaderComponent {
           href="${item.path}"
           ${hiddenAttr}
           class="mobile-nav-link flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-200 ${isActive
-          ? 'text-(--color-gold) bg-[rgba(255,215,0,0.12)]'
-          : 'text-white/70 hover:text-white hover:bg-white/6'
-        }"
+              ? 'text-(--color-gold) bg-[rgba(255,215,0,0.12)]'
+              : 'text-white/70 hover:text-white hover:bg-white/6'
+          }"
           style="font-family: var(--font-ui); font-size: 15px; letter-spacing: 0.08em"
         >
           <i data-lucide="${item.icon}" style="width:18px;height:18px"></i>
@@ -130,14 +130,14 @@ export class HeaderComponent {
       } else if (mobileMenu) {
         gsap.to(mobileMenu, {
           opacity: 0, y: -10, duration: 0.15,
-          onComplete: () => { mobileMenu.style.display = 'none'; },
+          onComplete: () => { mobileMenu.style.display = 'none'; }
         });
         if (iconOpen) iconOpen.style.display = 'block';
         if (iconClose) iconClose.style.display = 'none';
       }
     });
 
-    mobileMenu?.querySelectorAll('.mobile-nav-link').forEach(link => {
+    mobileMenu?.querySelectorAll('.mobile-nav-link').forEach((link) => {
       link.addEventListener('click', () => {
         this.menuOpen = false;
         if (mobileMenu) mobileMenu.style.display = 'none';
@@ -161,7 +161,7 @@ export class HeaderComponent {
 
   private updateActiveStates(): void {
     const currentPath = router.getCurrentPath();
-    document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(link => {
+    document.querySelectorAll('.nav-link, .mobile-nav-link').forEach((link) => {
       const href = link.getAttribute('href');
       if (!href) return;
       const isActive = this.isActive(href, currentPath);

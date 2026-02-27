@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/config/env.config';
+import { isPlayerAdmin } from '@/config/admin.config';
 import { onAuthStateChanged } from 'firebase/auth';
 import { AUTH } from './firebase.util';
 
@@ -73,33 +73,14 @@ export function withAuthentication(
 
     started = true;
 
-    // Verifica admin se richiesto
+    // Verifica admin se richiesto (check locale, sicurezza reale via JWT sulle API admin)
     if (requireAdmin) {
       const playerId = localStorage.getItem('biliardino_player_id');
 
-      if (!playerId) {
-        showAdminDenied('Utente non riconosciuto. Effettua il login come giocatore prima.');
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/check-admin?playerId=${playerId}`);
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!data.isAdmin) {
-          showAdminDenied('Accesso negato. Solo gli admin possono accedere a questa pagina.');
-          return;
-        }
-
-        console.log('✅ Admin verificato:', playerId);
-      } catch (error) {
-        console.error('❌ Errore verifica admin:', error);
-        showAdminDenied('Errore verifica permessi admin.');
+      if (!playerId || !isPlayerAdmin(Number(playerId))) {
+        showAdminDenied(!playerId
+          ? 'Utente non riconosciuto. Effettua il login come giocatore prima.'
+          : 'Accesso negato. Solo gli admin possono accedere a questa pagina.');
         return;
       }
     }

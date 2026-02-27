@@ -26,7 +26,7 @@ const CLASS_COLORS: Record<number, string> = {
   1: '#4A90D9',
   2: '#27AE60',
   3: '#C0C0C0',
-  4: '#8B7D6B',
+  4: '#8B7D6B'
 };
 
 class StatsPage extends Component {
@@ -106,29 +106,29 @@ class StatsPage extends Component {
         label: 'PARTITE TOTALI',
         value: String(totalMatches),
         sub: `${totalGoals} gol totali`,
-        color: 'var(--color-gold)',
+        color: 'var(--color-gold)'
       },
       {
         icon: 'users',
         label: 'GIOCATORI ATTIVI',
         value: String(activePlayers),
         sub: `su ${allPlayers.length} registrati`,
-        color: 'var(--color-gold)',
+        color: 'var(--color-gold)'
       },
       {
         icon: 'target',
         label: 'MEDIA GOL / PARTITA',
         value: String(avgGoals),
         sub: `${totalGoals} gol in ${totalMatches} match`,
-        color: 'var(--color-gold)',
+        color: 'var(--color-gold)'
       },
       {
         icon: 'zap',
         label: 'BEST ELO ALL TIME',
         value: maxEloPlayer ? String(Math.round(maxElo)) : '—',
         sub: maxEloPlayer?.name ?? '—',
-        color: '#FFD700',
-      },
+        color: '#FFD700'
+      }
     ];
 
     return `
@@ -166,7 +166,7 @@ class StatsPage extends Component {
         player: byElo,
         value: String(getDisplayElo(byElo)),
         sub: `#${getRank(byElo.id)} in classifica`,
-        color: '#FFD700',
+        color: '#FFD700'
       },
       {
         icon: 'zap',
@@ -174,7 +174,7 @@ class StatsPage extends Component {
         player: byBestElo,
         value: String(Math.round(byBestElo.bestElo)),
         sub: 'Massimo storico',
-        color: '#F0A500',
+        color: '#F0A500'
       },
       {
         icon: 'trending-up',
@@ -182,7 +182,7 @@ class StatsPage extends Component {
         player: byWins,
         value: `${byWins.wins || 0}W`,
         sub: `${byWins.matches} match giocati`,
-        color: 'var(--color-win)',
+        color: 'var(--color-win)'
       },
       {
         icon: 'activity',
@@ -190,16 +190,18 @@ class StatsPage extends Component {
         player: byMatches,
         value: String(byMatches.matches),
         sub: `${byMatches.wins || 0}W / ${byMatches.matches - (byMatches.wins || 0)}S`,
-        color: 'var(--color-gold)',
+        color: 'var(--color-gold)'
       },
-      ...(byWR ? [{
-        icon: 'award',
-        label: 'MIGLIOR WINRATE',
-        player: byWR,
-        value: `${Math.round(((byWR.wins || 0) / byWR.matches) * 100)}%`,
-        sub: `min. 5 partite`,
-        color: 'var(--color-win)',
-      }] : []),
+      ...(byWR
+        ? [{
+            icon: 'award',
+            label: 'MIGLIOR WINRATE',
+            player: byWR,
+            value: `${Math.round(((byWR.wins || 0) / byWR.matches) * 100)}%`,
+            sub: `min. 5 partite`,
+            color: 'var(--color-win)'
+          }]
+        : [])
     ];
 
     return `
@@ -217,7 +219,7 @@ class StatsPage extends Component {
   }
 
   private renderHofCard(r: {
-    icon: string; label: string; player: IPlayer; value: string; sub: string; color: string
+    icon: string; label: string; player: IPlayer; value: string; sub: string; color: string;
   }): string {
     const color = CLASS_COLORS[r.player.class] ?? '#8B7D6B';
     return `
@@ -263,7 +265,7 @@ class StatsPage extends Component {
     const best = pairs.slice(0, 5);
     const worst = [...pairs].sort((a, b) => a.delta - b.delta).slice(0, 5);
 
-    const renderList = (list: typeof pairs, positive: boolean) => list.map(pr => {
+    const renderList = (list: typeof pairs, positive: boolean) => list.map((pr) => {
       const dColor = positive ? 'var(--color-win)' : 'var(--color-loss)';
       const sign = positive ? '+' : '';
       return `
@@ -327,7 +329,7 @@ class StatsPage extends Component {
 
     const maxCount = Math.max(...[...classCounts.values()].map(v => v.count));
 
-    const rows = [0, 1, 2, 3, 4].map(cls => {
+    const rows = [0, 1, 2, 3, 4].map((cls) => {
       const entry = classCounts.get(cls);
       if (!entry) return '';
       const pct = maxCount > 0 ? (entry.count / maxCount) * 100 : 0;

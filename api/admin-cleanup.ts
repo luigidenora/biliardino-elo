@@ -1,15 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
-import { redis } from './_redisClient.js';
-// messages are global for the lobby
+import { prefixed, redis, redisRaw } from './_redisClient.js';
 
 /**
-/**
- * API per cancellare i messaggi chat della lobby (admin only)
+ * API per cancellare messaggi chat e conferme della lobby (admin only)
  *
- * POST /api/clear-messages
- * Body: { }
+ * POST /api/admin-cleanup
  */
 async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
   setCorsHeaders(res);
@@ -20,23 +17,31 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   }
 
   try {
-    // Clear global messages
-    const messagesKey = `messages`;
-
-    // Recupera gli ID dei messaggi da cancellare
+    // Clear messages
+    const messagesKey = 'messages';
     const messageIds = await redis.lrange(messagesKey, 0, -1);
 
-    // Cancella ogni messaggio singolo
     for (const messageId of messageIds) {
       await redis.del(`message:${messageId}`);
     }
-
-    // Cancella la lista e il counter
     await redis.del(messagesKey);
 
-    return res.status(200).json({ ok: true, deletedCount: messageIds.length });
+    // Clear confirmations (hash + sorted set)
+    const confirmCount = await redisRaw.hlen(prefixed('availability'));
+    const pipeline = redisRaw.pipeline();
+    pipeline.del(prefixed('availability'));
+    pipeline.del(prefixed('availability_ts'));
+    await pipeline.exec();
+
+    console.log(`Cleanup: ${messageIds.length} messaggi, ${confirmCount} conferme cancellate`);
+
+    return res.status(200).json({
+      ok: true,
+      deletedMessages: messageIds.length,
+      deletedConfirmations: confirmCount
+    });
   } catch (error) {
-    console.error('❌ Errore clear-messages:', error);
+    console.error('Errore admin-cleanup:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -13,7 +13,7 @@ const sizeMap: Record<AvatarSize, { container: string; text: string; dot: string
   sm: { container: 'w-9 h-9', text: 'text-xs', dot: 'w-2.5 h-2.5' },
   md: { container: 'w-11 h-11', text: 'text-sm', dot: 'w-3 h-3' },
   lg: { container: 'w-16 h-16', text: 'text-lg', dot: 'w-3.5 h-3.5' },
-  xl: { container: 'w-24 h-24', text: 'text-2xl', dot: 'w-4 h-4' },
+  xl: { container: 'w-24 h-24', text: 'text-2xl', dot: 'w-4 h-4' }
 };
 
 interface AvatarOptions {
@@ -41,7 +41,7 @@ export function renderPlayerAvatar({ initials, color, size = 'md', online }: Ava
     textClass: s.text,
     color,
     initials,
-    statusDot: rawHtml(statusDot),
+    statusDot: rawHtml(statusDot)
   }}`;
 }
 

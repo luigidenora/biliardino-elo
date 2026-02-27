@@ -53,7 +53,7 @@ export class AvailabilitySubscriber {
         }
 
         if (payload) {
-          this.listeners.forEach((l) => l(payload));
+          this.listeners.forEach(l => l(payload));
         }
       } catch (e) {
         console.warn('AvailabilitySubscriber: message parse error', e);

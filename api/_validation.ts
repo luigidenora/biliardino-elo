@@ -68,7 +68,7 @@ export function validateHost(host: string | undefined): string {
   // Rimuovi porta per comparazione più flessibile
   const hostWithoutPort = host.split(':')[0];
 
-  const isAllowed = allowedHosts.some(allowedHost => {
+  const isAllowed = allowedHosts.some((allowedHost) => {
     if (!allowedHost) return false;
     const allowedHostWithoutPort = allowedHost.split(':')[0];
     return host === allowedHost || hostWithoutPort === allowedHostWithoutPort;
@@ -147,7 +147,7 @@ export function sanitizeLogOutput(input: unknown): string {
 /**
  * Previene Prototype Pollution validando che l'oggetto non contenga chiavi pericolose
  * Protegge contro attacchi che tentano di modificare Object.prototype
- * 
+ *
  * NOTA: In produzione, usare anche parseJSONSafely() per validare il JSON prima del parse
  */
 export function preventPrototypePollution(obj: any): void {
@@ -174,8 +174,8 @@ export function preventPrototypePollution(obj: any): void {
     }
 
     // Check per constructor e prototype come proprietà proprie
-    if (Object.prototype.hasOwnProperty.call(current, 'constructor') &&
-      path !== '') { // Permetti constructor a livello root (normale per oggetti)
+    if (Object.prototype.hasOwnProperty.call(current, 'constructor')
+      && path !== '') { // Permetti constructor a livello root (normale per oggetti)
       throw new Error(`Proprietà pericolosa rilevata: ${path ? path + '.' : ''}constructor`);
     }
 
@@ -258,10 +258,10 @@ export async function withTimeout<T>(
 export function isSafeRegex(pattern: string): boolean {
   // Pattern noti per causare ReDoS - nested quantifiers
   const dangerousPatterns = [
-    /\([^)]*\+\)\+/,      // (x+)+ pattern
-    /\([^)]*\*\)\*/,      // (x*)* pattern
-    /\([^)]*\+\)\*/,      // (x+)* pattern
-    /\([^)]*\*\)\+/,      // (x*)+ pattern
+    /\([^)]*\+\)\+/, // (x+)+ pattern
+    /\([^)]*\*\)\*/, // (x*)* pattern
+    /\([^)]*\+\)\*/, // (x+)* pattern
+    /\([^)]*\*\)\+/ // (x*)+ pattern
   ];
 
   for (const dangerous of dangerousPatterns) {

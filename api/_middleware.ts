@@ -49,7 +49,6 @@ export function withSecurityMiddleware(handler: Handler, options?: {
         timeout,
         'Request timeout - operazione troppo lenta'
       );
-
     } catch (err) {
       // Gestione errori sicura
       const error = err as Error;
@@ -91,9 +90,9 @@ export function withRateLimiting(
 
   return async (req: VercelRequest, res: VercelResponse) => {
     // Ottieni IP (considera proxy headers)
-    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-      req.headers['x-real-ip'] as string ||
-      'unknown';
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]
+      || req.headers['x-real-ip'] as string
+      || 'unknown';
 
     const now = Date.now();
     const record = requestCounts.get(ip);

@@ -43,11 +43,11 @@ async function simulateConfirmation(playerId: number): Promise<{ ok: boolean; co
 
 async function clearConfirmations(): Promise<any> {
   const token = ADMIN_TOKEN || localStorage.getItem('biliardino_admin_token') || '';
-  const res = await fetch(`${API}/clear-confirmations`, {
+  const res = await fetch(`${API}/admin-cleanup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({})
   });
@@ -60,7 +60,7 @@ async function sendBroadcast(): Promise<any> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({})
   });
@@ -293,7 +293,6 @@ function unmarkLocalVerified(): void { try { localStorage.removeItem(SUBSCRIPTIO
 function dispatchDevNotificationAction(action: { verify?: boolean } = {}): void {
   window.dispatchEvent(new CustomEvent('dev-notifications-action', { detail: action }));
 }
-
 
 function bindEvents(): void {
   const fab = document.getElementById('dev-fab')!;

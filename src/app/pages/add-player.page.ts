@@ -22,11 +22,10 @@ const CLASS_COLORS: Record<number, string> = {
   1: '#4A90D9',
   2: '#27AE60',
   3: '#C0C0C0',
-  4: '#8B7D6B',
+  4: '#8B7D6B'
 };
 
 class AddPlayerPage extends Component {
-
   async render(): Promise<string> {
     const players = [...getAllPlayers()].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -43,12 +42,12 @@ class AddPlayerPage extends Component {
     `;
   }
 
-  mount(): void {
+  override mount(): void {
     refreshIcons();
 
     // Bind form submit
     const form = this.$('#add-player-form') as HTMLFormElement | null;
-    form?.addEventListener('submit', (e) => this.handleSubmit(e));
+    form?.addEventListener('submit', e => this.handleSubmit(e));
 
     // Bind defence slider to update display
     const slider = this.$id('player-defence') as HTMLInputElement | null;
@@ -59,14 +58,14 @@ class AddPlayerPage extends Component {
     gsap.from('.player-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.2 });
   }
 
-  destroy(): void { }
+  override destroy(): void { }
 
   // ── Section Renderers ──────────────────────────────────────
 
   private renderPageHeader(): string {
     return `
       <div class="flex items-center gap-3">
-        <i data-lucide="user-plus" class="text-[var(--color-gold)]"
+        <i data-lucide="user-plus" class="text-(--color-gold)"
            style="width:26px;height:26px"></i>
         <div>
           <h1 class="text-white font-display"
@@ -114,7 +113,7 @@ class AddPlayerPage extends Component {
             <div class="grid grid-cols-3 gap-2">
               ${[1000, 1100, 1200].map(elo => `
                 <label class="flex items-center justify-center px-3 py-2.5 rounded-lg cursor-pointer transition-all
-                              ${elo === 1200 ? 'ring-2 ring-[var(--color-gold)]' : ''}"
+                              ${elo === 1200 ? 'ring-2 ring-(--color-gold)' : ''}"
                        style="background:rgba(255,215,0,${elo === 1200 ? '0.15' : '0.05'});
                               border:1px solid rgba(255,215,0,${elo === 1200 ? '0.4' : '0.15'})">
                   <input type="radio" name="player-elo" value="${elo}"

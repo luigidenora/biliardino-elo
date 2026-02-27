@@ -36,10 +36,7 @@ export class MessageService {
    * Carica i messaggi per una partita
    */
   static async getMessages(since?: number): Promise<IMessagesResponse> {
-    const url = new URL(`${API_BASE_URL}/get-messages`);
-    if (since) {
-      url.searchParams.set('since', String(since));
-    }
+    const url = new URL(`${API_BASE_URL}/lobby-state`);
 
     const res = await fetch(url.toString());
 
@@ -47,17 +44,21 @@ export class MessageService {
       throw new Error(`Errore caricamento messaggi: ${res.statusText}`);
     }
 
-    return res.json();
+    const data = await res.json();
+    return { messages: data.messages, count: data.messageCount };
   }
 
   /**
    * Cancella i messaggi di una partita (solo per admin)
    */
   static async clearMessages(token: string): Promise<{ ok: boolean }> {
-    const res = await fetch(`${API_BASE_URL}/clear-messages`, {
+    const res = await fetch(`${API_BASE_URL}/admin-cleanup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({})
     });
 
     if (!res.ok) {

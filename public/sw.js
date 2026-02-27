@@ -1,4 +1,3 @@
-
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 const VERSION = '0.3.0';
 const CACHE_PREFIX = 'calcio-bliliardino';
@@ -113,7 +112,7 @@ async function handleNavigationRequest(event) {
     if (cachedShell) return cachedShell;
     return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>CAlcio bliliardino</title><style>html,body{margin:0;min-height:100%;background:#0F2A20;color:#fff;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.sw-splash{min-height:100vh;display:flex;align-items:center;justify-content:center;opacity:.9;letter-spacing:.08em;font-size:12px}</style></head><body><div class="sw-splash">CARICAMENTO…</div></body></html>`, {
       headers: { 'Content-Type': 'text/html; charset=UTF-8' },
-      status: 200,
+      status: 200
     });
   }
 }
@@ -133,7 +132,6 @@ async function handleFirebaseRequest(request) {
   return cached || networkPromise;
 }
 
-
 self.addEventListener('push', async (event) => {
   let title, options;
   try {
@@ -151,7 +149,6 @@ self.addEventListener('push', async (event) => {
   } catch (exception) {
     console.error('[push event] Error showing notification:', exception);
   }
-
 });
 
 self.addEventListener('notificationclick', (event) => {

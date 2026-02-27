@@ -50,13 +50,13 @@ export default defineConfig(config => ({
   build: {
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
+        main: path.resolve(__dirname, 'index.html')
       },
       output: {
         manualChunks: {
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore/lite'],
           gsap: ['gsap'],
-          chartjs: ['chart.js'],
+          chartjs: ['chart.js']
         }
       }
     }
@@ -64,6 +64,7 @@ export default defineConfig(config => ({
   test: {
     environment: 'happy-dom',
     globals: true,
+    setupFiles: ['./tests/setup.ts'],
     env: {
       API_TOKEN: process.env.API_TOKEN || 'test-token',
       VERCEL_URL: process.env.VERCEL_URL || ''

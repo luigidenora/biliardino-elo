@@ -39,7 +39,7 @@ import {
   Users,
   Wifi,
   X,
-  Zap,
+  Zap
 } from 'lucide';
 
 const APP_ICONS = {
@@ -74,7 +74,7 @@ const APP_ICONS = {
   Users,
   Wifi,
   X,
-  Zap,
+  Zap
 };
 
 /** Replace all `<i data-lucide="...">` in the DOM with their SVG icons. */

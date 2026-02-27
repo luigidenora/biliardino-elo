@@ -46,7 +46,6 @@ interface NotificationAction {
  * }
  */
 async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
-
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return res;
 
@@ -59,7 +58,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       title: rawTitle,
       subtitle: rawSubtitle,
       body: rawBody
-    } = req.body
+    } = req.body;
 
     // Valida e sanitizza input (se mancante, sarà usata la chiave 'default')
     const customTitle = rawTitle ? validateString(rawTitle, 'title', 100) : undefined;
@@ -115,7 +114,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
         const title = customTitle || _randomMessage.title;
         const body = customBody || _randomMessage.body;
         const actions: NotificationAction[] = [
-          { action: 'cancel', title: 'Ignora', url: `${url}/confirm.html?c=false` }
+          { action: 'cancel', title: 'Ignora', url: `${url}/lobby` }
         ];
 
         await webpush.sendNotification(
@@ -125,7 +124,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
             notification: {
               title,
               body,
-              navigate: `${url}/confirm.html`,
+              navigate: `${url}/lobby`,
               tag: `lobby`,
               requireInteraction: true,
               icon: '/icons/icon-192.png',
@@ -134,7 +133,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
               actions: actions?.map(a => ({
                 action: a.action,
                 title: a.title,
-                navigate: a.url,
+                navigate: a.url
               }))
             }
           }),
@@ -205,6 +204,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 // Applica auth + security middleware
 export default combineMiddlewares(
   handler,
-  (h) => withAuth(h, 'admin'),
-  (h) => withSecurityMiddleware(h, { timeout: 60000 }) // 60s per notifiche multiple
+  h => withAuth(h, 'admin'),
+  h => withSecurityMiddleware(h, { timeout: 60000 }) // 60s per notifiche multiple
 );

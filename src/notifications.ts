@@ -4,18 +4,17 @@ import IOS_PWA_INSTALL_BANNER_TEMPLATE from './pwa-ios-banner.html?raw';
 import { getAllPlayers } from './services/player.service';
 import { getRegisteredPlayerName } from './utils/notification-status.util';
 
-
 let alertSubscriptionDiscrepancy = false;
 /**
  * Subscribes a player to push notifications.
- * 
+ *
  * This function handles the complete push notification subscription flow:
  * 1. Validates player data and browser support
  * 2. Requests notification permission from the user
  * 3. Gets or creates a push subscription
  * 4. Registers the subscription with the backend API
  * 5. Stores subscription data locally
- * 
+ *
  * @param playerId - The unique identifier of the player
  * @param playerName - The name of the player
  * @returns A promise that resolves to the PushSubscription object
@@ -25,7 +24,7 @@ let alertSubscriptionDiscrepancy = false;
  * @throws {Error} If notifications API is unavailable
  * @throws {Error} If user denies notification permission
  * @throws {Error} If subscription registration with the API fails
- * 
+ *
  */
 export const subscribeToPushNotifications = async (playerId: number, playerName: string): Promise<PushSubscription> => {
   if (!playerId || !playerName) throw new Error('Player data missing');
@@ -86,7 +85,7 @@ export function initNotification(): void {
       }
     } catch (err) {
       // non-fatal for prod; silence import failures
-      // eslint-disable-next-line no-console
+
       console.warn('[DevToolbar] failed to load', err);
     }
   })();
@@ -294,7 +293,6 @@ function createNotificationButton(): HTMLElement {
   button.appendChild(avatar);
   button.appendChild(notificationIcon);
   button.appendChild(inlineSelect);
-
 
   button.addEventListener('click', (e) => {
     e.preventDefault();
@@ -504,7 +502,6 @@ async function updateButtonState(verifyServer = false): Promise<void> {
   }
 }
 
-
 /**
  * Mostra il banner di installazione PWA per iOS se applicabile
  */
@@ -512,7 +509,7 @@ function showIosPwaBannerIfNeeded(): void {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone
     = window.matchMedia('(display-mode: standalone)').matches
-    || (window.navigator as any).standalone === true;
+      || (window.navigator as any).standalone === true;
   if (isIos) {
     if (!isInStandalone) {
       document.getElementById('ios-pwa-install-banner')?.remove();
@@ -540,9 +537,9 @@ const PLAYER_ID_KEY = 'biliardino_player_id';
 const PLAYER_NAME_KEY = 'biliardino_player_name';
 
 const NOTIF_STATES = {
-  DISABLED: 'disabled',           // browser notifications not granted
-  INACTIVE: 'inactive',           // no subscription present on device
-  ACTIVE_WORKING: 'active-working',// subscription exists and BE confirms
+  DISABLED: 'disabled', // browser notifications not granted
+  INACTIVE: 'inactive', // no subscription present on device
+  ACTIVE_WORKING: 'active-working', // subscription exists and BE confirms
   ACTIVE_BROKEN: 'active-broken', // subscription exists but BE missing / discrepancy
   ERROR: 'error'
 } as const;
@@ -585,8 +582,8 @@ function applyNotificationState(button: HTMLElement, state: string): string {
 }
 
 const collapseTimers = new Map<HTMLElement, number>();
-let easterEggClickCount = 0;
-let easterEggResetTimer: number | null = null;
+const easterEggClickCount = 0;
+const easterEggResetTimer: number | null = null;
 let isUpdatingButtonState = false;
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {

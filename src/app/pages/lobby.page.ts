@@ -32,7 +32,7 @@ const CHAT_MAX_LENGTH = 50;
 const FISH_TYPES = ['Squalo', 'Barracuda', 'Tonno', 'Spigola', 'Sogliola'] as const;
 const LABEL_COLORS = [
   '#1e90ff', '#e74c3c', '#8e44ad', '#e67e22', '#2ecc71',
-  '#f39c12', '#16a085', '#c0392b', '#2980b9', '#d35400',
+  '#f39c12', '#16a085', '#c0392b', '#2980b9', '#d35400'
 ];
 
 const CLASS_COLORS: Record<number, string> = {
@@ -40,7 +40,7 @@ const CLASS_COLORS: Record<number, string> = {
   1: '#4A90D9',
   2: '#27AE60',
   3: '#C0C0C0',
-  4: '#8B7D6B',
+  4: '#8B7D6B'
 };
 
 function getClassColor(playerClass: number): string {
@@ -115,7 +115,7 @@ class LobbyPage extends Component {
         this.lobbyData.teamA.defence,
         this.lobbyData.teamA.attack,
         this.lobbyData.teamB.defence,
-        this.lobbyData.teamB.attack,
+        this.lobbyData.teamB.attack
       ];
       for (const id of ids) {
         const p = getPlayerById(id);
@@ -175,7 +175,7 @@ class LobbyPage extends Component {
       opacity: 0,
       y: -20,
       duration: 0.4,
-      ease: 'power2.out',
+      ease: 'power2.out'
     });
 
     gsap.from('.team-card', {
@@ -184,7 +184,7 @@ class LobbyPage extends Component {
       stagger: 0.1,
       duration: 0.4,
       ease: 'power2.out',
-      delay: 0.1,
+      delay: 0.1
     });
 
     gsap.from('#lobby-chat', {
@@ -192,7 +192,7 @@ class LobbyPage extends Component {
       x: 20,
       duration: 0.4,
       ease: 'power2.out',
-      delay: 0.15,
+      delay: 0.15
     });
 
     gsap.from('#lobby-aquarium', {
@@ -200,7 +200,7 @@ class LobbyPage extends Component {
       y: 20,
       duration: 0.5,
       ease: 'power2.out',
-      delay: 0.2,
+      delay: 0.2
     });
   }
 
@@ -547,9 +547,9 @@ class LobbyPage extends Component {
 
   private async pollLobby(): Promise<void> {
     try {
-      const [lobbyRes, confirmRes] = await Promise.all([
+      const [lobbyRes, stateRes] = await Promise.all([
         fetch(`${API_BASE_URL}/check-lobby`),
-        fetch(`${API_BASE_URL}/get-confirmations`),
+        fetch(`${API_BASE_URL}/lobby-state`)
       ]);
 
       if (lobbyRes.ok) {
@@ -561,7 +561,7 @@ class LobbyPage extends Component {
             this.lobbyData.teamA.defence,
             this.lobbyData.teamA.attack,
             this.lobbyData.teamB.defence,
-            this.lobbyData.teamB.attack,
+            this.lobbyData.teamB.attack
           ];
           for (const id of ids) {
             if (!this.players.has(id)) {
@@ -572,9 +572,9 @@ class LobbyPage extends Component {
         }
       }
 
-      if (confirmRes.ok) {
-        const confirmData = await confirmRes.json();
-        const confirmations: IConfirmation[] = confirmData.confirmations ?? [];
+      if (stateRes.ok) {
+        const stateData = await stateRes.json();
+        const confirmations: IConfirmation[] = stateData.confirmations ?? [];
         const oldSize = this.confirmed.size;
         this.confirmed.clear();
         for (const c of confirmations) {
@@ -655,8 +655,8 @@ class LobbyPage extends Component {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             playerId: this.myPlayerId,
-            subscription: localStorage.getItem('biliardino_subscription'),
-          }),
+            subscription: localStorage.getItem('biliardino_subscription')
+          })
         });
 
         if (!res.ok) throw new Error('Errore nella conferma');
@@ -680,7 +680,7 @@ class LobbyPage extends Component {
       this.lobbyData.teamA.defence,
       this.lobbyData.teamA.attack,
       this.lobbyData.teamB.defence,
-      this.lobbyData.teamB.attack,
+      this.lobbyData.teamB.attack
     ];
     return ids.includes(this.myPlayerId);
   }
@@ -723,7 +723,7 @@ class LobbyPage extends Component {
         this.myPlayerId,
         playerName,
         fishType,
-        text,
+        text
       );
       input.value = '';
     } catch (err) {
@@ -734,13 +734,13 @@ class LobbyPage extends Component {
   private async pollMessages(): Promise<void> {
     try {
       const data = await MessageService.getMessages(
-        this.lastMessageTimestamp > 0 ? this.lastMessageTimestamp : undefined,
+        this.lastMessageTimestamp > 0 ? this.lastMessageTimestamp : undefined
       );
 
       if (data.messages && data.messages.length > 0) {
         // Determine if there are truly new messages
         const newMessages = data.messages.filter(
-          (m) => m.sentAt > this.lastMessageTimestamp,
+          m => m.sentAt > this.lastMessageTimestamp
         );
 
         if (newMessages.length > 0 || this.messages.length === 0) {
@@ -783,7 +783,7 @@ class LobbyPage extends Component {
       const displayName = msg.playerName || player?.name || `#${msg.playerId}`;
       const time = new Date(msg.sentAt).toLocaleTimeString('it-IT', {
         hour: '2-digit',
-        minute: '2-digit',
+        minute: '2-digit'
       });
 
       // Fish sprite (small inline) if available
@@ -826,7 +826,7 @@ class LobbyPage extends Component {
   // ── Fish aquarium ────────────────────────────────────────────
 
   private syncFish(confirmations: IConfirmation[]): void {
-    const activeIds = new Set(confirmations.map((c) => c.playerId));
+    const activeIds = new Set(confirmations.map(c => c.playerId));
 
     // Remove fish for players who left
     for (const id of Array.from(this.fishMap.keys())) {
@@ -835,7 +835,7 @@ class LobbyPage extends Component {
 
     // Spawn fish for confirmed players
     const sorted = [...confirmations].sort(
-      (a, b) => new Date(a.confirmedAt).getTime() - new Date(b.confirmedAt).getTime(),
+      (a, b) => new Date(a.confirmedAt).getTime() - new Date(b.confirmedAt).getTime()
     );
     sorted.forEach((conf, i) => {
       const isMe = conf.playerId === this.myPlayerId;
@@ -882,7 +882,7 @@ class LobbyPage extends Component {
       vy: this.rand(-0.5, 0.5),
       speed: this.rand(0.5, 1.5),
       element: fish,
-      sprite: fishSprite,
+      sprite: fishSprite
     });
   }
 

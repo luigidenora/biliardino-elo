@@ -8,7 +8,7 @@ export interface IConfirmation {
 }
 
 /**
- * Risposta dell'API get-confirmations
+ * Risposta dell'API lobby-state (sezione conferme)
  */
 export interface IConfirmationsResponse {
   count: number;

@@ -41,16 +41,19 @@ export abstract class Component {
 
   // ── DOM helpers (scoped to the component's container) ────
 
+  /** Scoped query selector that falls back to the document if the component root is unavailable. */
   protected $(selector: string): HTMLElement | null {
     return this.el?.querySelector(selector) ?? document.querySelector(selector);
   }
 
+  /** Scoped query selector returning all matching elements under the component root. */
   protected $$(selector: string): HTMLElement[] {
     return Array.from(
       this.el?.querySelectorAll(selector) ?? document.querySelectorAll(selector)
     );
   }
 
+  /** Shortcut for {@link document.getElementById}. */
   protected $id(id: string): HTMLElement | null {
     return document.getElementById(id);
   }

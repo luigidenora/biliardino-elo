@@ -17,7 +17,6 @@ import { getAllPlayers, getClass, getPlayerById, getRank } from '@/services/play
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import AvailabilitySubscriber from '@/utils/availability-subscriber';
 import { availabilityList } from '@/utils/availability.util';
-import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
@@ -29,6 +28,7 @@ import type { IConfirmationsResponse } from '@/models/confirmation.interface';
 import type { IRunningMatchDTO } from '@/models/match.interface';
 import type { IPlayer } from '@/models/player.interface';
 import type { IMatchProposal } from '@/services/matchmaking.service';
+import { renderMatchmakingPageHeader, renderMatchmakingPlayerList } from '../components/ui/matchmaking.ui';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ const CLASS_COLORS: Record<number, string> = {
   1: '#4A90D9',
   2: '#27AE60',
   3: '#C0C0C0',
-  4: '#8B7D6B',
+  4: '#8B7D6B'
 };
 
 function getClassColor(playerClass: number): string {
@@ -51,7 +51,6 @@ function getClassColor(playerClass: number): string {
 // ── Page Component ───────────────────────────────────────────────
 
 class MatchmakingPage extends Component {
-
   // ── State ─────────────────────────────────────────────────────
 
   private playerStates: Map<number, PlayerState> = new Map();
@@ -131,7 +130,7 @@ class MatchmakingPage extends Component {
       x: 20,
       duration: 0.4,
       ease: 'power2.out',
-      delay: 0.15,
+      delay: 0.15
     });
   }
 
@@ -142,159 +141,19 @@ class MatchmakingPage extends Component {
   // ── Section Renderers ─────────────────────────────────────────
 
   private renderPageHeader(totalPlayers: number): string {
-    return `
-      <div class="page-header flex items-center gap-3">
-        <i data-lucide="swords" class="text-[var(--color-gold)]"
-           style="width:28px;height:28px"></i>
-        <div>
-          <h1 class="text-white font-display"
-              style="font-size:clamp(28px,6vw,42px); letter-spacing:0.12em; line-height:1">
-            MATCHMAKING
-          </h1>
-          <p class="font-ui"
-             style="font-size:12px; color:rgba(255,255,255,0.5); letter-spacing:0.1em">
-            ${totalPlayers} GIOCATORI &middot; SELEZIONA ALMENO ${MIN_PLAYERS} PER GENERARE
-          </p>
-        </div>
-      </div>
-    `;
+    return renderMatchmakingPageHeader(totalPlayers, MIN_PLAYERS);
   }
 
   private renderPlayerList(players: IPlayer[]): string {
-    // Count currently selected
-    const selectedCount = this.getSelectedCount();
-    const progressPct = Math.min(100, (selectedCount / MIN_PLAYERS) * 100);
-    const progressComplete = selectedCount >= MIN_PLAYERS;
-
-    const playerRows = players.map((player, idx) => {
-      const state = this.playerStates.get(player.id) ?? 0;
-      const classNum = player.class === -1 ? getClass(player.elo) : player.class;
-      const classColor = getClassColor(classNum);
-      const className = getClassName(classNum);
-      const initials = getInitials(player.name);
-      const displayElo = getDisplayElo(player);
-      const winRate = player.matches > 0 ? Math.round((player.wins / player.matches) * 100) : 0;
-      const isConfirmed = this.confirmedPlayerIds.has(player.id);
-
-      return `
-        <div class="player-row flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 transition-all duration-200 cursor-pointer hover:bg-white/[0.08]
-                    ${state > 0 ? 'bg-white/[0.04]' : idx % 2 === 0 ? 'bg-white/[0.015]' : ''}
-                    ${isConfirmed ? 'confirmed-player' : ''}"
-             style="border-bottom:1px solid rgba(255,255,255,0.05)"
-             data-player-id="${player.id}">
-
-          <div class="flex items-center gap-3 min-w-0 flex-1">
-            ${renderPlayerAvatar({ initials, color: classColor, size: 'sm', online: isConfirmed ? true : undefined })}
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-white font-ui truncate" style="font-size:14px; font-weight:600">
-                  ${player.name}
-                </span>
-                <span class="px-1.5 py-0.5 rounded font-ui hidden sm:inline"
-                      style="font-size:9px; letter-spacing:0.08em; color:${classColor};
-                             background:${classColor}22; border:1px solid ${classColor}33">
-                  ${className.toUpperCase()}
-                </span>
-                ${isConfirmed ? '<span class="text-[10px]" title="Confermato tramite app">&#128241;</span>' : ''}
-              </div>
-              <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                <div class="flex items-center gap-1">
-                  <i data-lucide="star" style="width:10px;height:10px;color:#FFD700"></i>
-                  <span class="font-ui" style="font-size:11px; color:#FFD700">${displayElo}</span>
-                </div>
-                <span style="color:rgba(255,255,255,0.2)">&middot;</span>
-                <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.45)">
-                  ${winRate}% WR
-                </span>
-                <span class="hidden sm:inline font-ui" style="font-size:11px; color:#4ADE80">
-                  ${player.wins}W
-                </span>
-                <span class="hidden sm:inline font-ui" style="font-size:11px; color:#F87171">
-                  ${player.matches - player.wins}L
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <button class="player-toggle-btn w-9 h-9 rounded-full flex items-center justify-center transition-all flex-shrink-0 ml-2"
-                  data-player-id="${player.id}"
-                  data-state="${state}"
-                  style="${this.getToggleBtnStyle(state)}"
-                  title="${state === 0 ? 'Non selezionato' : state === 1 ? 'Disponibile (click per priorita)' : 'Priorita (click per deselezionare)'}">
-            ${this.getToggleBtnIcon(state)}
-          </button>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="glass-card rounded-xl overflow-hidden">
-        <!-- Header -->
-        <div class="flex items-center justify-between px-4 md:px-5 py-3"
-             style="background:rgba(10,25,18,0.8);
-                    border-bottom:1px solid rgba(255,215,0,0.2)">
-          <div class="flex items-center gap-2">
-            <i data-lucide="users" style="width:14px;height:14px;color:var(--color-gold)"></i>
-            <span class="font-ui" style="font-size:13px; letter-spacing:0.1em; color:var(--color-gold)">
-              DISPONIBILITA GIOCATORI
-            </span>
-          </div>
-          <div class="flex items-center gap-3">
-            <button id="select-all-btn" class="font-ui px-2 py-1 rounded text-[10px] transition-colors hover:bg-white/10"
-                    style="letter-spacing:0.08em; color:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.15)">
-              TUTTI
-            </button>
-            <button id="deselect-all-btn" class="font-ui px-2 py-1 rounded text-[10px] transition-colors hover:bg-white/10"
-                    style="letter-spacing:0.08em; color:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.15)">
-              NESSUNO
-            </button>
-          </div>
-        </div>
-
-        <!-- Progress bar -->
-        <div class="px-4 md:px-5 py-2"
-             style="background:rgba(10,25,18,0.5); border-bottom:1px solid rgba(255,255,255,0.05)">
-          <div class="flex items-center justify-between mb-1.5">
-            <span id="selected-count-label" class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.5); letter-spacing:0.08em">
-              ${selectedCount} / ${MIN_PLAYERS} SELEZIONATI
-            </span>
-            <span id="progress-status" class="font-ui" style="font-size:10px; color:${progressComplete ? '#4ADE80' : 'rgba(255,255,255,0.3)'}; letter-spacing:0.08em">
-              ${progressComplete ? 'PRONTO' : 'MIN. ' + MIN_PLAYERS}
-            </span>
-          </div>
-          <div class="w-full h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08)">
-            <div id="progress-fill" class="h-full rounded-full transition-all duration-500"
-                 style="width:${progressPct}%;
-                        background:${progressComplete
-        ? 'linear-gradient(90deg,#4ADE80,#22C55E)'
-        : 'linear-gradient(90deg,#FFD700,#F0A500)'}">
-            </div>
-          </div>
-        </div>
-
-        <!-- Confirmations panel (hidden until data) -->
-        <div id="confirmations-panel" class="px-4 md:px-5 py-2 hidden"
-             style="background:rgba(74,222,128,0.05); border-bottom:1px solid rgba(74,222,128,0.15)">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <i data-lucide="wifi" style="width:12px;height:12px;color:#4ADE80"></i>
-              <span class="font-ui" style="font-size:11px; color:#4ADE80; letter-spacing:0.08em">
-                CONFERME LIVE
-              </span>
-            </div>
-            <span id="conf-count-badge" class="font-ui px-2 py-0.5 rounded-full"
-                  style="font-size:11px; color:#4ADE80; background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.3)">
-              0
-            </span>
-          </div>
-        </div>
-
-        <!-- Player rows -->
-        <div id="player-rows-container">
-          ${playerRows}
-        </div>
-      </div>
-    `;
+    return renderMatchmakingPlayerList({
+      players,
+      playerStates: this.playerStates,
+      confirmedPlayerIds: this.confirmedPlayerIds,
+      selectedCount: this.getSelectedCount(),
+      minPlayers: MIN_PLAYERS,
+      getToggleBtnStyle: this.getToggleBtnStyle.bind(this),
+      getToggleBtnIcon: this.getToggleBtnIcon.bind(this)
+    });
   }
 
   private renderMatchPanel(): string {
@@ -498,7 +357,7 @@ class MatchmakingPage extends Component {
     defence: IPlayer,
     attack: IPlayer,
     avgElo: number,
-    _winProb: number,
+    _winProb: number
   ): string {
     const teamColor = team === 'A' ? 'var(--color-team-red, #E53E3E)' : 'var(--color-team-blue, #3182CE)';
     const teamBg = team === 'A' ? 'rgba(229,62,62,0.08)' : 'rgba(49,130,206,0.08)';
@@ -591,7 +450,7 @@ class MatchmakingPage extends Component {
       { icon: 'star', label: 'Priorita', score: h.priority.score, max: h.priority.max, color: '#FFD700' },
       { icon: 'dices', label: 'Diversita', score: h.diversity.score, max: h.diversity.max, color: '#27AE60' },
       { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' },
-      { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' },
+      { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' }
     ];
 
     return `
@@ -603,7 +462,7 @@ class MatchmakingPage extends Component {
           </span>
         </div>
         <div class="px-4 md:px-5 py-3 space-y-2">
-          ${items.map(item => {
+          ${items.map((item) => {
       const pct = item.max > 0 ? (item.score / item.max) * 100 : 0;
       return `
               <div class="flex items-center gap-2">
@@ -778,7 +637,7 @@ class MatchmakingPage extends Component {
     // Score input blur validation
     const scoreA = this.$id('score-team-a') as HTMLInputElement | null;
     const scoreB = this.$id('score-team-b') as HTMLInputElement | null;
-    [scoreA, scoreB].forEach(input => {
+    [scoreA, scoreB].forEach((input) => {
       if (!input) return;
       input.addEventListener('blur', () => {
         const val = Number.parseInt(input.value, 10);
@@ -900,7 +759,6 @@ class MatchmakingPage extends Component {
 
       // Re-render the match panel
       this.refreshMatchPanels();
-
     } catch (error) {
       console.error('Error generating match:', error);
       alert('Errore durante la generazione della partita.');
@@ -962,12 +820,12 @@ class MatchmakingPage extends Component {
 
     const teamA = {
       defence: match.teamA.defence.id,
-      attack: match.teamA.attack.id,
+      attack: match.teamA.attack.id
     };
 
     const teamB = {
       defence: match.teamB.defence.id,
-      attack: match.teamB.attack.id,
+      attack: match.teamB.attack.id
     };
 
     const matchDTO = addMatch(teamA, teamB, [scoreA, scoreB]);
@@ -1049,12 +907,12 @@ class MatchmakingPage extends Component {
     const storedMatch: IRunningMatchDTO = {
       teamA: {
         defence: match.teamA.defence.id,
-        attack: match.teamA.attack.id,
+        attack: match.teamA.attack.id
       },
       teamB: {
         defence: match.teamB.defence.id,
-        attack: match.teamB.attack.id,
-      },
+        attack: match.teamB.attack.id
+      }
     };
 
     try {
@@ -1081,7 +939,7 @@ class MatchmakingPage extends Component {
 
       this.generatedMatch = {
         teamA: { defence: defA, attack: attA },
-        teamB: { defence: defB, attack: attB },
+        teamB: { defence: defB, attack: attB }
       };
     } catch (error) {
       console.error('Failed to restore running match:', error);
@@ -1138,7 +996,7 @@ class MatchmakingPage extends Component {
     if (!API_BASE_URL) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/get-confirmations`);
+      const response = await fetch(`${API_BASE_URL}/lobby-state`);
       if (!response.ok) return;
 
       const data: IConfirmationsResponse = await response.json();
@@ -1199,13 +1057,13 @@ class MatchmakingPage extends Component {
 
     const token = localStorage.getItem('biliardino_admin_token');
 
-    const response = await fetch(`${API_BASE_URL}/clear-confirmations`, {
+    const response = await fetch(`${API_BASE_URL}/admin-cleanup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({})
     });
 
     if (!response.ok) {
@@ -1238,7 +1096,7 @@ class MatchmakingPage extends Component {
       opacity: 0,
       y: 10,
       duration: 0.3,
-      ease: 'power2.out',
+      ease: 'power2.out'
     });
   }
 }

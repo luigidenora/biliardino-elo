@@ -20,9 +20,6 @@ if ('serviceWorker' in navigator) {
   window.dispatchEvent(new CustomEvent('pwa:sw-unsupported'));
 }
 
-
-
-
 /**
  * Requests the current SW version and updates the footer.
  */

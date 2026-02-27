@@ -39,7 +39,7 @@ Genera token:
 AUTH_JWT_SECRET=your-secret node scripts/generate-token.js <role> [expiry]
 ```
 
-Endpoint protetti richiedono ruolo appropriato. Endpoint pubblici: `/api/subscription`, `/api/get-confirmations`.
+Endpoint protetti richiedono ruolo appropriato. Endpoint pubblici: `/api/subscription`, `/api/lobby-state`.
 
 ## 📊 Cron Jobs
 

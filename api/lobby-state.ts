@@ -1,0 +1,65 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { IMessage } from '../src/models/message.interface.js';
+import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { generateFishName } from './_fishNames.js';
+import { prefixed, redis, redisRaw } from './_redisClient.js';
+
+interface Confirmation {
+  playerId: number;
+  confirmedAt: string;
+}
+
+/**
+ * API per ottenere lo stato completo della lobby (conferme + messaggi)
+ *
+ * GET /api/lobby-state
+ */
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
+  setCorsHeaders(res);
+  if (handleCorsPreFlight(req, res)) return res;
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    // Fetch confirmations and messages in parallel
+    const [rawMap, messageIds] = await Promise.all([
+      redisRaw.hgetall(prefixed('availability')) as Promise<Record<string, string> | null>,
+      redis.lrange('messages', 0, -1) as Promise<string[]>
+    ]);
+
+    // Parse confirmations (@upstash/redis auto-deserializes JSON values)
+    const confirmations = Object.values(rawMap || {}).map((v) => {
+      try {
+        const data = (typeof v === 'string' ? JSON.parse(v) : v) as Confirmation;
+        return {
+          ...data,
+          fishName: generateFishName(data.playerId)
+        };
+      } catch {
+        return null;
+      }
+    }).filter(Boolean) as Array<Confirmation & { fishName: string }>;
+
+    // Fetch messages
+    const messages: IMessage[] = [];
+    if (messageIds.length > 0) {
+      const messagePromises = messageIds.map(id => redis.get<IMessage>(`message:${id}`));
+      const results = await Promise.all(messagePromises);
+      for (const msg of results) {
+        if (msg) messages.push(msg);
+      }
+    }
+
+    return res.status(200).json({
+      count: confirmations.length,
+      confirmations,
+      messages,
+      messageCount: messages.length
+    });
+  } catch (error) {
+    console.error('Errore lobby-state:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}

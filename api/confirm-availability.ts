@@ -4,15 +4,6 @@ import { withSecurityMiddleware } from './_middleware.js';
 import { prefixed, redisRaw } from './_redisClient.js';
 import { sanitizeLogOutput, validatePlayerId } from './_validation.js';
 
-interface SubscriptionData {
-  subscription?: {
-    endpoint: string;
-    [key: string]: any;
-  };
-  playerId?: number;
-  [key: string]: any;
-}
-
 async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
   setCorsHeaders(res);
 
@@ -22,9 +13,8 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   }
 
   try {
-    const { playerId: rawPlayerId, subscription } = req.body as {
+    const { playerId: rawPlayerId } = req.body as {
       playerId?: string | number;
-      subscription?: any;
     };
 
     if (!rawPlayerId) {
@@ -34,38 +24,34 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     // Valida e sanitizza input per prevenire injection
     const playerIdNum = validatePlayerId(rawPlayerId);
 
-    let parsedSubscription = subscription;
-    if (typeof subscription === 'string') {
-      try {
-        parsedSubscription = JSON.parse(subscription);
-      } catch {
-        parsedSubscription = null;
-      }
-    }
-
-
-
     const availabilityKey = 'availability';
     const field = String(playerIdNum);
     const confirmedAt = new Date().toISOString();
-    const valueObj = {
-      playerId: playerIdNum,
-      confirmedAt,
-      subscription: parsedSubscription
-    };
+    const valueObj = { playerId: playerIdNum, confirmedAt };
+    const ts = Math.floor(Date.now() / 1000);
+
+    // Usa pipeline per operazioni atomiche e migliori performance
+    const pipeline = redisRaw.pipeline();
 
     // Salva nello hash globale (una singola chiave) per ridurre richieste
-    await redisRaw.hset(prefixed(availabilityKey), field, JSON.stringify(valueObj));
+    pipeline.hset(prefixed(availabilityKey), {
+      [field]: JSON.stringify(valueObj)
+    });
 
     // Aggiungi index temporale per cleanup TTL (score = epoch seconds)
-    try {
-      const ts = Math.floor(Date.now() / 1000);
-      await redisRaw.zadd(prefixed('availability_ts'), ts, field);
-    } catch (e) {
-      console.warn('ZADD availability_ts fallito:', (e as Error).message || e);
-    }
+    pipeline.zadd(prefixed('availability_ts'), { score: ts, member: field });
 
-    // Pubblica evento per aggiornamenti realtime sui client connessi
+    // Conta le conferme con HLEN (incluso nel pipeline per consistency)
+    pipeline.hlen(prefixed(availabilityKey));
+
+    // Esegui tutte le operazioni in un singolo HTTP request
+    // Upstash pipeline lancia eccezione se un comando fallisce
+    const results = await pipeline.exec();
+
+    // results è un array di valori diretti: [hset_result, zadd_result, hlen_result]
+    const count = results[2] as number;
+
+    // Pubblica evento per aggiornamenti realtime (non critico, fuori dal pipeline)
     try {
       // Publish on a stable topic name (no env prefix) so clients can subscribe
       await redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, confirmedAt }));
@@ -73,10 +59,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       // Non bloccare l'operazione se publish fallisce
       console.warn('Publish availability event fallito:', (e as Error).message || e);
     }
-
-    // Conta le conferme con HLEN (una chiamata)
-    const rawCount = await redisRaw.hlen(prefixed(availabilityKey));
-    const count = Number(rawCount || 0);
 
     console.log(`✅ Conferma da ${sanitizeLogOutput(String(playerIdNum))} (totale: ${count})`);
 

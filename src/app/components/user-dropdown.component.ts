@@ -33,20 +33,20 @@ const SUBSCRIPTION_VERIFIED_KEY = 'biliardino_subscription_verified';
 
 /* ── Colori classe ─────────────────────────────────────────── */
 const CLASS_COLORS: Record<number, string> = {
-  0: '#FFD700', 1: '#4A90D9', 2: '#27AE60', 3: '#C0C0C0', 4: '#8B7D6B',
+  0: '#FFD700', 1: '#4A90D9', 2: '#27AE60', 3: '#C0C0C0', 4: '#8B7D6B'
 };
 
 /* ── Stato notifiche ───────────────────────────────────────── */
-type NotifState =
-  | 'checking'
-  | 'unsupported'
-  | 'blocked'
-  | 'no-player'
-  | 'inactive'
-  | 'active'
-  | 'active-unverified'
-  | 'loading'
-  | 'error';
+type NotifState
+  = | 'checking'
+    | 'unsupported'
+    | 'blocked'
+    | 'no-player'
+    | 'inactive'
+    | 'active'
+    | 'active-unverified'
+    | 'loading'
+    | 'error';
 
 const NOTIF_DOT: Record<NotifState, string | null> = {
   checking: '#60A5FA',
@@ -57,7 +57,7 @@ const NOTIF_DOT: Record<NotifState, string | null> = {
   active: '#4ADE80',
   'active-unverified': '#F59E0B',
   loading: '#60A5FA',
-  error: '#EF4444',
+  error: '#EF4444'
 };
 
 /* ── SVG inline icons ──────────────────────────────────────── */
@@ -95,7 +95,7 @@ class UserDropdownComponent {
       'fixed left-3 right-3',
       'md:left-auto md:right-4 md:w-80',
       'top-14 md:top-16',
-      'z-[99]',
+      'z-[99]'
     ].join(' ');
     this.panelEl.style.cssText = [
       'display:none',
@@ -104,7 +104,7 @@ class UserDropdownComponent {
       'border-radius:16px',
       'box-shadow:0 24px 64px rgba(0,0,0,0.7),0 4px 20px rgba(255,215,0,0.1)',
       'backdrop-filter:blur(24px)',
-      'overflow:hidden',
+      'overflow:hidden'
     ].join(';');
     this.panelEl.innerHTML = this.renderPanelSkeleton();
     document.body.appendChild(this.panelEl);
@@ -117,8 +117,8 @@ class UserDropdownComponent {
     document.body.appendChild(this.backdropEl);
 
     /* Event delegation on panel */
-    this.panelEl.addEventListener('click', (e) => this.handleClick(e));
-    this.panelEl.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.panelEl.addEventListener('click', e => this.handleClick(e));
+    this.panelEl.addEventListener('submit', e => this.handleSubmit(e));
 
     /* Keyboard */
     this.onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape' && this.isOpen) this.close(); };
@@ -173,10 +173,10 @@ class UserDropdownComponent {
     gsap.fromTo(
       this.panelEl,
       { display: 'block', opacity: 0, y: -10, scale: 0.97 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.22, ease: 'power3.out' },
+      { opacity: 1, y: 0, scale: 1, duration: 0.22, ease: 'power3.out' }
     );
     gsap.to('#user-pill-chevron, #user-pill-chevron-mobile', {
-      rotation: 180, duration: 0.22, ease: 'power2.out',
+      rotation: 180, duration: 0.22, ease: 'power2.out'
     });
 
     /* Async PushManager check */
@@ -195,10 +195,10 @@ class UserDropdownComponent {
 
     gsap.to(this.panelEl, {
       opacity: 0, y: -10, scale: 0.97, duration: 0.17, ease: 'power2.in',
-      onComplete: () => { if (this.panelEl) this.panelEl.style.display = 'none'; },
+      onComplete: () => { if (this.panelEl) this.panelEl.style.display = 'none'; }
     });
     gsap.to('#user-pill-chevron, #user-pill-chevron-mobile', {
-      rotation: 0, duration: 0.17, ease: 'power2.in',
+      rotation: 0, duration: 0.17, ease: 'power2.in'
     });
 
     /* Emit cancel if login was pending */
@@ -240,7 +240,8 @@ class UserDropdownComponent {
       } else {
         try { localStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(pmSub)); } catch { /* no-op */ }
         this.notifState = localStorage.getItem(SUBSCRIPTION_VERIFIED_KEY) === 'true'
-          ? 'active' : 'active-unverified';
+          ? 'active'
+          : 'active-unverified';
       }
     } catch {
       this.notifState = quick !== 'checking' ? quick : 'inactive';
@@ -298,7 +299,7 @@ class UserDropdownComponent {
       const resp = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: Number(savedPlayerId), endpoint, subscription: subObj }),
+        body: JSON.stringify({ playerId: Number(savedPlayerId), endpoint, subscription: subObj })
       });
 
       if (!resp.ok && resp.status !== 404) throw new Error(`DELETE failed: ${resp.status}`);
@@ -334,7 +335,7 @@ class UserDropdownComponent {
       const resp = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verify: true, playerId: Number(playerId), subscription: sub }),
+        body: JSON.stringify({ verify: true, playerId: Number(playerId), subscription: sub })
       });
       if (!resp.ok) throw new Error(`verify failed: ${resp.status}`);
       const data = await resp.json() as { exists?: boolean };
@@ -379,7 +380,7 @@ class UserDropdownComponent {
     form.style.overflow = 'hidden';
     gsap.fromTo(form,
       { height: 0, opacity: 0 },
-      { height: 'auto', opacity: 1, duration: 0.28, ease: 'power2.out' },
+      { height: 'auto', opacity: 1, duration: 0.28, ease: 'power2.out' }
     );
     (document.getElementById('dd-email') as HTMLInputElement)?.focus();
   }
@@ -389,7 +390,7 @@ class UserDropdownComponent {
     if (!form) return;
     gsap.to(form, {
       height: 0, opacity: 0, duration: 0.2, ease: 'power2.in',
-      onComplete: () => { form.style.display = 'none'; },
+      onComplete: () => { form.style.display = 'none'; }
     });
   }
 
@@ -442,7 +443,7 @@ class UserDropdownComponent {
         this.updateIdentitySection();
         setTimeout(() => {
           gsap.from('#dd-player-list .dd-player-option', {
-            x: -8, stagger: 0.04, duration: 0.2, ease: 'power2.out',
+            x: -8, stagger: 0.04, duration: 0.2, ease: 'power2.out'
           });
         }, 0);
         break;
@@ -502,7 +503,7 @@ class UserDropdownComponent {
 
   private updatePillDot(): void {
     const color = NOTIF_DOT[this.notifState];
-    ['notif-state-dot', 'notif-state-dot-mobile'].forEach(id => {
+    ['notif-state-dot', 'notif-state-dot-mobile'].forEach((id) => {
       const dot = document.getElementById(id);
       if (!dot) return;
       if (color === null) {
@@ -511,7 +512,8 @@ class UserDropdownComponent {
       } else {
         dot.style.background = color;
         dot.style.boxShadow = this.notifState === 'active'
-          ? `0 0 6px ${color}88` : 'none';
+          ? `0 0 6px ${color}88`
+          : 'none';
         dot.style.display = 'block';
       }
     });
@@ -521,10 +523,10 @@ class UserDropdownComponent {
     /* Update the name shown in the user pill */
     const name = localStorage.getItem(PLAYER_NAME_KEY) ?? 'Guest';
     const initials = name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'G';
-    document.querySelectorAll('[data-user-initials]').forEach(el => {
+    document.querySelectorAll('[data-user-initials]').forEach((el) => {
       el.textContent = initials;
     });
-    document.querySelectorAll('[data-user-name]').forEach(el => {
+    document.querySelectorAll('[data-user-name]').forEach((el) => {
       el.textContent = name;
     });
   }
@@ -615,7 +617,7 @@ class UserDropdownComponent {
   private renderPlayerList(compact = false): string {
     const players = [...getAllPlayers()].sort((a, b) => a.name.localeCompare(b.name));
 
-    const items = players.map(p => {
+    const items = players.map((p) => {
       const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
       const initials = getInitials(p.name);
       const elo = getDisplayElo(p);
@@ -638,13 +640,15 @@ class UserDropdownComponent {
       <div id="dd-player-list" style="max-height:200px;overflow-y:auto;margin:0 -4px">
         ${items}
       </div>
-      ${!compact ? `
+      ${!compact
+        ? `
         <button data-action="cancel-player-list"
                 class="mt-2 w-full py-1.5 rounded-lg text-center transition-colors hover:bg-white/5"
                 style="font-family:var(--font-ui);font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.06em">
           annulla
         </button>
-      ` : ''}
+      `
+        : ''}
     `;
   }
 
@@ -658,45 +662,45 @@ class UserDropdownComponent {
     }> = {
       checking: {
         icon: SPINNER_SVG, color: '#60A5FA',
-        label: 'Verifica in corso…',
+        label: 'Verifica in corso…'
       },
       unsupported: {
         icon: BELL_OFF_SVG, color: '#6B7280',
         label: 'Non supportate',
-        sub: 'Il tuo browser non supporta le notifiche push',
+        sub: 'Il tuo browser non supporta le notifiche push'
       },
       blocked: {
         icon: LOCK_SVG, color: '#EF4444',
         label: 'Bloccate dal browser',
-        sub: 'Abilita le notifiche nelle impostazioni del browser',
+        sub: 'Abilita le notifiche nelle impostazioni del browser'
       },
       'no-player': {
         icon: BELL_OFF_SVG, color: '#6B7280',
-        label: 'Seleziona prima il tuo giocatore',
+        label: 'Seleziona prima il tuo giocatore'
       },
       inactive: {
         icon: BELL_SVG, color: 'rgba(255,255,255,0.35)',
-        label: 'Non attive',
+        label: 'Non attive'
       },
       active: {
         icon: CHECK_CIRCLE_SVG, color: '#4ADE80',
         label: 'Attive',
-        sub: playerName ? `Per: ${playerName}` : undefined,
+        sub: playerName ? `Per: ${playerName}` : undefined
       },
       'active-unverified': {
         icon: ALERT_SVG, color: '#F59E0B',
         label: 'Attive · non verificate',
-        sub: 'Non ancora confermate dal server',
+        sub: 'Non ancora confermate dal server'
       },
       loading: {
         icon: SPINNER_SVG, color: '#60A5FA',
-        label: 'Operazione in corso…',
+        label: 'Operazione in corso…'
       },
       error: {
         icon: ALERT_SVG, color: '#EF4444',
         label: 'Errore',
-        sub: 'Si è verificato un problema',
-      },
+        sub: 'Si è verificato un problema'
+      }
     };
 
     const cfg = stateConfig[this.notifState];

@@ -20,7 +20,7 @@ import { refreshIcons } from '../icons';
 
 const PLAYER_COLORS = [
   '#E8A020', '#4A90D9', '#50C878', '#E74C3C', '#9B59B6',
-  '#1ABC9C', '#E67E22', '#3498DB', '#2ECC71', '#E91E63',
+  '#1ABC9C', '#E67E22', '#3498DB', '#2ECC71', '#E91E63'
 ];
 
 function getPlayerColor(id: number): string {
@@ -114,15 +114,15 @@ export default class PlayerProfilePage extends Component {
     // Recent matches (last 10 involving this player)
     const allMatches = getAllMatches();
     const playerMatches = allMatches.filter(
-      m => m.teamA.defence === id || m.teamA.attack === id ||
-        m.teamB.defence === id || m.teamB.attack === id,
+      m => m.teamA.defence === id || m.teamA.attack === id
+        || m.teamB.defence === id || m.teamB.attack === id
     );
     const recentMatches = playerMatches.slice(-10).reverse();
 
     const avatarHtml = renderPlayerAvatar({
       initials: getInitials(player.name),
       color,
-      size: 'xl',
+      size: 'xl'
     });
 
     return `
@@ -159,8 +159,8 @@ export default class PlayerProfilePage extends Component {
               <div class="relative">
                 ${avatarHtml}
                 ${rank <= 3 && rank > 0
-        ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
-        : ''}
+                  ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
+                  : ''}
               </div>
               <div class="text-center lg:text-left">
                 <h2 class="font-display text-3xl md:text-4xl tracking-wide"
@@ -279,8 +279,8 @@ export default class PlayerProfilePage extends Component {
             </h3>
             <div class="flex flex-col gap-2">
               ${recentMatches.length > 0
-        ? recentMatches.map(m => this.renderMatchRow(m, id)).join('')
-        : `<p class="font-body text-xs text-center py-4"
+                ? recentMatches.map(m => this.renderMatchRow(m, id)).join('')
+                : `<p class="font-body text-xs text-center py-4"
                       style="color: var(--color-text-dim)">
                     Nessuna partita trovata
                   </p>`}
@@ -295,10 +295,12 @@ export default class PlayerProfilePage extends Component {
           ${this.renderStatCard('target', 'Gol/Partita', goalsPerMatch, `${player.goalsFor} gol totali`)}
           ${this.renderStatCard('shield', 'Difesa', `${defenceRate}%`, 'Tasso difensivo')}
           ${this.renderStatCard('trending-up', 'Serie', streakLabel,
-          streak.type === 'W' ? 'Vittorie consecutive'
-            : streak.type === 'L' ? 'Sconfitte consecutive'
-              : 'Nessuna serie attiva',
-          streakColor)}
+            streak.type === 'W'
+              ? 'Vittorie consecutive'
+              : streak.type === 'L'
+                ? 'Sconfitte consecutive'
+                : 'Nessuna serie attiva',
+            streakColor)}
         </div>
 
         <!-- ── Win/Loss Distribution Bar ────────────────────── -->
@@ -343,7 +345,7 @@ export default class PlayerProfilePage extends Component {
 
   private renderMatchRow(
     match: ReturnType<typeof getAllMatches>[number],
-    playerId: number,
+    playerId: number
   ): string {
     const inTeamA = match.teamA.defence === playerId || match.teamA.attack === playerId;
     const isWin = inTeamA
@@ -396,7 +398,7 @@ export default class PlayerProfilePage extends Component {
     label: string,
     value: string,
     subtitle: string,
-    valueColor?: string,
+    valueColor?: string
   ): string {
     return `
       <div class="stat-card rounded-xl p-4 text-center"
@@ -471,15 +473,15 @@ export default class PlayerProfilePage extends Component {
               pointRadius: eloData.length > 30 ? 0 : 3,
               pointHoverRadius: 5,
               fill: true,
-              tension: 0.3,
-            }],
+              tension: 0.3
+            }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
               intersect: false,
-              mode: 'index',
+              mode: 'index'
             },
             plugins: {
               legend: { display: false },
@@ -494,9 +496,9 @@ export default class PlayerProfilePage extends Component {
                 padding: 10,
                 displayColors: false,
                 callbacks: {
-                  label: (context) => `ELO: ${context.parsed.y}`,
-                },
-              },
+                  label: context => `ELO: ${context.parsed.y}`
+                }
+              }
             },
             scales: {
               x: {
@@ -504,21 +506,21 @@ export default class PlayerProfilePage extends Component {
                   font: { family: 'Oswald', size: 10 },
                   color: 'rgba(255,255,255,0.4)',
                   maxRotation: 45,
-                  maxTicksLimit: 12,
+                  maxTicksLimit: 12
                 },
                 grid: { color: 'rgba(255,255,255,0.06)' },
-                border: { display: false },
+                border: { display: false }
               },
               y: {
                 ticks: {
                   font: { family: 'Oswald', size: 10 },
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'rgba(255,255,255,0.4)'
                 },
                 grid: { color: 'rgba(255,255,255,0.06)' },
-                border: { display: false },
-              },
-            },
-          },
+                border: { display: false }
+              }
+            }
+          }
         });
       }
     }
@@ -530,7 +532,7 @@ export default class PlayerProfilePage extends Component {
         opacity: 0,
         y: 30,
         duration: 0.6,
-        ease: 'power3.out',
+        ease: 'power3.out'
       });
 
       // Chart section
@@ -539,7 +541,7 @@ export default class PlayerProfilePage extends Component {
         y: 25,
         duration: 0.5,
         delay: 0.15,
-        ease: 'power3.out',
+        ease: 'power3.out'
       });
 
       // Stats grid cards
@@ -549,7 +551,7 @@ export default class PlayerProfilePage extends Component {
         duration: 0.4,
         stagger: 0.08,
         delay: 0.3,
-        ease: 'power2.out',
+        ease: 'power2.out'
       });
 
       // Win/loss bar section
@@ -558,7 +560,7 @@ export default class PlayerProfilePage extends Component {
         y: 20,
         duration: 0.4,
         delay: 0.5,
-        ease: 'power2.out',
+        ease: 'power2.out'
       });
 
       // Animate win/loss bar widths
@@ -571,14 +573,14 @@ export default class PlayerProfilePage extends Component {
         width: `${winPct}%`,
         duration: 0.8,
         delay: 0.7,
-        ease: 'power2.out',
+        ease: 'power2.out'
       });
 
       gsap.to('#loss-bar', {
         width: `${lossPct}%`,
         duration: 0.8,
         delay: 0.7,
-        ease: 'power2.out',
+        ease: 'power2.out'
       });
     }, this.el ?? undefined);
   }

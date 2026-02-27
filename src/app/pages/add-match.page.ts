@@ -24,7 +24,7 @@ const CLASS_COLORS: Record<number, string> = {
   1: '#4A90D9',
   2: '#27AE60',
   3: '#C0C0C0',
-  4: '#8B7D6B',
+  4: '#8B7D6B'
 };
 
 const RECENT_MATCHES_COUNT = 15;
@@ -52,12 +52,12 @@ class AddMatchPage extends Component {
     `;
   }
 
-  mount(): void {
+  override mount(): void {
     refreshIcons();
 
     // Bind form submit
     const form = this.$('#add-match-form') as HTMLFormElement | null;
-    form?.addEventListener('submit', (e) => this.handleSubmit(e));
+    form?.addEventListener('submit', e => this.handleSubmit(e));
 
     // Bind select changes for live expected score preview
     const selects = ['teamA-defence', 'teamA-attack', 'teamB-defence', 'teamB-attack'];
@@ -74,18 +74,18 @@ class AddMatchPage extends Component {
     // GSAP animations
     gsap.from('.form-card', { opacity: 0, y: 20, duration: 0.4, ease: 'power2.out' });
     gsap.from('.match-row', {
-      opacity: 0, x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.2,
+      opacity: 0, x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.2
     });
   }
 
-  destroy(): void { }
+  override destroy(): void { }
 
   // ── Section Renderers ──────────────────────────────────────
 
   private renderPageHeader(): string {
     return `
       <div class="flex items-center gap-3">
-        <i data-lucide="swords" class="text-[var(--color-gold)]"
+        <i data-lucide="swords" class="text-(--color-gold)"
            style="width:26px;height:26px"></i>
         <div>
           <h1 class="text-white font-display"
@@ -352,7 +352,7 @@ class AddMatchPage extends Component {
     const expA = expectedScore(eloA, eloB);
     const expB = 1 - expA;
 
-    const renderPlayer = (p: IPlayer, role: string) => {
+    const renderPlayer = (p: IPlayer, role: string): string => {
       const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
       return `
         <div class="flex items-center gap-2">

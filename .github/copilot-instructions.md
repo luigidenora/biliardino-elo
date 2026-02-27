@@ -17,7 +17,7 @@ src/services/         → Domain logic (ELO, players, matches, matchmaking, stat
 src/models/           → TypeScript interfaces (IPlayer, IMatch, IMessage, IConfirmation)
 api/                  → Vercel serverless functions (one file = one endpoint)
   _*.ts                 Internal helpers: _middleware.ts, _auth.ts, _cors.ts, _validation.ts, _redisClient.ts
-src/views/            → Legacy (deprecated). All UI now in src/app/pages/ and src/app/components/.
+src/config/           → App configuration (admin whitelist, env config)
 public/sw.js          → Service worker (cache-first for Firebase, network-first otherwise)
 ```
 
@@ -31,7 +31,7 @@ Pages extend abstract `Component` with lifecycle: `render()` → `mount()` → `
 - **Service-first**: business logic in `src/services/`, called from pages and API handlers. Never put domain logic in components or route handlers.
 - **API handlers as adapters**: validate input (via `_validation.ts`), call service/Redis, return JSON. Apply middleware with composable HOFs: `withSecurityMiddleware`, `withRateLimiting`, `withAuth`.
 - **Repository pattern**: `repository.service.ts` uses `__DEV_MODE__` (Vite global, `false` at build) to conditionally import mock vs Firebase. Rollup eliminates the unused branch.
-- **Auth**: Firebase email/password on frontend; JWT (HS256, `jose` library) with roles (`admin`, `cron`, `notify`) on API. Admin whitelist in `api/_adminList.ts`.
+- **Auth**: Firebase email/password on frontend; JWT (HS256, `jose` library) with roles (`admin`, `cron`, `notify`) on API. Admin config in `src/config/admin.config.ts`.
 - **Styling**: Tailwind CSS via `@tailwindcss/vite`. Animations via GSAP. Design tokens in `src/app/styles/`.
 - **Code style**: ESLint strict + `@stylistic` — single quotes, semicolons, 2-space indent, no trailing commas. Run `npm run lint` to auto-fix.
 
@@ -40,7 +40,7 @@ Pages extend abstract `Component` with lifecycle: `render()` → `mount()` → `
 ```bash
 npm run dev            # Vite dev server (localhost:5173)
 npm run build          # Production bundle to ./dist
-npm test               # Vitest (happy-dom). Tests in tests/api/
+npm test               # Vitest (happy-dom). Tests in tests/
 npm run lint           # ESLint auto-fix
 npm run token:admin    # Generate admin JWT for API testing
 npx vercel dev         # Local API functions (localhost:3000)
@@ -58,7 +58,9 @@ Environment: copy `.env.example` → `.env.development.local`. Key vars: `VITE_D
 ## Agent rules
 
 - Implement features in `src/services/` and wire through `src/app/pages/` or `api/`. Never bypass the service layer.
-- New API endpoints: apply `withSecurityMiddleware` + `withAuth` (see `api/run-matchmaking.ts` as template).
-- Add tests under `tests/api/` using Vitest. Use `repository.mock.ts` for unit tests.
+- New API endpoints: apply `withSecurityMiddleware` + `withAuth` (see `api/admin-cleanup.ts` as template).
+- Add tests under `tests/` using Vitest (organized by domain: `tests/core-flow/`, `tests/auth/`, `tests/dev-mode/`, `tests/api/`). Use `repository.mock.ts` for unit tests.
 - Document new env vars in `src/config/env.config.ts` and `.env.example`.
 - Keep changes minimal. Do not refactor surrounding code unless directly required.
+### Verel rules 
+- No more than 12 Serverless Functions can be added

@@ -34,13 +34,13 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     if (!validatePlayerId(playerId)) {
       return res.status(400).json({ error: 'Invalid playerId' });
     }
-    if (!validateString(playerName, 1, 100)) {
+    if (!validateString(playerName, 'playerName', 100)) {
       return res.status(400).json({ error: 'Invalid playerName' });
     }
-    if (!validateString(fishType, 1, 20)) {
+    if (!validateString(fishType, 'fishType', 20)) {
       return res.status(400).json({ error: 'Invalid fishType' });
     }
-    if (!validateString(text, 1, 500)) {
+    if (!validateString(text, 'text', 500)) {
       return res.status(400).json({ error: 'Message must be 1-500 chars' });
     }
 
