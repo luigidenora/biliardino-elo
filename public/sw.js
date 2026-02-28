@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '0.3.0';
+const VERSION = '0.3.1=alpha.0';
 const CACHE_PREFIX = 'calcio-bliliardino';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${VERSION}`;
 const DATA_CACHE = `${CACHE_PREFIX}-data-${VERSION}`;
@@ -11,7 +11,16 @@ const FIREBASE_PATTERN = /firebase|\.firebaseapp\.com|firestore\.googleapis\.com
 self.addEventListener('install', (event) => {
   console.log(`[Service Worker] Installing version ${VERSION}`);
   event.waitUntil(
-    caches.open(STATIC_CACHE).then(cache => cache.addAll(APP_SHELL_ASSETS))
+    caches.open(STATIC_CACHE).then(cache => {
+      return cache.addAll(APP_SHELL_ASSETS).catch((err) => {
+        if (err.name === 'InvalidAccessError') {
+          // Ignore duplicate entry error
+          console.warn('[Service Worker] Cache addAll: Entry already exists, ignoring.');
+        } else {
+          throw err;
+        }
+      });
+    })
   );
   self.skipWaiting();
 });

@@ -22,7 +22,7 @@ const firebaseConfig = {
  * In dev mode (__DEV_MODE__) è null — Firebase non viene inizializzato.
  */
 let app: FirebaseApp | null = null;
-if (!__DEV_MODE__) {
+if (__DEV_MODE__ === false) {
   app = initializeApp(firebaseConfig);
 }
 
@@ -30,17 +30,17 @@ if (!__DEV_MODE__) {
  * Firestore database instance bound to the initialized Firebase app.
  * Used by the repository code to read and write collections.
  */
-export const db: Firestore | null = (!__DEV_MODE__ && app)
+export const db: Firestore | null = (__DEV_MODE__ === false && app)
   ? initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    })
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  })
   : null;
 
 /**
  * Firebase Authentication instance for the current app.
  * Used to authenticate predefined users via email (username) and password.
  */
-export const AUTH: Auth | null = (!__DEV_MODE__ && app) ? getAuth(app) : null;
+export const AUTH: Auth | null = (__DEV_MODE__ === false && app) ? getAuth(app) : null;
 
 /**
  * Firestore collection name used to persist and retrieve match documents.
