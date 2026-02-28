@@ -60,7 +60,6 @@ export function withAuthentication(
     void action();
     return;
   }
-
   let started = false;
 
   onAuthStateChanged(AUTH, async (user) => {

@@ -757,15 +757,6 @@ class UserDropdownComponent {
   /* ── Admin section ─────────────────────────────────────────── */
 
   private renderAdminSection(): string {
-    if (__DEV_MODE__) {
-      return `
-        <div class="flex items-center gap-2">
-          ${SHIELD_SVG}
-          <span class="font-ui text-xs" style="color:rgba(255,215,0,0.7);letter-spacing:0.08em">ADMIN ATTIVO (DEV)</span>
-        </div>
-      `;
-    }
-
     if (this.isAuthenticated) {
       return `
         <div class="flex items-center justify-between">
@@ -781,7 +772,6 @@ class UserDropdownComponent {
         </div>
       `;
     }
-
     return `
       <div>
         <button data-action="toggle-login-form"
@@ -791,14 +781,13 @@ class UserDropdownComponent {
           <span class="font-ui text-xs" style="letter-spacing:0.08em">ACCEDI COME ADMIN</span>
           <svg class="ml-auto" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
         </button>
-
         <div id="dd-login-form" style="display:none;overflow:hidden">
-          <form id="dd-login-form-inner" class="pt-3 pb-1 space-y-2">
-            <input type="email" id="dd-email" placeholder="Email admin"
-                   autocomplete="username"
-                   class="w-full px-3 py-2.5 rounded-xl font-body text-sm text-white placeholder:text-white/25 outline-none transition-all"
-                   style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:13px"
-                   onfocus="this.style.borderColor='rgba(255,215,0,0.4)'"
+                <form id="dd-login-form-inner" class="pt-3 pb-1 space-y-2">
+                  <input type="email" id="dd-email" placeholder="Email admin"
+                         autocomplete="username"
+                         class="w-full px-3 py-2.5 rounded-xl font-body text-sm text-white placeholder:text-white/25 outline-none transition-all"
+                         style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:13px"
+                            onfocus="this.style.borderColor='rgba(255,215,0,0.4)'"
                    onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
             <input type="password" id="dd-password" placeholder="Password"
                    autocomplete="current-password"
@@ -808,21 +797,20 @@ class UserDropdownComponent {
                    onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
             <div id="dd-login-error" style="display:none;font-size:11px;color:#EF4444;font-family:var(--font-body)"></div>
             <div class="flex gap-2 pt-1">
-              <button type="submit" id="dd-login-submit"
-                      class="flex-1 py-2 rounded-xl font-ui text-xs text-center transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
-                      style="background:linear-gradient(135deg,#FFD700,#F0A500);color:#0F2A20;letter-spacing:0.08em">
-                Accedi
-              </button>
-              <button type="button" data-action="cancel-login"
-                      class="px-3 py-2 rounded-xl font-ui text-xs transition-all hover:bg-white/10"
-                      style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)">
-                Annulla
-              </button>
+                  <button type="submit" id="dd-login-submit"
+                    class="px-3 py-2 rounded-xl font-ui text-xs text-center transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                    style="background:linear-gradient(135deg,#FFD700,#F0A500);color:#0F2A20;letter-spacing:0.08em">
+                    Accedi
+                  </button>
+                  <button type="button" data-action="cancel-login"
+                    class="px-3 py-2 rounded-xl font-ui text-xs transition-all hover:bg-white/10"
+                    style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)">
+                    Annulla
+                  </button>
+                </form>
+              </div>
             </div>
-          </form>
-        </div>
-      </div>
-    `;
+          `;
   }
 }
 

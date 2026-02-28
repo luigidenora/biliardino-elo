@@ -162,12 +162,14 @@ class LobbyPage extends Component {
   // ── Mount / Destroy ──────────────────────────────────────────
 
   override mount(): void {
+    console.log('[LobbyPage] mount() called');
     refreshIcons();
 
     // Start countdown
     this.countdownInterval = setInterval(() => this.tickCountdown(), 1000);
 
     // Start lobby polling
+    console.log('[LobbyPage] Starting pollLobby()');
     this.pollLobby();
     this.pollInterval = setInterval(() => this.pollLobby(), POLL_INTERVAL_MS);
 
@@ -575,14 +577,18 @@ class LobbyPage extends Component {
   // ── Lobby polling ────────────────────────────────────────────
 
   private async pollLobby(): Promise<void> {
+    console.log('[LobbyPage] pollLobby() called');
     try {
+      console.log('[LobbyPage] Fetching:', `${API_BASE_URL}/check-lobby`, `${API_BASE_URL}/lobby-state`);
       const [lobbyRes, stateRes] = await Promise.all([
         fetch(`${API_BASE_URL}/check-lobby`),
         fetch(`${API_BASE_URL}/lobby-state`)
       ]);
+      console.log('[LobbyPage] Fetch responses:', lobbyRes, stateRes);
 
       if (lobbyRes.ok) {
         const lobbyData = await lobbyRes.json();
+        console.log('[LobbyPage] lobbyData:', lobbyData);
         const hadLobby = !!this.lobbyData;
 
         if (lobbyData.exists && lobbyData.match) {
@@ -634,6 +640,7 @@ class LobbyPage extends Component {
 
       if (stateRes.ok) {
         const stateData = await stateRes.json();
+        console.log('[LobbyPage] stateData:', stateData);
         const confirmations: IConfirmation[] = stateData.confirmations ?? [];
         const oldSize = this.confirmed.size;
         this.confirmed.clear();

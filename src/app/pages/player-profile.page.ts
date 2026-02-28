@@ -70,6 +70,26 @@ export default class PlayerProfilePage extends Component {
   private chart: Chart | null = null;
   private gsapCtx: gsap.Context | null = null;
 
+
+  private renderPageHeader(): string {
+    return `
+      <div class="page-header flex items-center gap-3">
+        <i data-lucide="circle-user" class="text-(--color-gold)"
+           style="width:26px;height:26px"></i>
+        <div>
+          <h1 class="text-white font-display"
+              style="font-size:clamp(28px,6vw,42px); letter-spacing:0.12em; line-height:1">
+            PROFILO GIOCATORE
+          </h1>
+          <p class="font-ui"
+             style="font-size:12px; color:rgba(255,255,255,0.5); letter-spacing:0.1em">
+              Statistiche dettagliate e storico partite
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
   render(): string {
     const id = Number(this.params.id);
     const player = getPlayerById(id);
@@ -127,23 +147,8 @@ export default class PlayerProfilePage extends Component {
     });
 
     return `
-      <div class="player-profile-page pb-12">
-
-        <!-- ── Page Header ──────────────────────────────────── -->
-        <div class="flex items-center gap-3 mb-6">
-          <i data-lucide="user-circle" class="w-6 h-6" style="color: var(--color-gold)"></i>
-          <div>
-            <h1 class="font-display text-2xl md:text-3xl tracking-wide"
-                style="color: var(--color-gold); line-height: 1">
-              PROFILO GIOCATORE
-            </h1>
-            <p class="font-body text-xs mt-0.5" style="color: var(--color-text-muted)">
-              Statistiche dettagliate e storico partite
-            </p>
-          </div>
-        </div>
-
-        <!-- ── Hero Card ────────────────────────────────────── -->
+      <div class="space-y-5 md:space-y-6">
+        ${this.renderPageHeader()}
         <div id="hero-card"
              class="rounded-xl p-5 md:p-6 mb-6"
              style="
@@ -156,19 +161,20 @@ export default class PlayerProfilePage extends Component {
           <div class="flex flex-col lg:flex-row gap-6">
 
             <!-- Left: avatar + identity -->
-            <div class="flex flex-col items-center lg:items-start gap-3 lg:min-w-[200px]">
-              <div class="relative">
+            <div class="hero-left flex flex-col items-center lg:items-start gap-3 lg:min-w-[200px]">
+              <div class="hero-avatar relative">
                 ${avatarHtml}
                 ${rank <= 3 && rank > 0
         ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
         : ''}
+                ${player.online ? `<span class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full" style="background:var(--color-online);border:2px solid rgba(15,42,32,0.9)"></span>` : ''}
               </div>
-              <div class="text-center lg:text-left">
+              <div class="hero-identity text-center lg:text-left">
                 <h2 class="font-display text-3xl md:text-4xl tracking-wide"
                     style="color: #fff; line-height: 1">
                   ${player.name.toUpperCase()}
                 </h2>
-                <p class="font-ui text-xs mt-1"
+                <p class="font-ui text-xs mt-1 hero-class"
                    style="color: ${color}; letter-spacing: 0.1em">
                   ${className.toUpperCase()}
                 </p>
@@ -178,73 +184,56 @@ export default class PlayerProfilePage extends Component {
               </div>
             </div>
 
-            <!-- Center: quick stats -->
-            <div class="flex-1 flex flex-col justify-center">
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+            <!-- Center: quick stats (mobile-first: ELO left, small stats right) -->
+            <div class="hero-stats flex-1 flex items-center justify-between gap-4">
+              <div class="elo-block flex-shrink-0">
+                <p class="font-ui text-[10px] uppercase tracking-widest"
+                   style="color: var(--color-text-muted)">ELO</p>
+                <p class="font-display text-4xl md:text-5xl stat-elo"
+                   style="color: var(--color-gold); line-height: 1.1">
+                  ${displayElo}
+                </p>
+              </div>
 
-                <!-- ELO -->
-                <div class="sm:col-span-1">
-                  <p class="font-ui text-[10px] uppercase tracking-widest"
-                     style="color: var(--color-text-muted)">ELO</p>
-                  <p class="font-display text-4xl md:text-5xl"
-                     style="color: var(--color-gold); line-height: 1.1">
-                    ${displayElo}
-                  </p>
+              <div class="small-stats flex-1 flex items-center justify-end gap-4 text-center">
+                <div class="stat-item">
+                  <p class="font-ui text-[10px] uppercase tracking-widest" style="color: var(--color-text-muted)">Partite</p>
+                  <p class="font-display text-2xl stat-matches" style="color:#fff; line-height:1.1">${player.matches}</p>
                 </div>
-
-                <!-- Matches -->
-                <div>
-                  <p class="font-ui text-[10px] uppercase tracking-widest"
-                     style="color: var(--color-text-muted)">Partite</p>
-                  <p class="font-display text-3xl"
-                     style="color: #fff; line-height: 1.1">${player.matches}</p>
+                <div class="stat-item">
+                  <p class="font-ui text-[10px] uppercase tracking-widest" style="color: var(--color-text-muted)">V</p>
+                  <p class="font-display text-2xl stat-wins" style="color:var(--color-win); line-height:1.1">${player.wins}</p>
                 </div>
-
-                <!-- Wins -->
-                <div>
-                  <p class="font-ui text-[10px] uppercase tracking-widest"
-                     style="color: var(--color-text-muted)">Vittorie</p>
-                  <p class="font-display text-3xl"
-                     style="color: var(--color-win); line-height: 1.1">${player.wins}</p>
+                <div class="stat-item">
+                  <p class="font-ui text-[10px] uppercase tracking-widest" style="color: var(--color-text-muted)">S</p>
+                  <p class="font-display text-2xl stat-losses" style="color:var(--color-loss); line-height:1.1">${losses}</p>
                 </div>
-
-                <!-- Losses -->
-                <div>
-                  <p class="font-ui text-[10px] uppercase tracking-widest"
-                     style="color: var(--color-text-muted)">Sconfitte</p>
-                  <p class="font-display text-3xl"
-                     style="color: var(--color-loss); line-height: 1.1">${losses}</p>
-                </div>
-
-                <!-- Win Rate -->
-                <div>
-                  <p class="font-ui text-[10px] uppercase tracking-widest"
-                     style="color: var(--color-text-muted)">Win Rate</p>
-                  <p class="font-display text-3xl"
-                     style="color: #fff; line-height: 1.1">${winRate}%</p>
+                <div class="stat-item">
+                  <p class="font-ui text-[10px] uppercase tracking-widest" style="color: var(--color-text-muted)">WR</p>
+                  <p class="font-display text-2xl stat-winrate" style="color:#fff; line-height:1.1">${winRate}%</p>
                 </div>
               </div>
             </div>
 
-            <!-- Right: goal stats -->
-            <div class="flex flex-row lg:flex-col justify-center gap-4 lg:gap-2
-                        lg:min-w-[140px] lg:border-l lg:pl-5"
-                 style="border-color: rgba(255,255,255,0.06)">
-              <div class="text-center lg:text-left">
-                <p class="font-ui text-[10px] uppercase tracking-widest"
-                   style="color: var(--color-text-muted)">Segnati</p>
-                <p class="font-display text-2xl"
-                   style="color: var(--color-win); line-height: 1.1">${player.goalsFor}</p>
-                <p class="font-body text-[10px]"
-                   style="color: var(--color-text-dim)">${goalsPerMatch}/partita</p>
-              </div>
-              <div class="text-center lg:text-left">
-                <p class="font-ui text-[10px] uppercase tracking-widest"
-                   style="color: var(--color-text-muted)">Subiti</p>
-                <p class="font-display text-2xl"
-                   style="color: var(--color-loss); line-height: 1.1">${player.goalsAgainst}</p>
-                <p class="font-body text-[10px]"
-                   style="color: var(--color-text-dim)">${concededPerMatch}/partita</p>
+            <!-- Right: compact goal stats card -->
+            <div class="hero-goals w-full lg:w-auto ml-0 lg:ml-auto">
+              <div class="rounded-lg p-3 h-full flex flex-col justify-center items-center w-full lg:w-auto"
+                   style="background: rgba(0,0,0,0.25); border-radius: 12px; border:1px solid rgba(255,255,255,0.03); min-width:120px">
+                <div style="text-align:center">
+                  <div class="font-ui text-[10px] uppercase tracking-widest" style="color: var(--color-text-muted)">GOAL STATS</div>
+                  <div class="mt-3 font-display text-2xl" style="color: var(--color-win)">${player.goalsFor}</div>
+                  <div class="text-[10px] font-body" style="color: var(--color-text-dim)">SCORED</div>
+                </div>
+                <div class="w-full border-t my-3" style="border-color: rgba(255,255,255,0.04)"></div>
+                <div style="text-align:center">
+                  <div class="font-display text-2xl" style="color: var(--color-loss)">${player.goalsAgainst}</div>
+                  <div class="text-[10px] font-body" style="color: var(--color-text-dim)">CONCEDed</div>
+                </div>
+                <div class="w-full border-t my-3" style="border-color: rgba(255,255,255,0.04)"></div>
+                <div style="text-align:center">
+                  <div class="font-display text-xl" style="color: #fff">${goalsPerMatch}</div>
+                  <div class="text-[10px] font-body" style="color: var(--color-text-dim)">per match</div>
+                </div>
               </div>
             </div>
 
@@ -402,15 +391,18 @@ export default class PlayerProfilePage extends Component {
     valueColor?: string
   ): string {
     return `
-      <div class="stat-card rounded-xl p-4 text-center"
+      <div class="stat-card rounded-xl p-4"
            style="background: var(--glass-bg);
                   backdrop-filter: blur(var(--glass-blur));
                   border: 1px solid var(--glass-border)">
-        <i data-lucide="${icon}" class="w-5 h-5 mx-auto mb-2"
+      <div class="flex flex-col items-start"> 
+        <i data-lucide="${icon}" class="w-5 h-5 mb-2"
            style="color: var(--color-gold-dim)"></i>
         <p class="font-ui text-[10px] uppercase tracking-widest"
            style="color: var(--color-text-muted)">${label}</p>
+           </div>
         <p class="font-display text-3xl mt-1"
+
            style="color: ${valueColor ?? '#fff'}; line-height: 1.1">${value}</p>
         <p class="font-body text-[10px] mt-1"
            style="color: var(--color-text-dim)">${subtitle}</p>
@@ -535,6 +527,23 @@ export default class PlayerProfilePage extends Component {
         duration: 0.6,
         ease: 'power3.out'
       });
+
+      // Avatar and identity
+      gsap.from('.hero-avatar', { scale: 0.92, opacity: 0, duration: 0.45, ease: 'back.out(1.2)' });
+      gsap.from('.hero-identity', { x: -12, opacity: 0, duration: 0.45, delay: 0.08, ease: 'power2.out' });
+
+      // Center stats numbers (stagger)
+      gsap.from('.hero-stats .stat-elo, .hero-stats .stat-matches, .hero-stats .stat-wins, .hero-stats .stat-losses, .hero-stats .stat-winrate', {
+        y: 12,
+        opacity: 0,
+        stagger: 0.06,
+        duration: 0.45,
+        delay: 0.15,
+        ease: 'power2.out'
+      });
+
+      // Compact goals card
+      gsap.from('.hero-goals', { x: 12, opacity: 0, duration: 0.45, delay: 0.18, ease: 'power2.out' });
 
       // Chart section
       gsap.from('#chart-section', {

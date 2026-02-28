@@ -104,7 +104,8 @@ class LeaderboardPage extends Component {
     }
     this.updateSortIndicators();
 
-    // GSAP animations — no opacity (parent #app-content handles fade-in)
+    // GSAP animations — header + components (parent #app-content handles page fade)
+    gsap.from('#leaderboard-page .page-header', { opacity: 0, y: -20, duration: 0.4, ease: 'power2.out' });
     gsap.from('.podium-card', { scale: 0.9, y: 12, stagger: 0.1, duration: 0.45, ease: 'back.out(1.4)', clearProps: 'transform' });
     gsap.from('.stat-card-new', { y: 15, stagger: 0.08, duration: 0.3, ease: 'power2.out', delay: 0.1 });
     gsap.from('.ranking-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.3 });
@@ -189,7 +190,7 @@ class LeaderboardPage extends Component {
 
   private renderPageHeader(): string {
     return `
-      <div class="flex items-center gap-3">
+      <div class="page-header flex items-center gap-3">
         <i data-lucide="trophy" class="text-[var(--color-gold)]"
            style="width:26px;height:26px"></i>
         <div>

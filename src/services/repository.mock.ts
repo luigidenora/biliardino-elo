@@ -7,28 +7,15 @@ import { IPlayer } from '@/models/player.interface';
  */
 
 // Mock data storage - Generate 35 players
-const playerNames = [
-  'Mario Rossi', 'Luigi Verdi', 'Anna Bianchi', 'Paolo Neri', 'Giulia Russo',
-  'Marco Ferrari', 'Sofia Romano', 'Alessandro Marino', 'Francesca Greco', 'Matteo Conti',
-  'Chiara Ricci', 'Andrea Bruno', 'Elena Colombo', 'Davide Rizzo', 'Sara Barbieri',
-  'Simone Costa', 'Laura Fontana', 'Lorenzo Moretti', 'Valentina Serra', 'Francesco Leone',
-  'Martina Giordano', 'Gabriele Marchetti', 'Federica De Luca', 'Luca Mancini', 'Alessia Vitale',
-  'Nicola Lombardi', 'Giorgia Santoro', 'Stefano Caruso', 'Elisa Mariani', 'Roberto Rinaldi',
-  'Claudia Longo', 'Daniele Ferraro', 'Beatrice Gallo', 'Tommaso Martini', 'Silvia Messina'
-];
-
-let mockPlayers: IPlayer[] = playerNames.map((name, index) => {
-  const baseElo = 1000 + Math.floor(Math.random() * 400); // ELO tra 1000 e 1400
-  const defence = Math.round((0.3 + Math.random() * 0.4) * 100) / 100; // Difesa tra 0.3 e 0.7
-
-  return {
-    id: index + 1,
-    name,
-    elo: baseElo,
-    startElo: baseElo,
-    defence,
+let mockPlayers: IPlayer[] = [
+  {
+    id: 1,
+    name: 'Admin',
+    elo: 1200,
+    startElo: 1200,
+    defence: 0.5,
     matches: 0,
-    bestElo: baseElo,
+    bestElo: 1200,
     goalsAgainst: 0,
     goalsFor: 0,
     matchesAsAttacker: 0,
@@ -36,15 +23,34 @@ let mockPlayers: IPlayer[] = playerNames.map((name, index) => {
     matchesDelta: [],
     wins: 0,
     rank: -1,
-    class: -1
-  };
-});
+    class: -1,
+    isAdmin: true
+  },
+  {
+    id: 2,
+    name: 'User',
+    elo: 1100,
+    startElo: 1100,
+    defence: 0.6,
+    matches: 0,
+    bestElo: 1100,
+    goalsAgainst: 0,
+    goalsFor: 0,
+    matchesAsAttacker: 0,
+    matchesAsDefender: 0,
+    matchesDelta: [],
+    wins: 0,
+    rank: -1,
+    class: -1,
+    isAdmin: false
+  }
+];
 
 const mockMatches: IMatch[] = [
   {
     id: 1,
     teamA: { defence: 1, attack: 2 },
-    teamB: { defence: 3, attack: 4 },
+    teamB: { defence: 2, attack: 1 },
     score: [10, 8],
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 7,
     deltaELO: [-1, -1],
@@ -55,9 +61,9 @@ const mockMatches: IMatch[] = [
   },
   {
     id: 2,
-    teamA: { defence: 1, attack: 3 },
-    teamB: { defence: 2, attack: 4 },
-    score: [10, 5],
+    teamA: { defence: 2, attack: 1 },
+    teamB: { defence: 1, attack: 2 },
+    score: [5, 10],
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
     deltaELO: [-1, -1],
     expectedScore: [-1, -1],

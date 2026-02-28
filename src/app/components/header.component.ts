@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
 const LOBBY_POLL_MS = 50_000;
 
 export class HeaderComponent extends Component {
+  private adminActive = false;
   private menuOpen = false;
   private handleRouteChange: (() => void) | null = null;
   private lobbyPollInterval: ReturnType<typeof setInterval> | null = null;
@@ -100,6 +101,10 @@ export class HeaderComponent extends Component {
 
   override mount(): void {
     refreshIcons();
+    // Gestione visibilità admin
+    this.updateAdminVisibility();
+    window.addEventListener('user-dropdown:login-success', this._onAdminLoginSuccess);
+    window.addEventListener('user-dropdown:logout', this._onAdminLogout);
 
     /* ── User pill / avatar → open dropdown ─── */
     document.getElementById('user-pill')?.addEventListener('click', () => userDropdown.toggle());
@@ -169,6 +174,9 @@ export class HeaderComponent extends Component {
       window.removeEventListener('popstate', this.handleRouteChange);
       appState.off('route-change', this.handleRouteChange);
     }
+    window.removeEventListener('user-dropdown:login-success', this._onAdminLoginSuccess);
+    window.removeEventListener('user-dropdown:logout', this._onAdminLogout);
+
     if (this.handleLobbyChange) {
       appState.off('lobby-change', this.handleLobbyChange);
     }
@@ -177,6 +185,21 @@ export class HeaderComponent extends Component {
       this.lobbyPollInterval = null;
     }
   }
+
+  private updateAdminVisibility(): void {
+    document.querySelectorAll('[data-admin-only]').forEach((el) => {
+      (el as HTMLElement).style.display = this.adminActive ? '' : 'none';
+    });
+  }
+
+  // Event handler per login/logout admin
+  private _onAdminLoginSuccess = (): void => {
+    this.updateAdminVisibility();
+  };
+
+  private _onAdminLogout = (): void => {
+    this.updateAdminVisibility();
+  };
 
   private updateActiveStates(): void {
     const currentPath = router.getCurrentPath();
