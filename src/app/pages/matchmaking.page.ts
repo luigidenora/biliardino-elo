@@ -36,6 +36,7 @@ import { renderMatchmakingPageHeader, renderMatchmakingPlayerList } from '../com
 type PlayerState = 0 | 1 | 2;
 
 const MIN_PLAYERS = 4;
+const CONFIRMATIONS_POLL_INTERVAL_MS = 20_000;
 
 const CLASS_COLORS: Record<number, string> = {
   0: '#FFD700',
@@ -958,7 +959,7 @@ class MatchmakingPage extends Component {
       console.warn('AvailabilitySubscriber init failed, falling back to polling', e);
       this.pollInterval = setInterval(() => {
         this.loadConfirmations();
-      }, 7000);
+      }, CONFIRMATIONS_POLL_INTERVAL_MS);
     }
   }
 

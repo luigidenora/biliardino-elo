@@ -41,7 +41,6 @@ async function cleanup() {
     await redis.del(`message:${id}`);
   }
   await redis.del('messages');
-  await redis.del('message-count');
 }
 
 function validMessageBody(overrides: Record<string, any> = {}) {

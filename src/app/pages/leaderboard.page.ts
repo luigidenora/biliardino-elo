@@ -366,7 +366,7 @@ class LeaderboardPage extends Component {
       const medal = MEDALS[rank];
       const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
       const initials = getInitials(p.name);
-      const elevatedStyle = elevated ? 'min-height:340px' : '';
+      const elevatedStyle = elevated ? 'min-height:290px' : '';
       // Card bg: 15% white base gives ~50 RGB unit contrast over the dark field
       // (#0F2A20 → #1F5C3A); previous 8% was below perceptible threshold.
       // Medal gradient on top adds gold/silver/bronze identity.

@@ -1,23 +1,8 @@
 import { Redis } from '@upstash/redis';
-console.log('🔌 Inizializzazione Redis Client...');
-console.log('URL:', process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
-console.log(
-  'Token configured:',
-  !!(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN)
-);
 
 const vercelEnv = (process.env.VERCEL_ENV || process.env.NODE_ENV || 'development').toLowerCase();
 
-function makeVercelPrefix(): string {
-  const id = process.env.VERCEL_GIT_COMMIT_REF
-    || process.env.VERCEL_GIT_BRANCH
-    || process.env.VERCEL_URL
-    || 'local';
-  const safe = String(id).replace(/[^a-z0-9-_]/gi, '_').toLowerCase().slice(0, 64);
-  return `${vercelEnv}_${safe}_`;
-}
-
-export const redisPrefix = makeVercelPrefix();
+export const redisPrefix = `${vercelEnv}_`;
 
 export const prefixed = (key: string) => {
   console.log('Prefissando chiave Redis:', key, '->', `${redisPrefix}${key}`);

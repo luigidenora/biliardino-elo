@@ -13,7 +13,6 @@ import { isPlayerAdmin } from '@/config/admin.config';
 import { API_BASE_URL } from '@/config/env.config';
 import { MessageService } from '@/services/message.service';
 import { getPlayerById } from '@/services/player.service';
-import { fetchRunningMatch } from '@/services/repository.service';
 import { FISH_SPRITES } from '@/utils/fish-sprites.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
@@ -30,8 +29,8 @@ import type { IPlayer } from '@/models/player.interface';
 // ── Constants ────────────────────────────────────────────────────
 
 const LOBBY_TTL_DEFAULT = 5400; // 90 min
-const POLL_INTERVAL_MS = 3000;
-const MSG_POLL_INTERVAL_MS = 4000;
+const POLL_INTERVAL_MS = 10_000;
+const MSG_POLL_INTERVAL_MS = 15_000;
 const CHAT_MAX_LENGTH = 50;
 const FISH_TYPES = ['Squalo', 'Barracuda', 'Tonno', 'Spigola', 'Sogliola'] as const;
 const LABEL_COLORS = [
@@ -778,21 +777,13 @@ class LobbyPage extends Component {
     if (!kicked) return;
 
     try {
-      const runningMatch = await fetchRunningMatch();
-      if (!runningMatch) {
-        this.broadcastKick.showFeedback('NESSUN MATCH GENERATO — VAI AL MATCHMAKING', '#F87171');
-        this.broadcastKick.reset();
-        return;
-      }
-
       const token = localStorage.getItem('biliardino_admin_token');
       const res = await fetch(`${API_BASE_URL}/send-broadcast`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ match: runningMatch })
+        }
       });
 
       if (!res.ok) {

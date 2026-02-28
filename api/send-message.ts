@@ -70,9 +70,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     await redis.lpush(messagesKey, messageId); // Aggiungi a lista
     await redis.expire(messagesKey, 240); // TTL 4 minuti per la lista
 
-    // Incrementa counter globale per la chat
-    await redis.incr(`message-count`);
-
     return res.status(201).json(message);
   } catch (error) {
     console.error('❌ Errore send-message:', error);

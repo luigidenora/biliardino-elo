@@ -39,14 +39,14 @@ const CLASS_COLORS: Record<number, string> = {
 /* ── Stato notifiche ───────────────────────────────────────── */
 type NotifState
   = | 'checking'
-    | 'unsupported'
-    | 'blocked'
-    | 'no-player'
-    | 'inactive'
-    | 'active'
-    | 'active-unverified'
-    | 'loading'
-    | 'error';
+  | 'unsupported'
+  | 'blocked'
+  | 'no-player'
+  | 'inactive'
+  | 'active'
+  | 'active-unverified'
+  | 'loading'
+  | 'error';
 
 const NOTIF_DOT: Record<NotifState, string | null> = {
   checking: '#60A5FA',
@@ -560,7 +560,7 @@ class UserDropdownComponent {
 
       <div style="height:1px;background:rgba(255,255,255,0.06);margin:0 16px"></div>
 
-      <div id="dd-notif" class="p-4">${this.renderNotifSection()}</div>
+      <div id="dd-notif" class="p-4 flex flex-wrap justify-between">${this.renderNotifSection()}</div>
 
       <div style="height:1px;background:rgba(255,255,255,0.06);margin:0 16px"></div>
 
@@ -732,7 +732,7 @@ class UserDropdownComponent {
     } else if (this.notifState === 'active') {
       action = `
         <button data-action="notif-unsubscribe"
-                class="mt-3 px-3 py-1.5 rounded-xl font-ui text-xs transition-all hover:bg-white/10 float-right"
+                class="flex mt-1.5 mb-1.5 px-3 py-1.5 rounded-xl font-ui text-xs transition-all hover:bg-white/10 float-right"
                 style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);letter-spacing:0.07em">
           Disattiva
         </button>
