@@ -486,7 +486,8 @@ class LobbyPage extends Component {
         <!-- Input -->
         <div id="chat-input-area" class="shrink-0"
              style="border-top:1px solid rgba(255,255,255,0.06)">
-          ${this.isMyPresenceConfirmed ? `
+          ${this.isMyPresenceConfirmed
+            ? `
             <div class="p-3">
               <div id="chat-error" class="font-ui mb-1"
                    style="font-size:10px; color:#ff4444; display:none; letter-spacing:0.05em"></div>
@@ -504,7 +505,8 @@ class LobbyPage extends Component {
                 </button>
               </form>
             </div>
-          ` : `
+          `
+            : `
             <div class="px-4 py-4 flex items-center justify-center gap-2">
               <i data-lucide="lock" style="width:13px;height:13px;color:rgba(255,255,255,0.3)"></i>
               <span class="font-ui"
@@ -543,7 +545,8 @@ class LobbyPage extends Component {
         <!-- Fish area -->
         <div id="aquarium" class="relative" style="height:180px; overflow:hidden">
           <div id="god-rays" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
-          ${!this.isMyPresenceConfirmed ? `
+          ${!this.isMyPresenceConfirmed
+            ? `
             <div id="aquarium-lock"
                  class="absolute inset-0 flex flex-col items-center justify-center gap-2 z-20"
                  style="background:rgba(0,10,25,0.6); backdrop-filter:blur(3px)">
@@ -553,7 +556,8 @@ class LobbyPage extends Component {
                 CONFERMA LA PRESENZA<br>PER SBLOCCARE IL MINIGIOCO
               </span>
             </div>
-          ` : ''}
+          `
+            : ''}
         </div>
 
       </div>
@@ -876,14 +880,16 @@ class LobbyPage extends Component {
           ${alreadyConfirmed ? 'Hai già confermato la tua presenza' : 'Premi la palla per confermare la tua presenza'}
         </p>
         ${alreadyConfirmed
-          ? `<span class="font-ui" style="font-size:14px; color:#4ADE80; letter-spacing:0.1em">CONFERMATO</span>`
-          : this.confirmKick.render()
+            ? `<span class="font-ui" style="font-size:14px; color:#4ADE80; letter-spacing:0.1em">CONFERMATO</span>`
+            : this.confirmKick.render()
         }
-        ${!alreadyConfirmed ? `
+        ${!alreadyConfirmed
+          ? `
           <p class="font-ui mt-4" style="font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:0.1em">
             PREMI LA PALLA PER CONFERMARE LA PRESENZA
           </p>
-        ` : ''}
+        `
+          : ''}
       </div>
     `;
   }

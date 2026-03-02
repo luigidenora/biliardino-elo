@@ -194,13 +194,13 @@ class StatsPage extends Component {
       },
       ...(byWR
         ? [{
-          icon: 'award',
-          label: 'MIGLIOR WINRATE',
-          player: byWR,
-          value: `${Math.round(((byWR.wins || 0) / byWR.matches) * 100)}%`,
-          sub: `min. 5 partite`,
-          color: 'var(--color-win)'
-        }]
+            icon: 'award',
+            label: 'MIGLIOR WINRATE',
+            player: byWR,
+            value: `${Math.round(((byWR.wins || 0) / byWR.matches) * 100)}%`,
+            sub: `min. 5 partite`,
+            color: 'var(--color-win)'
+          }]
         : [])
     ];
 

@@ -130,11 +130,11 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
     const broadcastBtn = page.locator('#broadcast-btn');
     await expect(broadcastBtn).toBeVisible();
     // Admin sees lobby interface (either inactive or active state)
-    
+
     // Check for either inactive or active lobby text
     const hasInactiveText = await page.getByText('PREMI LA PALLA PER INVIARE LE NOTIFICHE').isVisible();
     const hasActiveText = await page.getByText('PREMI LA PALLA PER CONFERMARE LA PRESENZA').isVisible();
-    
+
     expect(hasInactiveText || hasActiveText).toBe(true);
 
     // ── Wait for page animations to settle, then click with force to handle instability ─────────
@@ -145,7 +145,7 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
     // Check for broadcast success feedback (could be different text based on app state)
     const broadcastFeedback = page.locator('#broadcast-feedback');
     await expect(broadcastFeedback).toBeVisible({ timeout: 5_000 });
-    
+
     // Verify feedback contains success message
     const feedbackText = await broadcastFeedback.textContent();
     expect(feedbackText?.toLowerCase()).toMatch(/(confermato|notifiche|inviate|sent|broadcast)/i);
@@ -191,18 +191,18 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
     const possibleSelectors = [
       '#confirm-btn',
       '[data-testid="confirm-btn"]',
-      '#broadcast-btn',  // Players might use the same ball button
-      'button >> text=CONFERMA',      // Playwright text selector
-      'button >> text=PRESENZA',      // Playwright text selector  
-      'button:not([disabled]):has(svg)'  // Button with icon that's enabled
+      '#broadcast-btn', // Players might use the same ball button
+      'button >> text=CONFERMA', // Playwright text selector
+      'button >> text=PRESENZA', // Playwright text selector
+      'button:not([disabled]):has(svg)' // Button with icon that's enabled
     ];
-    
+
     let confirmBtn = null;
     for (const selector of possibleSelectors) {
       try {
         confirmBtn = page.locator(selector).first();
         await confirmBtn.waitFor({ timeout: 2000, state: 'visible' });
-        
+
         // Additional check that button is enabled and clickable
         const isEnabled = await confirmBtn.isEnabled();
         if (isEnabled) {
@@ -216,7 +216,7 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
         continue;
       }
     }
-    
+
     if (!confirmBtn) {
       // Take screenshot for debugging
       await page.screenshot({ path: 'debug-test2-player-lobby.png' });
@@ -236,15 +236,15 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
     await confirmBtn.click({ force: true });
 
     // ── Il tasto diventa "CONFERMATO" e viene disabilitato ──────
-    // For this player test, instead of checking button text change, 
+    // For this player test, instead of checking button text change,
     // we verify the API call was made and mock responded correctly
     await page.waitForTimeout(2000); // Wait for confirmation API call
-    
+
     // Verify confirmation feedback or changes in UI state
     // Accept any positive confirmation indication
-    const hasConfirmationFeedback = await page.locator('#broadcast-feedback').isVisible(); 
+    const hasConfirmationFeedback = await page.locator('#broadcast-feedback').isVisible();
     const hasUnlockMessage = await page.getByText('CONFERMA LA PRESENZA PER SBLOCCARE').isHidden();
-    
+
     // At least one of these should indicate successful confirmation:
     // 1. Feedback element becomes visible
     // 2. Unlock messages disappear (indicating player is now confirmed)
@@ -270,16 +270,16 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
     // since playerConfirmed returns true, the unlock messages should be hidden
     const unlockMessagesHidden = await page.getByText('CONFERMA LA PRESENZA PER SBLOCCARE').isHidden();
     const chatMessageHidden = await page.getByText('CONFERMA LA PRESENZA PER CHATTARE').isHidden();
-    
+
     // Try to find the broadcast/confirm button using valid selectors
     const possibleSelectors = [
       '#confirm-btn',
       '[data-testid="confirm-btn"]',
       '#broadcast-btn',
-      'button >> text=CONFERMA',      // Playwright text selector
-      'button >> text=CONFERMATO'     // Playwright text selector  
+      'button >> text=CONFERMA', // Playwright text selector
+      'button >> text=CONFERMATO' // Playwright text selector
     ];
-    
+
     let confirmBtn = null;
     for (const selector of possibleSelectors) {
       try {
@@ -296,12 +296,12 @@ test.describe('Lobby flow — notifiche, accesso e conferma', () => {
         continue;
       }
     }
-    
+
     if (confirmBtn) {
       // If we found a button, check if it shows confirmed state
       const buttonText = await confirmBtn.textContent();
       const isDisabled = await confirmBtn.isDisabled();
-      
+
       // For confirmed player, either button shows "CONFERMATO" or unlock messages are gone
       const isConfirmedButton = buttonText?.includes('CONFERMATO') || buttonText?.includes('CONFIRMED');
       expect(isConfirmedButton || unlockMessagesHidden || chatMessageHidden).toBe(true);

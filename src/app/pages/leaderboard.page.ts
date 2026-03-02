@@ -702,9 +702,9 @@ class LeaderboardPage extends Component {
              style="background:rgba(255,255,255,0.03); border:1px solid ${ratingBorder}">
           <div class="flex items-center gap-2 min-w-0 flex-1">
             ${isToday
-          ? '<div class="w-2 h-2 rounded-full shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>'
-          : '<div class="w-2"></div>'
-        }
+                ? '<div class="w-2 h-2 rounded-full shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>'
+                : '<div class="w-2"></div>'
+            }
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-ui text-xs" style="color:var(--color-win)">${tA}</span>

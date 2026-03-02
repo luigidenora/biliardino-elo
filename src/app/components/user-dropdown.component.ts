@@ -39,14 +39,14 @@ const CLASS_COLORS: Record<number, string> = {
 /* ── Stato notifiche ───────────────────────────────────────── */
 type NotifState
   = | 'checking'
-  | 'unsupported'
-  | 'blocked'
-  | 'no-player'
-  | 'inactive'
-  | 'active'
-  | 'active-unverified'
-  | 'loading'
-  | 'error';
+    | 'unsupported'
+    | 'blocked'
+    | 'no-player'
+    | 'inactive'
+    | 'active'
+    | 'active-unverified'
+    | 'loading'
+    | 'error';
 
 const NOTIF_DOT: Record<NotifState, string | null> = {
   checking: '#60A5FA',

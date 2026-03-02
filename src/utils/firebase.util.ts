@@ -32,8 +32,8 @@ if (__DEV_MODE__ === false) {
  */
 export const db: Firestore | null = (__DEV_MODE__ === false && app)
   ? initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  })
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    })
   : null;
 
 /**

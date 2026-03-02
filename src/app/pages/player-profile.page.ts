@@ -7,7 +7,8 @@
  */
 
 import { getAllMatches } from '@/services/match.service';
-import { getPlayerById, getRank } from '@/services/player.service';
+import { getAllPlayers, getPlayerById, getRank } from '@/services/player.service';
+import { getPlayerStats } from '@/services/stats.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { Chart, registerables } from 'chart.js';
@@ -68,8 +69,9 @@ function computeCurrentStreak(deltas: number[]): { type: 'W' | 'L' | 'none'; cou
 
 export default class PlayerProfilePage extends Component {
   private chart: Chart | null = null;
+  private radarChart: Chart | null = null;
   private gsapCtx: gsap.Context | null = null;
-
+  private radarData: number[] = [];
 
   private renderPageHeader(): string {
     return `
@@ -139,6 +141,22 @@ export default class PlayerProfilePage extends Component {
     );
     const recentMatches = playerMatches.slice(-10).reverse();
 
+    // ── Radar chart data ───────────────────────────────────
+    const stats = getPlayerStats(id);
+    const activePlayers = getAllPlayers().filter(p => p.matches > 0);
+    const maxGPM = Math.max(...activePlayers.map(p => p.goalsFor / p.matches), 1);
+
+    const radarWinRate = stats.matches > 0 ? (stats.wins / stats.matches) * 100 : 0;
+    const radarAttack = stats.matchesAsAttack > 0 ? (stats.winsAsAttack / stats.matchesAsAttack) * 100 : 0;
+    const radarDefence = stats.matchesAsDefence > 0 ? (stats.winsAsDefence / stats.matchesAsDefence) * 100 : 0;
+    const radarGoals = stats.matches > 0 ? Math.min((stats.totalGoalsFor / stats.matches) / maxGPM * 100, 100) : 0;
+    const radarSolidity = (stats.totalGoalsFor + stats.totalGoalsAgainst) > 0
+      ? (1 - stats.totalGoalsAgainst / (stats.totalGoalsFor + stats.totalGoalsAgainst)) * 100
+      : 50;
+    const radarStreak = Math.min(stats.bestWinStreak / 10 * 100, 100);
+
+    this.radarData = [radarWinRate, radarAttack, radarGoals, radarStreak, radarSolidity, radarDefence];
+
     const avatarHtml = renderPlayerAvatar({
       initials: getInitials(player.name),
       color,
@@ -158,6 +176,7 @@ export default class PlayerProfilePage extends Component {
                box-shadow: 0 0 40px ${color}15, var(--shadow-card);
              ">
 
+          <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-6 items-center">
           <div class="flex flex-col lg:flex-row gap-6">
 
             <!-- Left: avatar + identity -->
@@ -165,8 +184,8 @@ export default class PlayerProfilePage extends Component {
               <div class="hero-avatar relative">
                 ${avatarHtml}
                 ${rank <= 3 && rank > 0
-        ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
-        : ''}
+                  ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
+                  : ''}
                 ${player.online ? `<span class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full" style="background:var(--color-online);border:2px solid rgba(15,42,32,0.9)"></span>` : ''}
               </div>
               <div class="hero-identity text-center lg:text-left">
@@ -238,6 +257,20 @@ export default class PlayerProfilePage extends Component {
             </div>
 
           </div>
+
+          <!-- ── Radar Chart ──────────────────────────────────── -->
+          <div class="radar-section flex flex-col items-center justify-center"
+               style="min-width: 240px">
+            <h3 class="font-ui text-[10px] uppercase tracking-widest mb-2"
+                style="color: var(--color-text-muted)">
+              RADAR STATS
+            </h3>
+            <div style="width: 240px; height: 240px; position: relative">
+              <canvas id="radar-chart"></canvas>
+            </div>
+          </div>
+
+          </div>
         </div>
 
         <!-- ── Chart + Recent Matches Grid ──────────────────── -->
@@ -269,8 +302,8 @@ export default class PlayerProfilePage extends Component {
             </h3>
             <div class="flex flex-col gap-2">
               ${recentMatches.length > 0
-        ? recentMatches.map(m => this.renderMatchRow(m, id)).join('')
-        : `<p class="font-body text-xs text-center py-4"
+                ? recentMatches.map(m => this.renderMatchRow(m, id)).join('')
+                : `<p class="font-body text-xs text-center py-4"
                       style="color: var(--color-text-dim)">
                     Nessuna partita trovata
                   </p>`}
@@ -285,12 +318,12 @@ export default class PlayerProfilePage extends Component {
           ${this.renderStatCard('target', 'Gol/Partita', goalsPerMatch, `${player.goalsFor} gol totali`)}
           ${this.renderStatCard('shield', 'Difesa', `${defenceRate}%`, 'Tasso difensivo')}
           ${this.renderStatCard('trending-up', 'Serie', streakLabel,
-          streak.type === 'W'
-            ? 'Vittorie consecutive'
-            : streak.type === 'L'
-              ? 'Sconfitte consecutive'
-              : 'Nessuna serie attiva',
-          streakColor)}
+            streak.type === 'W'
+              ? 'Vittorie consecutive'
+              : streak.type === 'L'
+                ? 'Sconfitte consecutive'
+                : 'Nessuna serie attiva',
+            streakColor)}
         </div>
 
         <!-- ── Win/Loss Distribution Bar ────────────────────── -->
@@ -518,6 +551,73 @@ export default class PlayerProfilePage extends Component {
       }
     }
 
+    // ── Radar chart ───────────────────────────────────────
+    const radarCanvas = this.$id('radar-chart') as HTMLCanvasElement | null;
+    if (radarCanvas) {
+      const rCtx = radarCanvas.getContext('2d');
+      if (rCtx) {
+        const color = getPlayerColor(id);
+        this.radarChart = new Chart(rCtx, {
+          type: 'radar',
+          data: {
+            labels: ['Win Rate', 'Attacco', 'Gol Fatti', 'Costanza', 'Solidità', 'Difesa'],
+            datasets: [{
+              label: player.name,
+              data: this.radarData,
+              backgroundColor: `${color}33`,
+              borderColor: color,
+              borderWidth: 2,
+              pointBackgroundColor: color,
+              pointBorderColor: color,
+              pointRadius: 3,
+              pointHoverRadius: 5
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(15, 42, 32, 0.95)',
+                titleFont: { family: 'Oswald', size: 11 },
+                bodyFont: { family: 'Inter', size: 12 },
+                titleColor: 'rgba(255,255,255,0.5)',
+                bodyColor: color,
+                borderColor: `${color}33`,
+                borderWidth: 1,
+                padding: 10,
+                displayColors: false,
+                callbacks: {
+                  label: ctx => `${ctx.parsed.r.toFixed(1)}`
+                }
+              }
+            },
+            scales: {
+              r: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                  stepSize: 20,
+                  display: false
+                },
+                grid: {
+                  color: 'rgba(255,255,255,0.08)'
+                },
+                angleLines: {
+                  color: 'rgba(255,255,255,0.08)'
+                },
+                pointLabels: {
+                  font: { family: 'Oswald', size: 11 },
+                  color: 'rgba(255,255,255,0.6)'
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
     // ── GSAP animations ───────────────────────────────────
     this.gsapCtx = gsap.context(() => {
       // Hero card entrance
@@ -544,6 +644,9 @@ export default class PlayerProfilePage extends Component {
 
       // Compact goals card
       gsap.from('.hero-goals', { x: 12, opacity: 0, duration: 0.45, delay: 0.18, ease: 'power2.out' });
+
+      // Radar chart
+      gsap.from('.radar-section', { scale: 0.9, opacity: 0, duration: 0.5, delay: 0.2, ease: 'power2.out' });
 
       // Chart section
       gsap.from('#chart-section', {
@@ -601,6 +704,10 @@ export default class PlayerProfilePage extends Component {
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
+    }
+    if (this.radarChart) {
+      this.radarChart.destroy();
+      this.radarChart = null;
     }
     if (this.gsapCtx) {
       this.gsapCtx.revert();
