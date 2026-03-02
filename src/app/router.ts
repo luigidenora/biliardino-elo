@@ -218,8 +218,6 @@ class Router {
   }
 
   private async checkAuth(requireAdmin: boolean): Promise<boolean> {
-    // In dev mode, skip auth
-    if (__DEV_MODE__) return true;
     try {
       const { withAuthentication } = await import('@/utils/auth.util');
       return new Promise<boolean>((resolve) => {

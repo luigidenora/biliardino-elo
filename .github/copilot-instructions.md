@@ -13,7 +13,7 @@ src/app/              → SPA frontend (vanilla TS, no framework)
   state.ts              Event-emitter singleton (appState) for auth flags and route events
   main.ts               Bootstrap entry point
 src/services/         → Domain logic (ELO, players, matches, matchmaking, stats)
-  repository.service.ts Conditional import: Firebase in prod, mock in dev (dead-code eliminated)
+  repository.service.ts Conditional import: mock in dev, Firebase in prod (dead-code eliminated)
   repository.firebase.ts / repository.mock.ts
 src/models/           → TypeScript interfaces (IPlayer, IMatch, IMessage, IConfirmation)
 api/                  → Vercel serverless functions (one file = one endpoint)
@@ -190,7 +190,7 @@ override async render(): Promise<string> {
 
 ### Repository pattern
 
-`repository.service.ts` uses `__DEV_MODE__` (Vite global, `false` at build time) to swap Firebase ↔ mock:
+`repository.service.ts` uses `__DEV_MODE__` (Vite compile-time constant) to switch between mock and Firebase:
 
 ```ts
 const repo = __DEV_MODE__
@@ -201,7 +201,9 @@ export const fetchPlayers = repo.fetchPlayers;
 // ...
 ```
 
-Rollup dead-code eliminates the unused branch in production. **Always import from `repository.service.ts`**, never from the Firebase or mock files directly.
+In dev mode usa dati in memoria (`repository.mock.ts`). In produzione usa Firebase (`repository.firebase.ts`). Rollup elimina il ramo non usato (dead-code elimination).
+
+**Always import from `repository.service.ts`**, never from the Firebase or mock files directly.
 
 ---
 
@@ -318,6 +320,6 @@ Environment: copy `.env.example` → `.env.development.local`. Key vars: `VITE_D
 - **Use `@upstash/redis`** (imported from `api/_redisClient.ts`) for all Redis operations in API functions. Never use the Redis client in frontend code.
 - **New pages**: create the page file, add a route to `router.ts`, done. Do not modify bootstrap or router internals.
 - **New API endpoints**: use `withSecurityMiddleware` + `withAuth` as shown above. Check the 12-function limit before adding.
-- **Tests**: add under `tests/` with Vitest organized by domain (`tests/core-flow/`, `tests/auth/`, `tests/api/`). Use `repository.mock.ts` for unit tests.
+- **Tests**: add under `tests/` with Vitest organized by domain (`tests/core-flow/`, `tests/auth/`, `tests/api/`).
 - **New env vars**: document in `src/config/env.config.ts` and `.env.example`.
 - Keep changes minimal. Do not refactor surrounding code unless directly required.

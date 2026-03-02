@@ -97,16 +97,6 @@ async function bootstrap(): Promise<void> {
 
   // 4c. Safety: force-dismiss skeleton after 5s even if route-change never fires
   window.setTimeout(() => tryDismissBootOverlay(), 5000);
-
-  // 5. Dev toolbar (conditionally loaded)
-  if (__DEV_MODE__) {
-    try {
-      const { initDevToolbar } = await import('../dev-toolbar');
-      initDevToolbar();
-    } catch {
-      // dev-toolbar might not exist, that's ok
-    }
-  }
 }
 
 bootstrap().catch((error) => {

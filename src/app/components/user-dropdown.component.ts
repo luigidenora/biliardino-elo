@@ -135,9 +135,6 @@ class UserDropdownComponent {
         if (this.isOpen) this.updateAdminSection();
         this.updateHeader();
       }) as unknown as () => void;
-    } else if (__DEV_MODE__) {
-      this.isAuthenticated = true;
-      this.updateHeader();
     }
 
     /* Initial pill dot from localStorage */

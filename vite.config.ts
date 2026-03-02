@@ -5,12 +5,11 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 /**
  * Plugin Vite per la modalità sviluppo.
  *
- * Abilita il codice dev (mock data, dev-toolbar, bypass auth) SOLO quando
- * la variabile d'ambiente VITE_DEV_MODE=true è impostata.
+ * Quando VITE_DEV_MODE=true, il repository usa dati mock in memoria
+ * invece di Firebase. Auth e controlli admin funzionano normalmente.
  *
- * In produzione __DEV_MODE__ viene sostituito con `false` a compile-time,
- * e Rollup elimina tutto il codice dev dal bundle (dead-code elimination).
- * Nessun codice dev è presente a runtime, nemmeno la possibilità di bypass.
+ * In produzione __DEV_MODE__ viene sostituito con `false` a compile-time
+ * e Rollup elimina il codice mock dal bundle (dead-code elimination).
  */
 function devModePlugin(): Plugin {
   let isDevMode = false;

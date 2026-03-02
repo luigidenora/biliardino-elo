@@ -1,8 +1,18 @@
 import { IMatch, IMatchDTO, IRunningMatchDTO } from '@/models/match.interface';
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
-import { db, MATCHES_COLLECTION, PLAYERS_COLLECTION, RUNNING_MATCH_COLLECTION } from '@/utils/firebase.util';
+import { db as _db, MATCHES_COLLECTION, PLAYERS_COLLECTION, RUNNING_MATCH_COLLECTION } from '@/utils/firebase.util';
 import { collection, deleteDoc, doc, DocumentData, getDoc, getDocFromServer, getDocsFromCache, getDocsFromServer, QuerySnapshot, setDoc } from 'firebase/firestore';
 
+// This module is only imported when __DEV_MODE__ === false, but we still defensively
+// guard against missing Firebase initialization at runtime to avoid null dereferences.
+if (!_db) {
+  throw new Error(
+    'Firebase Firestore has not been initialized. '
+    + 'Ensure firebase.util.ts initializes Firebase before importing repository.firebase.ts.'
+  );
+}
+
+const db = _db;
 const CURRENT_RUNNING_MATCH = 'current';
 const CACHE_CONTROL_COLLECTION = 'cache-control';
 const CACHE_CONTROL_DOC = 'id';

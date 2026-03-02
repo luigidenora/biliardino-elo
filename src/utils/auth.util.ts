@@ -62,7 +62,7 @@ export function withAuthentication(
   }
   let started = false;
 
-  onAuthStateChanged(AUTH, async (user) => {
+  onAuthStateChanged(AUTH!, async (user) => {
     if (started) return;
 
     if (!user || started) {

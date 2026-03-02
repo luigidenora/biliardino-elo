@@ -14,7 +14,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 // ── Costanti ────────────────────────────────────────────────────
 
-/** ID admin valido (vedi repository.mock.ts) */
+/** ID admin valido (vedi admin.config.ts) */
 const ADMIN_PLAYER_ID = 1;
 
 /** ID generico di un giocatore non-admin */

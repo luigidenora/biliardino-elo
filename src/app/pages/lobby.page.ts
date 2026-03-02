@@ -1268,7 +1268,6 @@ class LobbyPage extends Component {
     const fishEmoji = isMe
       ? '🦈'
       : FISH_EMOJI[index % FISH_EMOJI.length];
-    const fishEmoji = FISH_EMOJI[Math.floor(Math.random() * FISH_EMOJI.length)];
 
     const fish = document.createElement('div');
     fish.className = 'absolute pointer-events-none';

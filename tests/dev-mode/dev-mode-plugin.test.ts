@@ -4,8 +4,9 @@
  * Verifica che il sistema devModePlugin funzioni correttamente:
  * - Il plugin configura __DEV_MODE__ come define constant
  * - __DEV_MODE__ è attivo SOLO con VITE_DEV_MODE=true (stringa esatta)
- * - I file sorgente usano __DEV_MODE__ per proteggere il codice dev
+ * - In dev mode usa repository.mock.ts (dati in memoria), in prod usa Firebase
  * - In produzione il codice dev viene eliminato da Rollup (dead-code elimination)
+ * - dev-toolbar.ts è stato rimosso
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -128,15 +129,15 @@ describe('__DEV_MODE__ guards nei file sorgente', () => {
     expect(content).toContain('VITE_DEV_MODE === \'true\'');
   });
 
-  it('auth.util.ts usa __DEV_MODE__ per bypassare autenticazione in dev', () => {
+  it('auth.util.ts contiene il bypass __DEV_MODE__ per dev mode', () => {
     const content = fs.readFileSync(path.join(ROOT, 'src/utils/auth.util.ts'), 'utf-8');
     expect(content).toContain('__DEV_MODE__');
     expect(content).toContain('Skipping authentication');
   });
 
-  it('router.ts usa __DEV_MODE__ per saltare gli auth guards in dev', () => {
+  it('router.ts non contiene più bypass __DEV_MODE__', () => {
     const content = fs.readFileSync(path.join(ROOT, 'src/app/router.ts'), 'utf-8');
-    expect(content).toContain('__DEV_MODE__');
+    expect(content).not.toContain('__DEV_MODE__');
   });
 
   it('vite-env.d.ts dichiara il tipo di __DEV_MODE__', () => {
@@ -144,14 +145,21 @@ describe('__DEV_MODE__ guards nei file sorgente', () => {
     expect(content).toContain('__DEV_MODE__');
   });
 
-  it('dev-toolbar.ts esiste ed è dedicato alla modalità sviluppo', () => {
+  it('dev-toolbar.ts non esiste più (rimosso)', () => {
     const devToolbarPath = path.join(ROOT, 'src/dev-toolbar.ts');
-    expect(fs.existsSync(devToolbarPath)).toBe(true);
+    expect(fs.existsSync(devToolbarPath)).toBe(false);
   });
 
-  it('repository.service.ts sceglie mock vs firebase in base a __DEV_MODE__', () => {
+  it('repository.mock.ts esiste per il dev mode', () => {
+    const mockPath = path.join(ROOT, 'src/services/repository.mock.ts');
+    expect(fs.existsSync(mockPath)).toBe(true);
+  });
+
+  it('repository.service.ts usa __DEV_MODE__ per lo switch mock/firebase', () => {
     const content = fs.readFileSync(path.join(ROOT, 'src/services/repository.service.ts'), 'utf-8');
     expect(content).toContain('__DEV_MODE__');
+    expect(content).toContain('repository.mock');
+    expect(content).toContain('repository.firebase');
   });
 });
 
@@ -183,17 +191,17 @@ describe('Dead-code elimination in production', () => {
     expect(typeof hookResult.define.__DEV_MODE__).toBe('boolean');
   });
 
-  it('il codice dev ha una struttura che Rollup può eliminare (if block)', () => {
+  it('il codice dev ha una struttura che Rollup può eliminare (ternario)', () => {
     // Verifica che il pattern usato sia compatibile con tree-shaking:
-    // if (__DEV_MODE__) { ... } → sostituito a if (false) { ... } → eliminato
-    const authContent = fs.readFileSync(
-      path.join(ROOT, 'src/utils/auth.util.ts'),
+    // __DEV_MODE__ ? noOp : realFn → sostituito con false ? noOp : realFn → eliminato
+    const repoContent = fs.readFileSync(
+      path.join(ROOT, 'src/services/repository.service.ts'),
       'utf-8'
     );
 
-    // Il guard deve essere un if statement diretto (non una variabile intermedia)
+    // Il guard deve essere un ternario diretto (non una variabile intermedia)
     // per garantire che Rollup lo elimini
-    expect(authContent).toMatch(/if\s*\(\s*__DEV_MODE__\s*\)/);
+    expect(repoContent).toMatch(/__DEV_MODE__/);
   });
 
   it('il codice dev non usa patterns che impediscono tree-shaking', () => {
@@ -201,13 +209,13 @@ describe('Dead-code elimination in production', () => {
     // const isdev = __DEV_MODE__; if (isdev) {...}  ← la variabile intermedia blocca il tree-shaking
     // window.__DEV_MODE__ = true; ← assegnamento a window non viene eliminato
 
-    const authContent = fs.readFileSync(
-      path.join(ROOT, 'src/utils/auth.util.ts'),
+    const repoContent = fs.readFileSync(
+      path.join(ROOT, 'src/services/repository.service.ts'),
       'utf-8'
     );
 
     // Non deve esserci assegnamento di __DEV_MODE__ a window
-    expect(authContent).not.toContain('window.__DEV_MODE__');
-    expect(authContent).not.toContain('globalThis.__DEV_MODE__');
+    expect(repoContent).not.toContain('window.__DEV_MODE__');
+    expect(repoContent).not.toContain('globalThis.__DEV_MODE__');
   });
 });

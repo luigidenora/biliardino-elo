@@ -2,8 +2,8 @@
 
 /**
  * Costante compile-time iniettata dal plugin devModePlugin.
- * `true` solo quando VITE_DEV_MODE=true è impostato.
- * In produzione viene sostituita con `false` e tutto il codice dev viene eliminato.
+ * `true` quando VITE_DEV_MODE=true. In dev mode il repository usa dati mock.
+ * In produzione viene sostituita con `false` (dead-code elimination).
  */
 declare const __DEV_MODE__: boolean;
 

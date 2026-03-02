@@ -60,6 +60,8 @@ const RECENT_MATCHES_COUNT = 30;
 class LeaderboardPage extends Component {
   private sortKey: SortKey = 'rank';
   private sortAsc = false;
+  private liveTimerInterval: ReturnType<typeof setInterval> | null = null;
+  private liveMatchStart: number | null = null;
 
   async render(): Promise<string> {
     let runningMatch;
@@ -104,15 +106,24 @@ class LeaderboardPage extends Component {
     }
     this.updateSortIndicators();
 
+    // Start live match timer
+    this.startLiveTimer();
+
     // GSAP animations — header + components (parent #app-content handles page fade)
     gsap.from('#leaderboard-page .page-header', { opacity: 0, y: -20, duration: 0.4, ease: 'power2.out' });
+    gsap.from('.live-match-card', { opacity: 0, y: 15, duration: 0.5, ease: 'power2.out', delay: 0.1 });
     gsap.from('.podium-card', { scale: 0.9, y: 12, stagger: 0.1, duration: 0.45, ease: 'back.out(1.4)', clearProps: 'transform' });
     gsap.from('.stat-card-new', { y: 15, stagger: 0.08, duration: 0.3, ease: 'power2.out', delay: 0.1 });
     gsap.from('.ranking-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.3 });
     gsap.from('.match-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.4 });
   }
 
-  override destroy(): void { }
+  override destroy(): void {
+    if (this.liveTimerInterval) {
+      clearInterval(this.liveTimerInterval);
+      this.liveTimerInterval = null;
+    }
+  }
 
   // ── Helpers ───────────────────────────────────────────────
 
@@ -262,69 +273,214 @@ class LeaderboardPage extends Component {
       const attB = getPlayerById(runningMatch.teamB.attack);
       if (!defA || !attA || !defB || !attB) return '';
 
-      const avgEloA = Math.round((getMatchPlayerElo(defA, true) + getMatchPlayerElo(attA, false)) / 2);
-      const avgEloB = Math.round((getMatchPlayerElo(defB, true) + getMatchPlayerElo(attB, false)) / 2);
+      const defAElo = Math.round(getMatchPlayerElo(defA, true));
+      const attAElo = Math.round(getMatchPlayerElo(attA, false));
+      const defBElo = Math.round(getMatchPlayerElo(defB, true));
+      const attBElo = Math.round(getMatchPlayerElo(attB, false));
+
+      const avgEloA = Math.round((defAElo + attAElo) / 2);
+      const avgEloB = Math.round((defBElo + attBElo) / 2);
       const winProbA = expectedScore(avgEloA, avgEloB);
       const winProbB = 1 - winProbA;
+      const winPctA = Math.round(winProbA * 100);
+      const winPctB = Math.round(winProbB * 100);
       const isLive = this.isLiveNow();
 
-      const renderLivePlayer = (p: IPlayer, role: string): string => {
+      const classBadge = (p: IPlayer, size: number): string =>
+        p.class >= 0
+          ? `<img src="${BASE_PATH}class/${p.class}.webp" alt="${getClassName(p.class)}"
+                  class="absolute inset-0 object-contain pointer-events-none"
+                  style="width:${size}px;height:${size}px" />`
+          : '';
+
+      const renderLeftPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
         const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+        const isDef = role === 'DIF';
+        const roleBg = isDef ? 'rgba(96,165,250,0.12)' : 'rgba(248,113,113,0.12)';
+        const roleBorder = isDef ? 'rgba(96,165,250,0.25)' : 'rgba(248,113,113,0.25)';
+        const roleColor = isDef ? '#60a5fa' : '#f87171';
+        const roleIcon = isDef ? 'shield' : 'swords';
+        const roleLabel = isDef ? 'DIFENSORE' : 'ATTACCANTE';
         return `
-          <a href="/profile/${p.id}" class="flex items-center gap-2 hover:bg-white/5 rounded-lg p-1.5 transition-colors">
-            ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm', playerId: p.id })}
-            <div class="min-w-0">
-              <div class="text-white font-ui text-xs truncate">${p.name}</div>
-              <div class="font-body" style="font-size:10px; color:rgba(255,255,255,0.4)">${role} · ${Math.round(getMatchPlayerElo(p, role === 'DIF'))}</div>
+          <a href="/profile/${p.id}" class="flex items-center gap-3 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors">
+            <div class="relative shrink-0" style="width:56px;height:56px">
+              <div class="absolute flex items-center justify-center rounded-full"
+                   style="width:22px;height:22px;top:17px;left:17px;background:linear-gradient(135deg,${color}dd,${color}88)">
+                <span class="font-ui text-white" style="font-size:9px;letter-spacing:0.05em">${getInitials(p.name)}</span>
+              </div>
+              ${classBadge(p, 56)}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
+              <div class="flex items-center gap-1 mt-1">
+                <span class="inline-flex items-center gap-1 rounded px-1.5 py-px"
+                      style="background:${roleBg};border:1px solid ${roleBorder}">
+                  <i data-lucide="${roleIcon}" style="width:9px;height:9px;color:${roleColor}"></i>
+                  <span class="font-ui" style="font-size:9px;letter-spacing:0.1em;color:${roleColor}">${roleLabel}</span>
+                </span>
+              </div>
+              <div class="flex items-center gap-1.5 mt-1">
+                <span class="font-display" style="font-size:22px;color:#FFD700;letter-spacing:0.05em;line-height:1">${elo}</span>
+                <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:0.08em">ELO</span>
+              </div>
             </div>
           </a>
         `;
       };
 
+      const renderRightPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
+        const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+        const isDef = role === 'DIF';
+        const roleBg = isDef ? 'rgba(96,165,250,0.12)' : 'rgba(248,113,113,0.12)';
+        const roleBorder = isDef ? 'rgba(96,165,250,0.25)' : 'rgba(248,113,113,0.25)';
+        const roleColor = isDef ? '#60a5fa' : '#f87171';
+        const roleIcon = isDef ? 'shield' : 'swords';
+        const roleLabel = isDef ? 'DIFENSORE' : 'ATTACCANTE';
+        return `
+          <a href="/profile/${p.id}" class="flex items-center gap-3 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors flex-row-reverse">
+            <div class="relative shrink-0" style="width:56px;height:56px">
+              <div class="absolute flex items-center justify-center rounded-full"
+                   style="width:22px;height:22px;top:17px;left:17px;background:linear-gradient(135deg,${color}dd,${color}88)">
+                <span class="font-ui text-white" style="font-size:9px;letter-spacing:0.05em">${getInitials(p.name)}</span>
+              </div>
+              ${classBadge(p, 56)}
+            </div>
+            <div class="min-w-0 flex-1 text-right">
+              <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
+              <div class="flex items-center gap-1 mt-1 justify-end">
+                <span class="inline-flex items-center gap-1 rounded px-1.5 py-px"
+                      style="background:${roleBg};border:1px solid ${roleBorder}">
+                  <i data-lucide="${roleIcon}" style="width:9px;height:9px;color:${roleColor}"></i>
+                  <span class="font-ui" style="font-size:9px;letter-spacing:0.1em;color:${roleColor}">${roleLabel}</span>
+                </span>
+              </div>
+              <div class="flex items-center gap-1.5 mt-1 justify-end">
+                <span class="font-display" style="font-size:22px;color:#FFD700;letter-spacing:0.05em;line-height:1">${elo}</span>
+                <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:0.08em">ELO</span>
+              </div>
+            </div>
+          </a>
+        `;
+      };
+
+      // VS divider with decorative gold lines
+      const vsDivider = `
+        <div class="hidden md:flex flex-col items-center shrink-0 pt-8" style="gap:4px">
+          <div style="width:1px;height:48px;background:linear-gradient(to bottom,transparent,rgba(255,215,0,0.3),transparent)"></div>
+          <span class="font-display" style="font-size:28px;color:#FFD700;letter-spacing:0.15em;line-height:28px">VS</span>
+          <div style="width:1px;height:48px;background:linear-gradient(to bottom,transparent,rgba(255,215,0,0.3),transparent)"></div>
+        </div>
+      `;
+
+      // Mobile VS divider (horizontal)
+      const vsDividerMobile = `
+        <div class="md:hidden flex items-center justify-center gap-3 py-2">
+          <div style="height:1px;flex:1;background:linear-gradient(to right,transparent,rgba(255,215,0,0.3),transparent)"></div>
+          <span class="font-display" style="font-size:22px;color:#FFD700;letter-spacing:0.15em">VS</span>
+          <div style="height:1px;flex:1;background:linear-gradient(to right,transparent,rgba(255,215,0,0.3),transparent)"></div>
+        </div>
+      `;
+
       return `
-        <div class="glass-card-gold rounded-xl overflow-hidden">
-          <div class="px-4 md:px-5 py-3 flex items-center gap-2"
-               style="background:rgba(10,25,18,0.8); border-bottom:1px solid var(--glass-border-gold)">
-            ${isLive ? '<div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>' : ''}
-            <span class="font-ui" style="font-size:13px; color:var(--color-gold); letter-spacing:0.1em">
-              ${isLive ? 'PARTITA IN CORSO' : 'PROSSIMA PARTITA'}
-            </span>
+        <div class="live-match-card rounded-xl overflow-hidden"
+             style="border:1px solid rgba(255,215,0,0.2);
+                    background:linear-gradient(174deg, rgba(15,42,32,0.92) 8%, rgba(20,55,40,0.85) 92%);
+                    box-shadow:0 0 40px rgba(255,215,0,0.06)">
+
+          <!-- Header -->
+          <div class="flex items-center justify-between px-5 md:px-6"
+               style="height:52px; background:rgba(10,25,18,0.8); border-bottom:1px solid rgba(255,215,0,0.15)">
+            <div class="flex items-center gap-2">
+              ${isLive ? '<div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>' : ''}
+              <span class="font-display" style="font-size:14px; color:#ef4444; letter-spacing:0.15em">
+                ${isLive ? 'LIVE MATCH' : 'PROSSIMA PARTITA'}
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="zap" style="width:12px;height:12px;color:#FFD700"></i>
+              <span class="font-display text-white" style="font-size:18px;letter-spacing:0.1em"
+                    id="live-match-timer">--:--</span>
+            </div>
           </div>
-          <div class="p-4 md:p-5">
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex-1">
-                <div class="font-ui text-xs mb-2" style="color:rgba(255,255,255,0.9); letter-spacing:0.1em">TEAM BIANCO</div>
-                <div class="space-y-1">
-                  ${renderLivePlayer(defA, 'DIF')}
-                  ${renderLivePlayer(attA, 'ATT')}
+
+          <!-- Body -->
+          <div class="p-5 md:p-6">
+
+            <!-- Desktop layout: side by side -->
+            <div class="hidden md:flex gap-6 items-start">
+
+              <!-- Team A (left) -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 mb-2">
+                  <span class="font-display" style="font-size:18px;color:#4ade80;letter-spacing:0.12em">TEAM A</span>
+                  <span class="font-ui" style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.08em">AVG</span>
+                  <span class="font-display text-white" style="font-size:16px">${avgEloA}</span>
                 </div>
-                <div class="mt-2 font-ui text-xs" style="color:rgba(255,255,255,0.4)">
-                  ELO: <span style="color:rgba(255,255,255,0.9)">${avgEloA}</span>
-                </div>
-              </div>
-              <div class="text-center shrink-0">
-                <div class="font-display text-xl mb-2" style="color:var(--color-gold)">VS</div>
-                <div class="space-y-1">
-                  <div class="font-display text-sm" style="color:rgba(255,255,255,0.9)">${(winProbA * 100).toFixed(1)}%</div>
-                  <div class="flex rounded-full overflow-hidden h-1.5 w-16">
-                    <div style="width:${winProbA * 100}%; background:rgba(255,255,255,0.75)"></div>
-                    <div style="width:${winProbB * 100}%; background:var(--color-team-red)"></div>
-                  </div>
-                  <div class="font-display text-sm" style="color:var(--color-team-red)">${(winProbB * 100).toFixed(1)}%</div>
+                <div class="flex flex-col">
+                  ${renderLeftPlayer(defA, 'DIF', defAElo)}
+                  ${renderLeftPlayer(attA, 'ATT', attAElo)}
                 </div>
               </div>
-              <div class="flex-1 text-right">
-                <div class="font-ui text-xs mb-2" style="color:var(--color-team-red); letter-spacing:0.1em">TEAM ROSSO</div>
-                <div class="space-y-1">
-                  ${renderLivePlayer(defB, 'DIF')}
-                  ${renderLivePlayer(attB, 'ATT')}
+
+              ${vsDivider}
+
+              <!-- Team B (right) -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 mb-2 justify-end">
+                  <span class="font-display" style="font-size:18px;color:#60a5fa;letter-spacing:0.12em">TEAM B</span>
+                  <span class="font-ui" style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.08em">AVG</span>
+                  <span class="font-display text-white" style="font-size:16px">${avgEloB}</span>
                 </div>
-                <div class="mt-2 font-ui text-xs" style="color:rgba(255,255,255,0.4)">
-                  ELO: <span style="color:var(--color-team-red)">${avgEloB}</span>
+                <div class="flex flex-col">
+                  ${renderRightPlayer(defB, 'DIF', defBElo)}
+                  ${renderRightPlayer(attB, 'ATT', attBElo)}
                 </div>
               </div>
             </div>
+
+            <!-- Mobile layout: stacked -->
+            <div class="md:hidden">
+              <!-- Team A -->
+              <div class="mb-2">
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-display" style="font-size:16px;color:#4ade80;letter-spacing:0.12em">TEAM A</span>
+                  <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:0.08em">AVG</span>
+                  <span class="font-display text-white" style="font-size:14px">${avgEloA}</span>
+                </div>
+                ${renderLeftPlayer(defA, 'DIF', defAElo)}
+                ${renderLeftPlayer(attA, 'ATT', attAElo)}
+              </div>
+
+              ${vsDividerMobile}
+
+              <!-- Team B -->
+              <div class="mt-2">
+                <div class="flex items-center gap-3 mb-1">
+                  <span class="font-display" style="font-size:16px;color:#60a5fa;letter-spacing:0.12em">TEAM B</span>
+                  <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:0.08em">AVG</span>
+                  <span class="font-display text-white" style="font-size:14px">${avgEloB}</span>
+                </div>
+                ${renderLeftPlayer(defB, 'DIF', defBElo)}
+                ${renderLeftPlayer(attB, 'ATT', attBElo)}
+              </div>
+            </div>
+
+            <!-- Team Win Rate Bar -->
+            <div class="mt-5 px-2">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-display" style="font-size:15px;color:#4ade80">${winPctA}%</span>
+                <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:0.12em">TEAM WIN RATE</span>
+                <span class="font-display" style="font-size:15px;color:#60a5fa">${winPctB}%</span>
+              </div>
+              <div class="flex rounded-full overflow-hidden h-2" style="background:rgba(255,255,255,0.06)">
+                <div class="h-full rounded-l-full" style="width:${winPctA}%;background:linear-gradient(to right,#4ade80,#34d399)"></div>
+                <div class="h-full rounded-r-full" style="width:${winPctB}%;background:linear-gradient(to right,#3b82f6,#60a5fa)"></div>
+              </div>
+            </div>
           </div>
+
+          <!-- Inner glow overlay -->
+          <div class="absolute inset-0 pointer-events-none rounded-xl" style="box-shadow:inset 0 0 30px rgba(255,215,0,0.02)"></div>
         </div>
       `;
     } catch {
@@ -342,6 +498,23 @@ class LeaderboardPage extends Component {
       { start: 18 * 60, end: 20 * 60 }
     ];
     return windows.some(w => minutes >= w.start && minutes < w.end);
+  }
+
+  private startLiveTimer(): void {
+    const timerEl = this.$('#live-match-timer');
+    if (!timerEl) return;
+
+    this.liveMatchStart = Date.now();
+    const update = (): void => {
+      if (!this.liveMatchStart) return;
+      const elapsed = Math.floor((Date.now() - this.liveMatchStart) / 1000);
+      const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const ss = String(elapsed % 60).padStart(2, '0');
+      const el = this.$('#live-match-timer');
+      if (el) el.textContent = `${mm}:${ss}`;
+    };
+    update();
+    this.liveTimerInterval = setInterval(update, 1000);
   }
 
   // ── Podium (fedele al React Figma) ──────────────────────────

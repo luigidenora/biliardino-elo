@@ -6,10 +6,9 @@ dotenv.config({ path: ['.env.local', '.env'] });
 /**
  * Playwright e2e configuration.
  *
- * La suite avvia il dev server in modalità __DEV_MODE__=true
- * (mock Firebase, nessuna auth richiesta) così i test non dipendono
- * da credenziali esterne. Tutte le chiamate API vengono intercettate
- * dal test stesso via page.route().
+ * La suite avvia il dev server con __DEV_MODE__=true così il repository
+ * usa dati mock in memoria. Auth e admin funzionano normalmente.
+ * Le chiamate API vengono intercettate dal test stesso via page.route().
  */
 export default defineConfig({
   testDir: './e2e',
@@ -49,7 +48,7 @@ export default defineConfig({
     }
   ],
 
-  /** Dev server — avviato con VITE_DEV_MODE=true per evitare Firebase */
+  /** Dev server — avviato con VITE_DEV_MODE=true (scritture Firebase no-op) */
   webServer: {
     command: 'npx -y vercel dev',
     url: 'http://localhost:3000',

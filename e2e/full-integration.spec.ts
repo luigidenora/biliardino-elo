@@ -11,7 +11,7 @@
 import { expect, test } from '@playwright/test';
 
 // Costanti
-const ADMIN_PLAYER_ID = 1; // Admin in mock data
+const ADMIN_PLAYER_ID = 1; // Admin ID for e2e tests
 const PLAYER_IDS = [2, 3, 4, 5]; // Other players
 const API_BASE = 'http://localhost:3000/api';
 const ADMIN_TOKEN = process.env.ADMIN_API_TOKEN;

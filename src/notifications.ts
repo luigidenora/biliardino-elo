@@ -75,20 +75,6 @@ export const subscribeToPushNotifications = async (playerId: number, playerName:
 
 export function initNotification(): void {
   initNotificationButton();
-
-  // Dev toolbar: import dynamically only in dev mode (keeps prod bundle small)
-  (async () => {
-    try {
-      if (__DEV_MODE__) {
-        const mod = await import('./dev-toolbar');
-        if (mod && typeof mod.initDevToolbar === 'function') mod.initDevToolbar();
-      }
-    } catch (err) {
-      // non-fatal for prod; silence import failures
-
-      console.warn('[DevToolbar] failed to load', err);
-    }
-  })();
 }
 /**
  * Crea e gestisce il pulsante delle notifiche nell'header
@@ -614,17 +600,3 @@ async function getPushManager(): Promise<PushManager> {
   throw new Error('PushManager non disponibile');
 }
 
-// Dev hook: allow runtime testing by dispatching `dev-notifications-action` events
-// from the dev toolbar. Example: `window.dispatchEvent(new CustomEvent('dev-notifications-action',{detail:{verify:true}}))`
-if (typeof window !== 'undefined') {
-  window.addEventListener('dev-notifications-action', (ev: Event) => {
-    try {
-      const ce = ev as CustomEvent;
-      const verify = !!ce.detail?.verify;
-      // fire-and-forget
-      void updateButtonState(verify as boolean);
-    } catch (err) {
-      console.warn('[Notifications] dev-notifications-action handler error', err);
-    }
-  });
-}
