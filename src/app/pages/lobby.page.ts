@@ -15,6 +15,7 @@ import { MessageService } from '@/services/message.service';
 import { getPlayerById } from '@/services/player.service';
 import { FISH_SPRITES } from '@/utils/fish-sprites.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { triggerImpact } from '@/utils/haptics.util';
 import gsap from 'gsap';
 import { BroadcastKickComponent } from '../components/broadcast-kick.component';
 import { Component } from '../components/component.base';
@@ -862,6 +863,7 @@ class LobbyPage extends Component {
 
       // Update single source of truth, then re-render the whole main section
       this.confirmed.add(this.myPlayerId!);
+      triggerImpact('medium'); // Haptic feedback for confirmation
       this.rerenderMain();
 
       // Sync fish and messages via a single poll (reuses the same /lobby-state call)

@@ -6,6 +6,7 @@
  * The host page supplies the click callback; all animation logic
  * lives inside this component.
  */
+import { triggerImpact } from '@/utils/haptics.util';
 import gsap from 'gsap';
 import brodcustKickPlayerSVG from './brodcast-kick.svg?raw';
 
@@ -123,6 +124,8 @@ export class BroadcastKickComponent {
     }, '-=0.12');
 
     // 4. Kick! — controlled power kick (longer, more defined)
+    // Trigger strong haptic feedback at the moment of impact
+    tl.call(() => triggerImpact('strong'), undefined, '-=0.22');
     tl.to(body, {
       rotation: 70, duration: 0.22, ease: 'power2.inOut', svgOrigin: SVG_ROTATION_ORIGIN
     }, '-=0.22');

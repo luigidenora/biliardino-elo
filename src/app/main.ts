@@ -17,6 +17,7 @@ import '../pwa';
 // ── App ────────────────────────────────────────────────────
 import { LayoutComponent } from './components/layout.component';
 import { userDropdown } from './components/user-dropdown.component';
+import { initParticlesSystem } from './particles/particles-manager';
 import { router } from './router';
 import { appState } from './state';
 
@@ -73,6 +74,9 @@ async function bootstrap(): Promise<void> {
 
   // 1. Hydrate auth state from localStorage
   appState.hydrateFromLocalStorage();
+
+  // 1b. Initialize particles system
+  initParticlesSystem();
 
   // 2. Render the Layout shell
   const layout = new LayoutComponent();
