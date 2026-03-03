@@ -2,7 +2,7 @@
 
 /**
  * Costante compile-time iniettata dal plugin devModePlugin.
- * `true` quando VITE_DEV_MODE=true. In dev mode il repository usa dati mock.
+ * `true` quando VITE_DEV_MODE=true.
  * In produzione viene sostituita con `false` (dead-code elimination).
  */
 declare const __DEV_MODE__: boolean;
@@ -14,6 +14,7 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_STORAGE_BUCKET: string;
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
   readonly VITE_FIREBASE_APP_ID: string;
+  readonly VITE_DEV_FIREBASE_READONLY?: string;
   readonly VITE_VAPID_PUBLIC_KEY: string;
   readonly VITE_API_BASE_URL: string;
 

@@ -4,7 +4,8 @@
  * Verifica che il sistema devModePlugin funzioni correttamente:
  * - Il plugin configura __DEV_MODE__ come define constant
  * - __DEV_MODE__ è attivo SOLO con VITE_DEV_MODE=true (stringa esatta)
- * - In dev mode usa repository.mock.ts (dati in memoria), in prod usa Firebase
+ * - In dev mode legge da Firebase (read-only), scritture bloccate
+ * - Il mock è disponibile come fallback con VITE_DEV_FIREBASE_READONLY=false
  * - In produzione il codice dev viene eliminato da Rollup (dead-code elimination)
  * - dev-toolbar.ts è stato rimosso
  */
@@ -155,11 +156,16 @@ describe('__DEV_MODE__ guards nei file sorgente', () => {
     expect(fs.existsSync(mockPath)).toBe(true);
   });
 
-  it('repository.service.ts usa __DEV_MODE__ per lo switch mock/firebase', () => {
+  it('firebase.util.ts non contiene più guard __DEV_MODE__ (Firebase sempre inizializzato)', () => {
+    const content = fs.readFileSync(path.join(ROOT, 'src/utils/firebase.util.ts'), 'utf-8');
+    expect(content).not.toContain('__DEV_MODE__');
+  });
+
+  it('repository.service.ts usa __DEV_MODE__ per bloccare scritture in dev mode', () => {
     const content = fs.readFileSync(path.join(ROOT, 'src/services/repository.service.ts'), 'utf-8');
     expect(content).toContain('__DEV_MODE__');
-    expect(content).toContain('repository.mock');
     expect(content).toContain('repository.firebase');
+    expect(content).toContain('devWriteBlock');
   });
 });
 

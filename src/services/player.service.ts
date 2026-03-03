@@ -27,7 +27,8 @@ export function getAllPlayers(): IPlayer[] {
 
 export function getRank(id: number): number {
   if (rankOutdated) computeRanks();
-  return getPlayerById(id)?.rank ?? -1;
+  const rank = getPlayerById(id)?.rank;
+  return Number.isFinite(rank) ? rank : -1;
 }
 
 export function createPlayerDTO(name: string, elo: number, defence: number): IPlayerDTO {

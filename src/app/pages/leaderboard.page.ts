@@ -9,13 +9,11 @@
  * Route: / (default, public)
  */
 
-import { BASE_PATH } from '@/config/env.config';
+import { attachMatchHistoryInteractions, renderMatchHistory } from '@/app/components/match-history.component';
 import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
 import { getAllPlayers, getBonusK, getPlayerById, getRank } from '@/services/player.service';
 import { fetchRunningMatch } from '@/services/repository.service';
-import { formatDate } from '@/utils/format-date.util';
-import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
@@ -62,10 +60,15 @@ class LeaderboardPage extends Component {
   private sortAsc = false;
   private liveTimerInterval: ReturnType<typeof setInterval> | null = null;
   private liveMatchStart: number | null = null;
+  private matchHistoryCleanup: (() => void) | null = null;
 
   async render(): Promise<string> {
     let runningMatch;
-    try { runningMatch = await fetchRunningMatch(); } catch { runningMatch = null; }
+    try {
+      runningMatch = await fetchRunningMatch();
+    } catch {
+      runningMatch = null;
+    }
     const hasMatch = !!runningMatch;
     return `
       <div class="space-y-5 md:space-y-6" id="leaderboard-page">
@@ -109,6 +112,11 @@ class LeaderboardPage extends Component {
     // Start live match timer
     this.startLiveTimer();
 
+    const root = this.$('#leaderboard-page') ?? this.el;
+    if (root) {
+      this.matchHistoryCleanup = attachMatchHistoryInteractions(root);
+    }
+
     // GSAP animations — header + components (parent #app-content handles page fade)
     gsap.from('#leaderboard-page .page-header', { opacity: 0, y: -20, duration: 0.4, ease: 'power2.out' });
     gsap.from('.live-match-card', { opacity: 0, y: 15, duration: 0.5, ease: 'power2.out', delay: 0.1 });
@@ -119,6 +127,11 @@ class LeaderboardPage extends Component {
   }
 
   override destroy(): void {
+    if (this.matchHistoryCleanup) {
+      this.matchHistoryCleanup();
+      this.matchHistoryCleanup = null;
+    }
+
     if (this.liveTimerInterval) {
       clearInterval(this.liveTimerInterval);
       this.liveTimerInterval = null;
@@ -202,7 +215,7 @@ class LeaderboardPage extends Component {
   private renderPageHeader(): string {
     return `
       <div class="page-header flex items-center gap-3">
-        <i data-lucide="trophy" class="text-[var(--color-gold)]"
+        <i data-lucide="trophy" class="text-(--color-gold)"
            style="width:26px;height:26px"></i>
         <div>
           <h1 class="text-white font-display"
@@ -286,13 +299,6 @@ class LeaderboardPage extends Component {
       const winPctB = Math.round(winProbB * 100);
       const isLive = this.isLiveNow();
 
-      const classBadge = (p: IPlayer, size: number): string =>
-        p.class >= 0
-          ? `<img src="${BASE_PATH}class/${p.class}.webp" alt="${getClassName(p.class)}"
-                  class="absolute inset-0 object-contain pointer-events-none"
-                  style="width:${size}px;height:${size}px" />`
-          : '';
-
       const renderLeftPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
         const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
         const isDef = role === 'DIF';
@@ -304,11 +310,7 @@ class LeaderboardPage extends Component {
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-3 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors">
             <div class="relative shrink-0" style="width:56px;height:56px">
-              <div class="absolute flex items-center justify-center rounded-full"
-                   style="width:22px;height:22px;top:17px;left:17px;background:linear-gradient(135deg,${color}dd,${color}88)">
-                <span class="font-ui text-white" style="font-size:9px;letter-spacing:0.05em">${getInitials(p.name)}</span>
-              </div>
-              ${classBadge(p, 56)}
+              ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'md', playerId: p.id, playerClass: p.class })}
             </div>
             <div class="min-w-0 flex-1">
               <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
@@ -339,11 +341,7 @@ class LeaderboardPage extends Component {
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-3 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors flex-row-reverse">
             <div class="relative shrink-0" style="width:56px;height:56px">
-              <div class="absolute flex items-center justify-center rounded-full"
-                   style="width:22px;height:22px;top:17px;left:17px;background:linear-gradient(135deg,${color}dd,${color}88)">
-                <span class="font-ui text-white" style="font-size:9px;letter-spacing:0.05em">${getInitials(p.name)}</span>
-              </div>
-              ${classBadge(p, 56)}
+              ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'md', playerId: p.id, playerClass: p.class })}
             </div>
             <div class="min-w-0 flex-1 text-right">
               <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
@@ -564,7 +562,7 @@ class LeaderboardPage extends Component {
         
         <!-- Avatar -->
         <div class="relative mb-7">
-        ${renderPlayerAvatar({ initials, color, size: 'lg', playerId: p.id })}
+        ${renderPlayerAvatar({ initials, color, size: 'lg', playerId: p.id, playerClass: p.class })}
           <!-- Medal emoji -->
           <span class="absolute -bottom-7 left-1/2 -translate-x-1/2" style="font-size:28px; line-height:1">${medal}</span>
           </div>
@@ -732,21 +730,9 @@ class LeaderboardPage extends Component {
 
     const displayName = player.name;
 
-    const classBadgeDesktop = player.class >= 0
-      ? `<img src="${BASE_PATH}class/${player.class}.webp" alt="${getClassName(player.class)}"
-              title="${getClassName(player.class)}"
-              class="shrink-0" style="width:40px;height:40px;object-fit:contain" />`
-      : '<div class="shrink-0" style="width:40px;height:40px"></div>';
-    const classBadgeMobile = player.class >= 0
-      ? `<img src="${BASE_PATH}class/${player.class}.webp" alt="${getClassName(player.class)}"
-              title="${getClassName(player.class)}"
-              class="shrink-0" style="width:40px;height:40px;object-fit:contain" />`
-      : '<div class="shrink-0" style="width:40px;height:40px"></div>';
-
     const avatarAndNameDesktop = `
       <div class="flex items-center gap-3 min-w-0">
-        ${classBadgeDesktop}
-        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id })}
+        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id, playerClass: player.class })}
         <div class="min-w-0">
           <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
                style="font-family:var(--font-ui); font-size:14px; font-weight:600">
@@ -758,8 +744,7 @@ class LeaderboardPage extends Component {
 
     const avatarAndNameMobile = `
       <div class="flex items-center gap-1.5 min-w-0">
-        ${classBadgeMobile}
-        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id })}
+        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id, playerClass: player.class })}
         <div class="min-w-0">
           <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
                style="font-family:var(--font-ui); font-size:13px; font-weight:600">
@@ -823,109 +808,14 @@ class LeaderboardPage extends Component {
     `;
   }
 
-  // ── Recent Matches ─────────────────────────────────────────
+  // ── Recent Matches (Cronologia Partite) ────────────────────
 
   private renderRecentMatches(): string {
-    const allMatches = getAllMatches();
-    const matches = allMatches.toSorted((a, b) => b.createdAt - a.createdAt).slice(0, RECENT_MATCHES_COUNT);
-    if (matches.length === 0) return '';
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const rows = matches.map((m) => {
-      const matchDate = new Date(m.createdAt);
-      matchDate.setHours(0, 0, 0, 0);
-      const isToday = matchDate.getTime() === today.getTime();
-
-      const ad = getPlayerById(m.teamA.defence);
-      const aa = getPlayerById(m.teamA.attack);
-      const bd = getPlayerById(m.teamB.defence);
-      const ba = getPlayerById(m.teamB.attack);
-
-      const teamANames = `${ad?.name ?? '?'} & ${aa?.name ?? '?'}`;
-      const teamBNames = `${bd?.name ?? '?'} & ${ba?.name ?? '?'}`;
-
-      let scoreA = m.score[0], scoreB = m.score[1];
-      let tA = teamANames, tB = teamBNames;
-      let eloA = Math.round(m.teamELO[0]), eloB = Math.round(m.teamELO[1]);
-      let deltaA = Math.round(m.deltaELO[0]), deltaB = Math.round(m.deltaELO[1]);
-      let expA = m.expectedScore[0], expB = m.expectedScore[1];
-      const aWon = scoreA > scoreB;
-
-      if (!aWon) {
-        [tA, tB] = [tB, tA];
-        [eloA, eloB] = [eloB, eloA];
-        [deltaA, deltaB] = [deltaB, deltaA];
-        [expA, expB] = [expB, expA];
-        [scoreA, scoreB] = [scoreB, scoreA];
-      }
-
-      const avgRating = (eloA + eloB) / 2;
-      let ratingBorder = 'rgba(255,255,255,0.06)';
-      if (avgRating >= 1150) ratingBorder = 'rgba(74,144,217,0.4)';
-      else if (avgRating >= 1100) ratingBorder = 'rgba(74,144,217,0.2)';
-      else if (avgRating <= 900) ratingBorder = 'rgba(229,62,62,0.3)';
-
-      const dAColor = deltaA >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
-      const dBColor = deltaB >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
-
-      return `
-        <div class="match-row flex items-center justify-between p-2.5 md:p-3 rounded-lg"
-             style="background:rgba(255,255,255,0.03); border:1px solid ${ratingBorder}">
-          <div class="flex items-center gap-2 min-w-0 flex-1">
-            ${isToday
-                ? '<div class="w-2 h-2 rounded-full shrink-0" style="background:var(--color-team-blue); box-shadow:0 0 4px var(--color-team-blue)"></div>'
-                : '<div class="w-2"></div>'
-            }
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-ui text-xs" style="color:var(--color-win)">${tA}</span>
-                <span class="font-display text-sm" style="color:rgba(255,255,255,0.7)">${scoreA} - ${scoreB}</span>
-                <span class="font-ui text-xs" style="color:var(--color-loss)">${tB}</span>
-              </div>
-              <div class="flex items-center gap-3 mt-0.5">
-                <span class="font-body" style="font-size:10px; color:rgba(255,255,255,0.3)">${formatDate(m.createdAt)}</span>
-                <span class="font-body" style="font-size:10px; color:rgba(255,255,255,0.25)">
-                  ${Math.round(expA * 100)}% vs ${Math.round(expB * 100)}%
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0 ml-2">
-            <div class="text-right">
-              <div class="font-display text-sm" style="color:rgba(255,255,255,0.5)">${Math.round(avgRating)}</div>
-              <div class="font-body" style="font-size:10px; color:rgba(255,255,255,0.25)">avg</div>
-            </div>
-            <div class="text-right">
-              <span class="font-body text-xs" style="color:${dAColor}">${deltaA >= 0 ? '+' : ''}${deltaA}</span>
-              <span class="font-body text-xs" style="color:rgba(255,255,255,0.2)"> / </span>
-              <span class="font-body text-xs" style="color:${dBColor}">${deltaB >= 0 ? '+' : ''}${deltaB}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="glass-card rounded-xl overflow-hidden">
-        <div class="px-4 md:px-5 py-3 flex items-center justify-between"
-             style="background:rgba(10,25,18,0.8); border-bottom:1px solid var(--glass-border-gold)">
-          <div class="flex items-center gap-2">
-            <i data-lucide="target" style="width:14px;height:14px;color:var(--color-gold)"></i>
-            <span class="font-ui" style="font-size:13px; color:var(--color-gold); letter-spacing:0.1em">
-              ULTIME PARTITE
-            </span>
-          </div>
-          <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.4)">
-            ${matches.length} partite
-          </span>
-        </div>
-        <div class="p-3 space-y-2 overflow-y-auto" style="max-height:600px">
-          ${rows}
-        </div>
-      </div>
-    `;
+    return renderMatchHistory({
+      matches: getAllMatches(),
+      limit: RECENT_MATCHES_COUNT,
+      selectedPlayerId: Number(localStorage.getItem('biliardino_player_id') || 0)
+    });
   }
 
   // ── Dynamic Updates ─────────────────────────────────────────

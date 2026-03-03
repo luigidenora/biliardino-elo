@@ -1,18 +1,8 @@
 import { IMatch, IMatchDTO, IRunningMatchDTO } from '@/models/match.interface';
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
-import { db as _db, MATCHES_COLLECTION, PLAYERS_COLLECTION, RUNNING_MATCH_COLLECTION } from '@/utils/firebase.util';
+import { db, MATCHES_COLLECTION, PLAYERS_COLLECTION, RUNNING_MATCH_COLLECTION } from '@/utils/firebase.util';
 import { collection, deleteDoc, doc, DocumentData, getDoc, getDocFromServer, getDocsFromCache, getDocsFromServer, QuerySnapshot, setDoc } from 'firebase/firestore';
 
-// This module is only imported when __DEV_MODE__ === false, but we still defensively
-// guard against missing Firebase initialization at runtime to avoid null dereferences.
-if (!_db) {
-  throw new Error(
-    'Firebase Firestore has not been initialized. '
-    + 'Ensure firebase.util.ts initializes Firebase before importing repository.firebase.ts.'
-  );
-}
-
-const db = _db;
 const CURRENT_RUNNING_MATCH = 'current';
 const CACHE_CONTROL_COLLECTION = 'cache-control';
 const CACHE_CONTROL_DOC = 'id';
@@ -20,6 +10,23 @@ const CACHE_HASH_PLAYERS_KEY = 'firestore_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'firestore_cache_hash_matches';
 
 const { useCacheMatches, useCachePlayers } = await shouldUseCache();
+
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseNumericId(rawId: string, dataId?: unknown): number | null {
+  const fromData = toFiniteNumber(dataId, Number.NaN);
+  if (Number.isFinite(fromData) && fromData > 0) return Math.trunc(fromData);
+
+  if (/^\d+$/.test(rawId)) return Number(rawId);
+
+  const trailingDigits = rawId.match(/(\d+)$/);
+  if (trailingDigits) return Number(trailingDigits[1]);
+
+  return null;
+}
 
 async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMatches: number | null }> {
   try {
@@ -95,15 +102,25 @@ async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMat
 export async function fetchPlayers(): Promise<IPlayer[]> {
   const snap = await getDocsCacheServer(PLAYERS_COLLECTION, useCachePlayers);
 
-  const players = snap.docs.map((d) => {
+  const players = snap.docs.flatMap((d) => {
     const data = d.data() as IPlayer;
+    const parsedId = parseNumericId(d.id, (data as { id?: unknown }).id);
+
+    if (parsedId == null) {
+      console.warn('[firebase] skipping player with invalid id:', d.id);
+      return [];
+    }
+
+    const elo = toFiniteNumber(data.elo, 1000);
+    const defenceRaw = toFiniteNumber(data.defence, 50);
+    const defence = defenceRaw > 1 ? defenceRaw / 100 : defenceRaw;
 
     return {
-      id: Number.parseInt(d.id),
-      name: data.name,
-      elo: data.elo,
-      startElo: data.elo,
-      defence: data.defence / 100,
+      id: parsedId,
+      name: String(data.name ?? 'Sconosciuto'),
+      elo,
+      startElo: elo,
+      defence: Math.min(1, Math.max(0, defence)),
       matches: 0,
       bestElo: -1,
       goalsAgainst: 0,

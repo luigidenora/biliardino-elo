@@ -129,13 +129,11 @@ class UserDropdownComponent {
     window.addEventListener('user-dropdown:open-login', this.onOpenLogin);
 
     /* Firebase auth state */
-    if (AUTH) {
-      this.authUnsubscribe = onAuthStateChanged(AUTH, (user) => {
-        this.isAuthenticated = !!user;
-        if (this.isOpen) this.updateAdminSection();
-        this.updateHeader();
-      }) as unknown as () => void;
-    }
+    this.authUnsubscribe = onAuthStateChanged(AUTH, (user) => {
+      this.isAuthenticated = !!user;
+      if (this.isOpen) this.updateAdminSection();
+      this.updateHeader();
+    }) as unknown as () => void;
 
     /* Initial pill dot from localStorage */
     this.notifState = this.getQuickNotifState();

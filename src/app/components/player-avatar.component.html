@@ -1,8 +1,9 @@
-<div class="relative inline-flex shrink-0">
+<div class="relative inline-flex shrink-0 {{containerClass}}">
+  {{frameDefs}}
   <div
-    class="{{containerClass}} rounded-full overflow-hidden relative flex items-center justify-center font-bold ring-2 ring-white/20"
-    style="background: linear-gradient(135deg, {{color}}dd, {{color}}88)">
+    class="absolute {{avatarCoreInsetClass}} rounded-full overflow-hidden flex items-center justify-center font-bold ring-2 ring-white/20">
     {{avatarContent}}
   </div>
+  {{frameOverlay}}
   {{statusDot}}
 </div>

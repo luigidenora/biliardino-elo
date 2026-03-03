@@ -19,28 +19,22 @@ const firebaseConfig = {
 
 /**
  * Root Firebase application instance initialized with the project configuration.
- * In dev mode (__DEV_MODE__) è null — Firebase non viene inizializzato.
  */
-let app: FirebaseApp | null = null;
-if (__DEV_MODE__ === false) {
-  app = initializeApp(firebaseConfig);
-}
+const app: FirebaseApp = initializeApp(firebaseConfig);
 
 /**
  * Firestore database instance bound to the initialized Firebase app.
  * Used by the repository code to read and write collections.
  */
-export const db: Firestore | null = (__DEV_MODE__ === false && app)
-  ? initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    })
-  : null;
+export const db: Firestore = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
 
 /**
  * Firebase Authentication instance for the current app.
  * Used to authenticate predefined users via email (username) and password.
  */
-export const AUTH: Auth | null = (__DEV_MODE__ === false && app) ? getAuth(app) : null;
+export const AUTH: Auth = getAuth(app);
 
 /**
  * Firestore collection name used to persist and retrieve match documents.
@@ -66,16 +60,5 @@ export const RUNNING_MATCH_COLLECTION = 'runningMatch';
  * @throws FirebaseError if authentication fails (invalid credentials, user not found, etc.).
  */
 export async function login(email: string, password: string): Promise<any> {
-  if (__DEV_MODE__) {
-    console.log('[MOCK] Login attempt with email:', email);
-    return Promise.resolve({
-      user: { uid: 'mock-user-id', email, displayName: 'Mock User' }
-    });
-  }
-
-  if (!AUTH) {
-    throw new Error('Firebase Auth is not initialized');
-  }
-
   return signInWithEmailAndPassword(AUTH, email, password);
 }

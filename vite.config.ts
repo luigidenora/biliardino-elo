@@ -5,11 +5,12 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 /**
  * Plugin Vite per la modalità sviluppo.
  *
- * Quando VITE_DEV_MODE=true, il repository usa dati mock in memoria
- * invece di Firebase. Auth e controlli admin funzionano normalmente.
+ * Quando VITE_DEV_MODE=true, il frontend gira in modalità dev.
+ * Le letture possono usare Firebase reale con VITE_DEV_FIREBASE_READONLY=true.
+ * Le scritture vengono bloccate a livello repository in read-only mode.
  *
  * In produzione __DEV_MODE__ viene sostituito con `false` a compile-time
- * e Rollup elimina il codice mock dal bundle (dead-code elimination).
+ * e Rollup applica dead-code elimination sul ramo dev.
  */
 function devModePlugin(): Plugin {
   let isDevMode = false;
