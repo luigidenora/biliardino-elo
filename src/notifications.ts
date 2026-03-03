@@ -599,4 +599,3 @@ async function getPushManager(): Promise<PushManager> {
 
   throw new Error('PushManager non disponibile');
 }
-
