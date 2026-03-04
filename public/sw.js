@@ -5,7 +5,7 @@ const CACHE_PREFIX = 'calcio-biliardino';
 let FIREBASE_CACHE_KEY = 'initial';
 const STATIC_CACHE = () => `${CACHE_PREFIX}-static-${VERSION}-${FIREBASE_CACHE_KEY}`;
 const DATA_CACHE = () => `${CACHE_PREFIX}-data-${VERSION}-${FIREBASE_CACHE_KEY}`;
-const APP_SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png'];
+const APP_SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icons/manifest-icon-192.maskable.png'];
 
 // Firebase/API endpoints che vogliamo cachare
 const FIREBASE_PATTERN = /firebase|\.firebaseapp\.com|firestore\.googleapis\.com/i;

@@ -15,7 +15,7 @@ function celebrateVictory(x: number, y: number): void {
     { emoji: '🎯', canFlip: false },
     { emoji: '✨', canFlip: false },
     { emoji: '🔥', canFlip: false },
-    { emoji: '🏆', canFlip: false },
+    { emoji: '🏆', canFlip: false }
   ];
 
   createParticles(x, y, victoryEmojis);
@@ -29,7 +29,7 @@ function celebrateKnockout(x: number, y: number): void {
   const knockoutEmojis: EmojiOption[] = [
     { emoji: '💥', canFlip: false },
     { emoji: '⚡', canFlip: false },
-    { emoji: '🌟', canFlip: false },
+    { emoji: '🌟', canFlip: false }
   ];
 
   createParticles(x, y, knockoutEmojis, 800); // 800ms duration
@@ -43,7 +43,7 @@ function celebratePerfectStrike(x: number, y: number): void {
   const perfectEmojis: EmojiOption[] = [
     { emoji: '💎', canFlip: false },
     { emoji: '⭐', canFlip: false },
-    { emoji: '✨', canFlip: false },
+    { emoji: '✨', canFlip: false }
   ];
 
   // With downward gravity for falling confetti effect
@@ -58,7 +58,7 @@ function celebrateCombo(x: number, y: number, multiplier: number): void {
   const comboEmojis: EmojiOption[] = [
     { emoji: '🎪', canFlip: false },
     { emoji: '🎊', canFlip: false },
-    { emoji: '🎉', canFlip: false },
+    { emoji: '🎉', canFlip: false }
   ];
 
   // More duration = more bursts for bigger combo
