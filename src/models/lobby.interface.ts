@@ -32,20 +32,14 @@ export interface ILobbyState {
 }
 
 /**
- * Lobby event types pushed through the WebSocket
+ * Lobby event types pushed through @upstash/realtime SSE.
+ *
+ * These match the Zod schema defined in `api/_realtime.ts`.
+ * Dot notation is used by @upstash/realtime event names.
  */
 export type LobbyEventType
-  = | 'confirmation-add'
-    | 'confirmation-remove'
-    | 'message'
-    | 'lobby-created'
-    | 'lobby-expired';
-
-/**
- * Events published via Upstash Pub/Sub on topic `lobby_events`
- */
-export interface ILobbyEvent {
-  type: LobbyEventType;
-  playerId?: number;
-  timestamp: number;
-}
+  = | 'lobby.confirmation_add'
+    | 'lobby.confirmation_remove'
+    | 'lobby.message'
+    | 'lobby.created'
+    | 'lobby.expired';

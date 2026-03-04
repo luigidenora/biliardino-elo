@@ -104,7 +104,7 @@ class LobbyPage extends Component {
       const state = await LobbyService.init();
       this.applyLobbyState(state);
     } catch {
-      // fail-open -- render skeleton, LobbyService will retry via WS/polling
+      // fail-open -- render skeleton, LobbyService will retry via SSE/polling
     }
 
     // Resolve player objects for the teams
@@ -227,6 +227,16 @@ class LobbyPage extends Component {
     // Start fish animation
     this.startFishAnimation();
 
+    // Render initial fish from data fetched during render()
+    if (this.lastConfirmations.length > 0) {
+      this.syncFish(this.lastConfirmations);
+    }
+
+    // Render initial chat messages
+    if (this.messages.length > 0) {
+      this.renderMessages();
+    }
+
     // Spawn aquarium decorations
     this.spawnBubbles();
     this.spawnGodRays();
@@ -294,13 +304,6 @@ class LobbyPage extends Component {
   // ── Section renderers ────────────────────────────────────────
 
   private renderHeader(): string {
-    const pct = this.countdownTotal > 0
-      ? (this.countdownSeconds / this.countdownTotal) * 100
-      : 0;
-    const color = this.getCountdownColor();
-    const circumference = 2 * Math.PI * 28;
-    const offset = circumference * (1 - pct / 100);
-
     return `
       <div id="lobby-header" class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2 md:gap-3 min-w-0">
@@ -323,7 +326,6 @@ class LobbyPage extends Component {
 
   private renderTeams(): string {
     if (!this.lobbyData) {
-      debugger;
       if (appState.lobbyActive) {
         return this.renderConfirmKickCard();
       } else if (appState.isAdmin) {
@@ -667,7 +669,10 @@ class LobbyPage extends Component {
   }
 
   private onCountdownExpired(): void {
-    if (this.countdownInterval) { clearInterval(this.countdownInterval); this.countdownInterval = null; }
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
     // Could navigate away or show "time's up" state
   }
 
@@ -1100,7 +1105,9 @@ class LobbyPage extends Component {
       if (errorEl) {
         errorEl.textContent = `Massimo ${CHAT_MAX_LENGTH} caratteri`;
         errorEl.style.display = 'block';
-        setTimeout(() => { errorEl.style.display = 'none'; }, 1500);
+        setTimeout(() => {
+          errorEl.style.display = 'none';
+        }, 1500);
       }
       return;
     }
@@ -1117,6 +1124,7 @@ class LobbyPage extends Component {
         text
       );
       input.value = '';
+
     } catch (err) {
       console.error('[LobbyPage] Send message error:', err);
     }
@@ -1236,6 +1244,7 @@ class LobbyPage extends Component {
     if (!aquarium || this.fishMap.has(playerId)) return;
 
     const isMe = playerId === this.myPlayerId;
+    const labelColor = LABEL_COLORS[index % LABEL_COLORS.length];
     const fishEmoji = isMe
       ? '🦈'
       : FISH_EMOJI[index % FISH_EMOJI.length];

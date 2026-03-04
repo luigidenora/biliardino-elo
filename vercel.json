@@ -1,27 +1,13 @@
 {
+  "functions": {
+    "api/realtime.ts": {
+      "maxDuration": 300,
+      "description": "Extended to 300s for long-lived realtime connections (e.g. lobby streaming) instead of the default 12s API timeout."
+    }
+  },
   "rewrites": [
     {
-      "source": "/lobby",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/stats",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/matchmaking",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/add-match",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/add-player",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/profile/:id",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { withSecurityMiddleware } from './_middleware.js';
+import { lobbyChannel } from './_realtime.js';
 import { prefixed, redisRaw } from './_redisClient.js';
 import { sanitizeLogOutput, validatePlayerId } from './_validation.js';
 
@@ -20,12 +21,9 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       pipeline.zrem(prefixed('availability_ts'), field);
       await pipeline.exec();
       try {
-        await Promise.all([
-          redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, removed: true })),
-          redisRaw.publish('lobby_events', JSON.stringify({ type: 'confirmation-remove', playerId: playerIdNum, timestamp: Date.now() }))
-        ]);
+        await lobbyChannel().emit('lobby.confirmation_remove', { playerId: playerIdNum, timestamp: Date.now() });
       } catch (e) {
-        console.warn('Publish cancel event fallito:', (e as Error).message || e);
+        console.warn('Emit cancel event fallito:', (e as Error).message || e);
       }
       console.log(`❌ Cancellazione conferma da ${sanitizeLogOutput(String(playerIdNum))}`);
       return res.status(200).json({ ok: true });
@@ -81,16 +79,12 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       }
     }
 
-    // Pubblica evento per aggiornamenti realtime (non critico, fuori dal pipeline)
+    // Emetti evento per aggiornamenti realtime (non critico, fuori dal pipeline)
     try {
-      // Publish on both topics: legacy availability_events + new lobby_events
-      await Promise.all([
-        redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, confirmedAt })),
-        redisRaw.publish('lobby_events', JSON.stringify({ type: 'confirmation-add', playerId: playerIdNum, timestamp: Date.now() }))
-      ]);
+      await lobbyChannel().emit('lobby.confirmation_add', { playerId: playerIdNum, timestamp: Date.now() });
     } catch (e) {
-      // Non bloccare l'operazione se publish fallisce
-      console.warn('Publish availability event fallito:', (e as Error).message || e);
+      // Non bloccare l'operazione se emit fallisce
+      console.warn('Emit availability event fallito:', (e as Error).message || e);
     }
 
     console.log(`✅ Conferma da ${sanitizeLogOutput(String(playerIdNum))} (totale: ${count})`);

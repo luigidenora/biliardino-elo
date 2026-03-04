@@ -11,12 +11,14 @@ if (!API_TOKEN) {
   console.error('❌ Error: API_TOKEN not set in environment variables');
   process.exit(1);
 }
-// Check if API_TOKEN is set
-const API_BASE_URL = process.env.VITE_API_BASE_URL;
-if (!API_BASE_URL) {
-  console.error('❌ Error: API_BASE_URL not set in environment variables');
-  process.exit(1);
+
+// derive base url similar to env.config
+let API_BASE_URL = '/api';
+if (process.env.VERCEL_URL) {
+  API_BASE_URL = `https://${process.env.VERCEL_URL}/api`;
 }
+
+console.log('Using API base URL:', API_BASE_URL);
 
 // Set default MATCH_TIME if not provided
 const MATCH_TIME = process.env.MATCH_TIME || new Date().toISOString().replace('T', ' ').slice(0, 19);

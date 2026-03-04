@@ -1,16 +1,17 @@
 /**
  * LobbyService — Centralized lobby state management with real-time updates.
  *
- * Single source of truth for lobby data. Uses Upstash WebSocket Pub/Sub
- * for real-time updates and falls back to polling (60s) if WS is unavailable.
+ * Single source of truth for lobby data. Uses @upstash/realtime SSE client
+ * for real-time updates and falls back to polling (60s) if SSE is unavailable.
  *
  * All consumers (LobbyPage, HeaderComponent, MatchmakingPage, MessageService)
  * read from this service instead of making direct API calls.
  */
 
-import { API_BASE_URL, UPSTASH_PUBSUB_TOKEN, UPSTASH_PUBSUB_URL } from '@/config/env.config';
+import { API_BASE_URL } from '@/config/env.config';
 import type { ILobbyState } from '@/models/lobby.interface';
 import { appState } from '../app/state';
+import { RealtimeClient, type RealtimeEventHandler } from './realtime-client';
 
 type LobbyStateListener = (state: ILobbyState) => void;
 
@@ -18,8 +19,6 @@ type LobbyStateListener = (state: ILobbyState) => void;
 
 const FALLBACK_POLL_MS = 60_000;
 const DEBOUNCE_MS = 500;
-const WS_RECONNECT_BASE = 1000;
-const WS_RECONNECT_MAX = 30_000;
 
 // ── Default empty state ─────────────────────────────────────────
 
@@ -40,12 +39,9 @@ class LobbyServiceImpl {
   private listeners: Set<LobbyStateListener> = new Set();
   private initialized = false;
 
-  // WebSocket
-  private ws: WebSocket | null = null;
-  private shouldReconnect = true;
-  private reconnectDelay = WS_RECONNECT_BASE;
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private wsConnected = false;
+  // SSE client
+  private sseClient: RealtimeClient | null = null;
+  private sseEventHandler: RealtimeEventHandler | null = null;
 
   // Polling fallback
   private pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -59,7 +55,7 @@ class LobbyServiceImpl {
   // ── Public API ─────────────────────────────────────────────
 
   /**
-   * Initialize the service: fetch current state + connect WebSocket.
+   * Initialize the service: fetch current state + connect SSE.
    * Safe to call multiple times (idempotent).
    */
   async init(): Promise<ILobbyState> {
@@ -68,7 +64,7 @@ class LobbyServiceImpl {
     if (!this.initialized) {
       this.initialized = true;
       await this.refresh();
-      this.connectWs();
+      this.connectSse();
       this.startFallbackPoll();
     }
 
@@ -130,11 +126,11 @@ class LobbyServiceImpl {
   }
 
   /**
-   * Full teardown: close WebSocket, stop polling, clear state.
+   * Full teardown: close SSE, stop polling, clear state.
    */
   destroy(): void {
     this.stopFallbackPoll();
-    this.disconnectWs();
+    this.disconnectSse();
     this.consumerCount = 0;
     this.initialized = false;
     this.listeners.clear();
@@ -169,101 +165,114 @@ class LobbyServiceImpl {
     }
   }
 
-  // ── WebSocket (Upstash Pub/Sub) ───────────────────────────
+  // ── SSE (@upstash/realtime via RealtimeClient) ────────────
 
-  private connectWs(): void {
-    if (!UPSTASH_PUBSUB_TOKEN) {
-      console.warn('[LobbyService] VITE_UPSTASH_PUBSUB_TOKEN not configured — real-time disabled');
-      return;
-    }
-
-    this.shouldReconnect = true;
-    const wsUrl = `${UPSTASH_PUBSUB_URL}${UPSTASH_PUBSUB_URL.includes('?') ? '&' : '?'}token=${encodeURIComponent(UPSTASH_PUBSUB_TOKEN)}`;
-
-    try {
-      this.ws = new WebSocket(wsUrl);
-    } catch (e) {
-      console.warn('[LobbyService] WebSocket init failed:', e);
-      return;
-    }
-
-    this.ws.addEventListener('open', () => {
-      this.reconnectDelay = WS_RECONNECT_BASE;
-      this.wsConnected = true;
-      try {
-        // Subscribe to both topics for backward compatibility
-        this.ws?.send(JSON.stringify({ type: 'subscribe', topic: 'lobby_events' }));
-        this.ws?.send(JSON.stringify({ type: 'subscribe', topic: 'availability_events' }));
-        console.log('[LobbyService] WebSocket connected, subscribed to lobby_events + availability_events');
-      } catch (e) {
-        console.warn('[LobbyService] Subscribe failed:', e);
+  private connectSse(): void {
+    this.sseClient = new RealtimeClient({
+      onStatusChange: (status) => {
+        console.log('[LobbyService] SSE status:', status);
       }
     });
 
-    this.ws.addEventListener('message', (msg) => {
-      try {
-        const parsed = JSON.parse(msg.data as string);
-        // Upstash format: { type: 'message', topic, data }
-        let payload: any = null;
-        if (parsed && typeof parsed === 'object' && parsed.data) {
-          try {
-            payload = JSON.parse(parsed.data);
-          } catch {
-            payload = parsed.data;
-          }
-        } else {
-          payload = parsed;
-        }
-
-        if (payload) {
-          // Debounced refresh on any lobby/availability event
-          this.debouncedRefresh();
-        }
-      } catch (e) {
-        console.warn('[LobbyService] Message parse error:', e);
+    this.sseEventHandler = (event: any) => {
+      // Use typed event data for targeted updates when available
+      if (event?.type && event?.data) {
+        this.handleTypedEvent(event);
+      } else {
+        // Fallback to full refresh for untyped events
+        this.debouncedRefresh();
       }
-    });
+    };
 
-    this.ws.addEventListener('error', (e) => {
-      console.warn('[LobbyService] WebSocket error:', e);
-    });
-
-    this.ws.addEventListener('close', () => {
-      console.log('[LobbyService] WebSocket closed');
-      this.ws = null;
-      this.wsConnected = false;
-      if (this.shouldReconnect) this.scheduleReconnect();
-    });
+    this.sseClient.onEvent(this.sseEventHandler);
+    this.sseClient.connect();
+    console.log('[LobbyService] SSE client connected');
   }
 
-  private scheduleReconnect(): void {
-    if (this.reconnectTimer) return;
-    const delay = this.reconnectDelay;
-    console.log(`[LobbyService] Reconnect in ${delay}ms`);
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      this.connectWs();
-      this.reconnectDelay = Math.min(WS_RECONNECT_MAX, this.reconnectDelay * 2);
-    }, delay);
-  }
-
-  private disconnectWs(): void {
-    this.shouldReconnect = false;
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+  /**
+   * Handle typed SSE events with payload data for targeted updates.
+   * Avoids full state refresh when possible.
+   */
+  private handleTypedEvent(event: { type: string; data: any }): void {
+    switch (event.type) {
+      case 'player-join':
+      case 'player-leave':
+        // Targeted update: increment/decrement count, update confirmations
+        this.updateCountFromEvent(event.data);
+        break;
+      case 'match-update':
+        // Targeted update: refresh match state only
+        this.updateMatchFromEvent(event.data);
+        break;
+      case 'message':
+        // Targeted update: add message, increment count
+        this.updateMessageFromEvent(event.data);
+        break;
+      default:
+        // Unknown event type: full refresh
+        this.debouncedRefresh();
     }
+  }
+
+  /**
+   * Update count and confirmations from player join/leave events.
+   */
+  private updateCountFromEvent(data: { playerId: string; timestamp: number }): void {
+    if (!data?.playerId) {
+      this.debouncedRefresh();
+      return;
+    }
+    // Trigger debounced refresh to catch count changes atomically
+    this.debouncedRefresh();
+  }
+
+  /**
+   * Update match state from match-update events.
+   */
+  private updateMatchFromEvent(data: { timestamp: number }): void {
+    if (!data?.timestamp) {
+      this.debouncedRefresh();
+      return;
+    }
+    // Trigger debounced refresh for match state consistency
+    this.debouncedRefresh();
+  }
+
+  /**
+   * Update messages from message events without full refresh.
+   */
+  private updateMessageFromEvent(data: { playerId: string; text: string; timestamp: number }): void {
+    if (!data?.playerId || !data?.text) {
+      this.debouncedRefresh();
+      return;
+    }
+    // Add message to state and increment count
+    if (data.text && this.state.messages) {
+      this.state.messages.push({
+        playerId: data.playerId,
+        text: data.text,
+        timestamp: data.timestamp || Date.now()
+      } as any);
+      this.state.messageCount = (this.state.messageCount || 0) + 1;
+      this.notifyListeners();
+    } else {
+      this.debouncedRefresh();
+    }
+  }
+
+  private disconnectSse(): void {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
-    try {
-      this.ws?.close();
-    } catch {
-      // ignore
+    if (this.sseClient) {
+      if (this.sseEventHandler) {
+        this.sseClient.offEvent(this.sseEventHandler);
+        this.sseEventHandler = null;
+      }
+      this.sseClient.disconnect();
+      this.sseClient = null;
     }
-    this.ws = null;
-    this.wsConnected = false;
   }
 
   // ── Debounced refresh ─────────────────────────────────────

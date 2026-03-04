@@ -1,7 +1,7 @@
 import { IMessage, IMessagesResponse } from '@/models/message.interface';
 import { LobbyService } from './lobby.service';
+import { API_BASE_URL } from '@/config/env.config';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export class MessageService {
   /**

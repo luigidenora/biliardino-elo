@@ -4,7 +4,8 @@ import webpush from 'web-push';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { combineMiddlewares, withSecurityMiddleware } from './_middleware.js';
 import { getRandomMessage } from './_randomMessage.js';
-import { redis, redisRaw } from './_redisClient.js';
+import { lobbyChannel } from './_realtime.js';
+import { redis } from './_redisClient.js';
 import { sanitizeLogOutput, validateString } from './_validation.js';
 
 // Verifica configurazione
@@ -191,11 +192,11 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
       console.log(`🏁 Lobby registry creata: ${lobbyKey} (TTL: ${lobbyTtl}s / ${Math.round(lobbyTtl / 60)} min)`);
 
-      // Publish event for real-time updates
+      // Emit event for real-time updates
       try {
-        await redisRaw.publish('lobby_events', JSON.stringify({ type: 'lobby-created', timestamp: Date.now() }));
+        await lobbyChannel().emit('lobby.created', { timestamp: Date.now() });
       } catch (pubErr) {
-        console.warn('Publish lobby-created event fallito:', (pubErr as Error).message || pubErr);
+        console.warn('Emit lobby-created event fallito:', (pubErr as Error).message || pubErr);
       }
     } catch (err) {
       console.error('❌ Errore creazione lobby registry:', err);

@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-const VERSION = '0.3.1=alpha.0';
+try {
+  importScripts('/sw-version.js');
+} catch {
+  // Fallback for environments where the generated version file is unavailable.
+}
+
+const VERSION = self.__SW_VERSION__ || '0.0.0-dev';
 const CACHE_PREFIX = 'calcio-biliardino';
 // Will be updated by client messages when the firebase key/version changes (e.g. when adding a match)
 let FIREBASE_CACHE_KEY = 'initial';

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { IMessage } from '../src/models/message.interface.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { lobbyChannel } from './_realtime.js';
 import { prefixed, redisRaw } from './_redisClient.js';
 import { validatePlayerId, validateString } from './_validation.js';
 
@@ -68,11 +69,11 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     pipeline.expire(prefixed('messages'), 5400);
     await pipeline.exec();
 
-    // Publish event for real-time updates
+    // Emit event for real-time updates
     try {
-      await redisRaw.publish('lobby_events', JSON.stringify({ type: 'message', playerId, timestamp: Date.now() }));
+      await lobbyChannel().emit('lobby.message', { playerId, timestamp: Date.now() });
     } catch (e) {
-      console.warn('Publish message event fallito:', (e as Error).message || e);
+      console.warn('Emit message event fallito:', (e as Error).message || e);
     }
 
     return res.status(201).json(message);

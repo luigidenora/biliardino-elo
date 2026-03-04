@@ -7,8 +7,10 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "prebuild": "node scripts/generate-sw-version.js",
     "build": "vite build",
-    "dev": "vite",
+    "predev": "node scripts/generate-sw-version.js",
+    "dev": "npx vercel dev",
     "lint": "eslint --fix",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -31,6 +33,7 @@
     "@vercel/node": "^5.6.10",
     "@vitest/ui": "^4.0.18",
     "dotenv": "^17.2.3",
+    "eslint": "^9.0.0",
     "happy-dom": "^20.4.0",
     "node-fetch": "^3.3.2",
     "pwa-asset-generator": "^8.1.2",
@@ -43,6 +46,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
+    "@upstash/realtime": "^1.0.3",
     "@upstash/redis": "^1.36.2",
     "chart.js": "^4.5.1",
     "firebase": "^12.6.0",
@@ -51,6 +55,7 @@
     "lucide": "^0.575.0",
     "tailwindcss": "^4.2.1",
     "web-haptics": "^0.0.6",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.0.0"
   }
 }
