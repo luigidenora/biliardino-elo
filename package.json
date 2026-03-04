@@ -20,7 +20,8 @@
     "token:cron": "node scripts/generate-token.js cron",
     "token:notify": "node scripts/generate-token.js notify",
     "test-broadcast": "node scripts/test-broadcast.js",
-    "pwa:assets": "pwa-asset-generator public/logo_vec.svg public/icons --manifest public/manifest.webmanifest --index index.html --path \"/icons\" --background \"radial-gradient(ellipse at 50% 30%, #1F5C3A 0%, #1a3d2f 45%, #0f2a20 100%)\""
+    "pwa:assets": "pwa-asset-generator public/logo_vec.svg public/icons --manifest public/manifest.webmanifest --index index.html --path \"/icons\" --background \"radial-gradient(ellipse at 50% 30%, #1F5C3A 0%, #1a3d2f 45%, #0f2a20 100%)\"",
+    "splash:generate": "npx tsx scripts/generate-splash-screens.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -35,6 +36,7 @@
     "node-fetch": "^3.3.2",
     "pwa-asset-generator": "^8.1.2",
     "shadcn": "^3.8.5",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
     "vercel": "^50.25.6",

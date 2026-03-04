@@ -36,3 +36,6 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+
+# Temporary files from splash screen generation
+.splash-temp.html
