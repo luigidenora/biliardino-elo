@@ -161,7 +161,8 @@ export default class PlayerProfilePage extends Component {
       initials: getInitials(player.name),
       color,
       size: 'xl',
-      playerId: id
+      playerId: id,
+      playerClass: player.class
     });
 
     return `

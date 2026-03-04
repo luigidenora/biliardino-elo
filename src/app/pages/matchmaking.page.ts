@@ -11,11 +11,11 @@
 
 import { API_BASE_URL } from '@/config/env.config';
 import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
+import { LobbyService } from '@/services/lobby.service';
 import { addMatch } from '@/services/match.service';
 import { findBestMatch } from '@/services/matchmaking.service';
 import { getAllPlayers, getClass, getPlayerById, getRank } from '@/services/player.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
-import AvailabilitySubscriber from '@/utils/availability-subscriber';
 import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { triggerImpact } from '@/utils/haptics.util';
@@ -25,7 +25,7 @@ import { getInitials, renderPlayerAvatar } from '../components/player-avatar.com
 import { refreshIcons } from '../icons';
 import { appState } from '../state';
 
-import type { IConfirmationsResponse } from '@/models/confirmation.interface';
+import type { ILobbyState } from '@/models/lobby.interface';
 import type { IRunningMatchDTO } from '@/models/match.interface';
 import type { IPlayer } from '@/models/player.interface';
 import type { IMatchProposal } from '@/services/matchmaking.service';
@@ -37,7 +37,6 @@ import { renderMatchmakingPageHeader, renderMatchmakingPlayerList } from '../com
 type PlayerState = 0 | 1 | 2;
 
 const MIN_PLAYERS = 4;
-const CONFIRMATIONS_POLL_INTERVAL_MS = 20_000;
 
 const CLASS_COLORS: Record<number, string> = {
   0: '#FFD700',
@@ -59,8 +58,7 @@ class MatchmakingPage extends Component {
   private playerStates: Map<number, PlayerState> = new Map();
   private generatedMatch: IMatchProposal | null = null;
   private confirmedPlayerIds: Set<number> = new Set();
-  private pollInterval: ReturnType<typeof setInterval> | null = null;
-  private availabilitySubscriber: AvailabilitySubscriber | null = null;
+  private lobbyStateListener: ((state: ILobbyState) => void) | null = null;
   private isGenerating = false;
   private isSaving = false;
   private searchQuery = '';
@@ -384,7 +382,7 @@ class MatchmakingPage extends Component {
 
         <!-- Defence -->
         <div class="flex items-center gap-3 mb-2">
-          ${renderPlayerAvatar({ initials: defInitials, color: defColor, size: 'sm', playerId: defence.id })}
+          ${renderPlayerAvatar({ initials: defInitials, color: defColor, size: 'sm', playerId: defence.id, playerClass: defClass })}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-ui text-white truncate" style="font-size:13px">
@@ -409,7 +407,7 @@ class MatchmakingPage extends Component {
 
         <!-- Attack -->
         <div class="flex items-center gap-3">
-          ${renderPlayerAvatar({ initials: attInitials, color: attColor, size: 'sm', playerId: attack.id })}
+          ${renderPlayerAvatar({ initials: attInitials, color: attColor, size: 'sm', playerId: attack.id, playerClass: attClass })}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-ui text-white truncate" style="font-size:13px">
@@ -935,96 +933,57 @@ class MatchmakingPage extends Component {
     }
   }
 
-  // ── Confirmations Polling / WebSocket ─────────────────────────
+  // ── Confirmations via LobbyService ────────────────────────────
 
   private startConfirmationsPolling(): void {
-    // Initial load
-    this.loadConfirmations();
-
-    // Try to connect AvailabilitySubscriber for real-time updates
-    try {
-      const env = (import.meta as any).env || {};
-      if (env.VITE_UPSTASH_PUBSUB_TOKEN) {
-        if (!this.availabilitySubscriber) {
-          this.availabilitySubscriber = new AvailabilitySubscriber();
-          this.availabilitySubscriber.connect();
-          this.availabilitySubscriber.onMessage(() => {
-            this.loadConfirmations();
-          });
-          console.log('AvailabilitySubscriber started for real-time updates');
-        }
-      } else {
-        // No real-time: use single initial fetch only
-        console.warn('AvailabilitySubscriber not configured: no real-time updates');
-      }
-    } catch (e) {
-      console.warn('AvailabilitySubscriber init failed, falling back to polling', e);
-      this.pollInterval = setInterval(() => {
-        this.loadConfirmations();
-      }, CONFIRMATIONS_POLL_INTERVAL_MS);
-    }
+    this.lobbyStateListener = (state: ILobbyState) => this.applyConfirmations(state);
+    LobbyService.onStateChange(this.lobbyStateListener);
+    LobbyService.init().then(() => {
+      const state = LobbyService.getState();
+      if (state) this.applyConfirmations(state);
+    });
   }
 
   private stopConfirmationsPolling(): void {
-    if (this.availabilitySubscriber) {
-      try {
-        this.availabilitySubscriber.close();
-      } catch (_) {
-        // ignore
+    if (this.lobbyStateListener) {
+      LobbyService.offStateChange(this.lobbyStateListener);
+      this.lobbyStateListener = null;
+    }
+    LobbyService.release();
+  }
+
+  private applyConfirmations(state: ILobbyState): void {
+    const newConfirmedIds = new Set(state.confirmations.map(c => c.playerId));
+    const addedIds = [...newConfirmedIds].filter(id => !this.confirmedPlayerIds.has(id));
+
+    this.confirmedPlayerIds = newConfirmedIds;
+
+    // Auto-select confirmed players
+    for (const playerId of this.confirmedPlayerIds) {
+      const current = this.playerStates.get(playerId);
+      if (current === 0 || current === undefined) {
+        this.playerStates.set(playerId, 1);
+        this.updateToggleButton(playerId, 1);
       }
-      this.availabilitySubscriber = null;
+
+      // Add confirmed visual indicator to the row
+      const row = document.querySelector(`.player-row[data-player-id="${playerId}"]`) as HTMLElement | null;
+      if (row && !row.classList.contains('confirmed-player')) {
+        row.classList.add('confirmed-player');
+      }
     }
 
-    if (this.pollInterval !== null) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
+    // Update confirmations panel
+    this.updateConfirmationsPanel(state);
+
+    if (addedIds.length > 0) {
+      this.updateProgressBar();
+      this.updateGenerateButton();
+      console.log(`New confirmations: ${addedIds.join(', ')} (total: ${state.count})`);
     }
   }
 
-  private async loadConfirmations(): Promise<void> {
-    if (!API_BASE_URL) return;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/lobby-state`);
-      if (!response.ok) return;
-
-      const data: IConfirmationsResponse = await response.json();
-
-      const newConfirmedIds = new Set(data.confirmations.map(c => c.playerId));
-      const addedIds = [...newConfirmedIds].filter(id => !this.confirmedPlayerIds.has(id));
-
-      this.confirmedPlayerIds = newConfirmedIds;
-
-      // Auto-select confirmed players
-      for (const playerId of this.confirmedPlayerIds) {
-        const current = this.playerStates.get(playerId);
-        if (current === 0 || current === undefined) {
-          this.playerStates.set(playerId, 1);
-          this.updateToggleButton(playerId, 1);
-        }
-
-        // Add confirmed visual indicator to the row
-        const row = document.querySelector(`.player-row[data-player-id="${playerId}"]`) as HTMLElement | null;
-        if (row && !row.classList.contains('confirmed-player')) {
-          row.classList.add('confirmed-player');
-        }
-      }
-
-      // Update confirmations panel
-      this.updateConfirmationsPanel(data);
-
-      if (addedIds.length > 0) {
-        this.updateProgressBar();
-        this.updateGenerateButton();
-        console.log(`New confirmations: ${addedIds.join(', ')} (total: ${data.count})`);
-      }
-    } catch (error) {
-      // Silently fail -- backend may not be running
-      console.debug('Confirmations polling error:', error);
-    }
-  }
-
-  private updateConfirmationsPanel(data: IConfirmationsResponse): void {
+  private updateConfirmationsPanel(data: ILobbyState): void {
     const panel = this.$id('confirmations-panel');
     if (!panel) return;
 

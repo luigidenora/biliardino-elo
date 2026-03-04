@@ -1,4 +1,5 @@
 import { IMessage, IMessagesResponse } from '@/models/message.interface';
+import { LobbyService } from './lobby.service';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -33,19 +34,18 @@ export class MessageService {
   }
 
   /**
-   * Carica i messaggi per una partita
+   * Carica i messaggi dalla lobby corrente (via LobbyService).
+   * Il LobbyService mantiene lo stato sincronizzato tramite WebSocket.
    */
-  static async getMessages(since?: number): Promise<IMessagesResponse> {
-    const url = new URL(`${API_BASE_URL}/lobby-state`);
-
-    const res = await fetch(url.toString());
-
-    if (!res.ok) {
-      throw new Error(`Errore caricamento messaggi: ${res.statusText}`);
+  static async getMessages(): Promise<IMessagesResponse> {
+    const state = LobbyService.getState();
+    if (state) {
+      return { messages: state.messages, count: state.messageCount };
     }
-
-    const data = await res.json();
-    return { messages: data.messages, count: data.messageCount };
+    // Se LobbyService non è ancora inizializzato, forza un refresh
+    await LobbyService.refresh();
+    const fresh = LobbyService.getState();
+    return { messages: fresh?.messages ?? [], count: fresh?.messageCount ?? 0 };
   }
 
   /**

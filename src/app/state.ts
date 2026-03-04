@@ -1,9 +1,13 @@
 /**
  * Lightweight AppState singleton with event emitter.
  *
- * Holds cross-route reactive state (auth, data loading status).
+ * Holds cross-route reactive state (auth, data loading status, lobby).
  * Services remain the actual source of truth for data.
  */
+
+import { isPlayerAdmin } from '@/config/admin.config';
+import type { ILobbyState } from '@/models/lobby.interface';
+import type { IRunningMatchDTO } from '@/models/match.interface';
 
 type Listener = (...args: unknown[]) => void;
 
@@ -20,8 +24,35 @@ class AppState {
   playersLoaded = false;
   matchesLoaded = false;
 
-  // ── Lobby ───────────────────────────────────────────────
+  // ── Lobby (single source of truth — written by LobbyService) ──
   lobbyActive = false;
+  lobbyExists = false;
+  lobbyTtl = 0;
+  lobbyMatch: IRunningMatchDTO | null = null;
+  lobbyConfirmationsCount = 0;
+
+  /**
+   * Update lobby state from the unified API response.
+   * Only LobbyService should call this.
+   */
+  updateLobbyState(state: ILobbyState): void {
+    this.lobbyExists = state.exists;
+    this.lobbyActive = state.exists;
+    this.lobbyTtl = state.ttl;
+    this.lobbyMatch = state.match;
+    this.lobbyConfirmationsCount = state.count;
+  }
+
+  /**
+   * Reset lobby state (e.g. after match save or cleanup).
+   */
+  resetLobbyState(): void {
+    this.lobbyExists = false;
+    this.lobbyActive = false;
+    this.lobbyTtl = 0;
+    this.lobbyMatch = null;
+    this.lobbyConfirmationsCount = 0;
+  }
 
   // ── Event emitter ────────────────────────────────────────
 
@@ -49,6 +80,7 @@ class AppState {
     if (playerId) {
       this.currentPlayerId = Number(playerId);
       this.currentPlayerName = playerName;
+      this.isAdmin = isPlayerAdmin(this.currentPlayerId);
     }
   }
 }

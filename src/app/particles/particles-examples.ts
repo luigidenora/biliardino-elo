@@ -81,7 +81,7 @@ export function setupParticleEffects(): void {
   // Click anywhere on screen
   document.addEventListener('click', (e) => {
     // Uncomment to test with any click
-    // createParticles(e.clientX, e.clientY, [{ emoji: '✨', canFlip: false }]);
+    createParticles(e.clientX, e.clientY, [{ emoji: '✨', canFlip: false }]);
   });
 }
 

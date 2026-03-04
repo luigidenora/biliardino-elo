@@ -6,7 +6,8 @@ const ADMIN_PLAYER_IDS = [
   25, // Andrea Gargaro
   18, // Francesco Molinari
   22, // Michele Sette
-  13 // Michele Lillo
+  13, // Michele Lillo
+  21 // Luigi Denora
 ];
 
 export function isPlayerAdmin(playerId: number | null | undefined): boolean {

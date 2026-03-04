@@ -1,7 +1,7 @@
 /**
  * Core Lobby Flow — Integration Tests con Redis reale
  *
- * Testa il ciclo completo: confirm-availability → lobby-state → send-message → admin-cleanup
+ * Testa il ciclo completo: confirm-availability → lobby → send-message → admin-cleanup
  * Usa il vero Upstash Redis per testare il comportamento end-to-end.
  */
 import * as jose from 'jose';
@@ -9,7 +9,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prefixed, redis, redisRaw } from '../../api/_redisClient';
 import adminCleanupHandler from '../../api/admin-cleanup';
 import confirmHandler from '../../api/confirm-availability';
-import lobbyStateHandler from '../../api/lobby-state';
+import lobbyHandler from '../../api/lobby';
 import sendMessageHandler from '../../api/send-message';
 import { mockRequest, mockResponse } from '../helpers/mock-vercel';
 
@@ -204,13 +204,13 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // lobby-state
+  // lobby (unified endpoint)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('lobby-state', () => {
+  describe('lobby', () => {
     it('restituisce stato vuoto senza conferme', async () => {
       const res = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res);
 
       expect(res._status).toBe(200);
       expect(res._json.count).toBe(0);
@@ -224,7 +224,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       await confirmHandler(mockRequest({ method: 'POST', body: { playerId: PLAYER_2 } }), mockResponse());
 
       const res = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res);
 
       expect(res._status).toBe(200);
       expect(res._json.count).toBe(2);
@@ -239,7 +239,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       await confirmHandler(mockRequest({ method: 'POST', body: { playerId: PLAYER_1 } }), mockResponse());
 
       const res = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res);
 
       const conf = res._json.confirmations[0];
       expect(conf.playerId).toBe(PLAYER_1);
@@ -253,17 +253,17 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       await confirmHandler(mockRequest({ method: 'POST', body: { playerId: PLAYER_1 } }), mockResponse());
 
       const res1 = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res1);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res1);
 
       const res2 = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res2);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res2);
 
       expect(res1._json.confirmations[0].fishName).toBe(res2._json.confirmations[0].fishName);
     }, 15_000);
 
     it('rifiuta metodo POST (405)', async () => {
       const res = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'POST' }), res);
+      await lobbyHandler(mockRequest({ method: 'POST' }), res);
       expect(res._status).toBe(405);
     }, 15_000);
   });
@@ -283,14 +283,14 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       expect(res._json.text).toBe('Ciao a tutti');
     }, 15_000);
 
-    it('il messaggio appare in lobby-state', async () => {
+    it('il messaggio appare in lobby', async () => {
       await sendMessageHandler(
         mockRequest({ method: 'POST', body: validMessageBody({ text: 'Arrivo subito' }) }),
         mockResponse()
       );
 
       const res = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res);
 
       expect(res._json.messageCount).toBe(1);
       expect(res._json.messages).toHaveLength(1);
@@ -358,7 +358,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
 
       // Verifica che sia effettivamente vuoto
       const stateRes = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), stateRes);
+      await lobbyHandler(mockRequest({ method: 'GET' }), stateRes);
       expect(stateRes._json.count).toBe(0);
       expect(stateRes._json.messages).toEqual([]);
     }, 15_000);
@@ -437,7 +437,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
 
       // 3. Verifica stato lobby — 4 conferme con fishName
       const state1 = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), state1);
+      await lobbyHandler(mockRequest({ method: 'GET' }), state1);
 
       expect(state1._json.count).toBe(4);
       expect(state1._json.confirmations).toHaveLength(4);
@@ -473,7 +473,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
 
       // 5. Verifica stato completo (conferme + messaggi)
       const state2 = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), state2);
+      await lobbyHandler(mockRequest({ method: 'GET' }), state2);
 
       expect(state2._json.count).toBe(4);
       expect(state2._json.messageCount).toBe(3);
@@ -493,7 +493,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
 
       // 7. Stato lobby è completamente pulito
       const state3 = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), state3);
+      await lobbyHandler(mockRequest({ method: 'GET' }), state3);
 
       expect(state3._json.count).toBe(0);
       expect(state3._json.messages).toEqual([]);
@@ -507,7 +507,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       await confirmHandler(mockRequest({ method: 'POST', body: { playerId: PLAYER_1 } }), mockResponse());
 
       let state = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), state);
+      await lobbyHandler(mockRequest({ method: 'GET' }), state);
       expect(state._json.count).toBe(1);
 
       // Cleanup
@@ -518,7 +518,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       );
 
       state = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), state);
+      await lobbyHandler(mockRequest({ method: 'GET' }), state);
       expect(state._json.count).toBe(0);
 
       // ── Seconda sessione ──
@@ -526,7 +526,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       await confirmHandler(mockRequest({ method: 'POST', body: { playerId: PLAYER_4 } }), mockResponse());
 
       state = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), state);
+      await lobbyHandler(mockRequest({ method: 'GET' }), state);
       expect(state._json.count).toBe(2);
 
       const ids = state._json.confirmations.map((c: any) => c.playerId);
@@ -544,7 +544,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       }
     }, 30_000);
 
-    it('messaggi multipli appaiono tutti in lobby-state', async () => {
+    it('messaggi multipli appaiono tutti in lobby', async () => {
       const messages = [
         { playerId: PLAYER_1, text: 'Primo msg' },
         { playerId: PLAYER_2, text: 'Secondo msg' },
@@ -559,7 +559,7 @@ describe('Core Lobby Flow — Integration con Redis reale', () => {
       }
 
       const res = mockResponse();
-      await lobbyStateHandler(mockRequest({ method: 'GET' }), res);
+      await lobbyHandler(mockRequest({ method: 'GET' }), res);
 
       expect(res._json.messageCount).toBe(3);
       const texts = res._json.messages.map((m: any) => m.text);

@@ -9,8 +9,12 @@
  * architecture (vanilla TS, no React).
  */
 
-import { isPlayerAdmin } from '@/config/admin.config';
 import { API_BASE_URL } from '@/config/env.config';
+import type { IConfirmationWithFish, ILobbyState } from '@/models/lobby.interface';
+import type { IRunningMatchDTO } from '@/models/match.interface';
+import type { IMessage } from '@/models/message.interface';
+import type { IPlayer } from '@/models/player.interface';
+import { LobbyService } from '@/services/lobby.service';
 import { MessageService } from '@/services/message.service';
 import { getPlayerById } from '@/services/player.service';
 import { FISH_SPRITES } from '@/utils/fish-sprites.util';
@@ -21,16 +25,12 @@ import { BroadcastKickComponent } from '../components/broadcast-kick.component';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
 import { refreshIcons } from '../icons';
+import { createParticles } from '../particles/particles-manager';
 import { appState } from '../state';
-
-import type { IRunningMatchDTO } from '@/models/match.interface';
-import type { IMessage } from '@/models/message.interface';
-import type { IPlayer } from '@/models/player.interface';
 
 // ── Constants ────────────────────────────────────────────────────
 
 const LOBBY_TTL_DEFAULT = 5400; // 90 min
-const POLL_INTERVAL_MS = 10_000;
 const CHAT_MAX_LENGTH = 50;
 const FISH_TYPES = ['Squalo', 'Barracuda', 'Tonno', 'Spigola', 'Sogliola'] as const;
 const FISH_EMOJI = ['🐟', '🐠', '🐡', '🦈', '🐙', '🦑', '🐳', '🐬', '🦐', '🦭', '🪼'];
@@ -51,14 +51,6 @@ function getClassColor(playerClass: number): string {
   return CLASS_COLORS[playerClass] ?? '#8B7D6B';
 }
 
-// ── Confirmation shape from the API ──────────────────────────────
-
-interface IConfirmation {
-  playerId: number;
-  fishName?: string;
-  confirmedAt: string;
-}
-
 // ── Fish movement descriptor ─────────────────────────────────────
 
 interface FishMovement {
@@ -75,8 +67,8 @@ interface FishMovement {
 
 class LobbyPage extends Component {
   // State
-  private lobbyExists = false;
   private lobbyData: IRunningMatchDTO | null = null;
+  private lobbyExists = false;
   private players: Map<number, IPlayer> = new Map();
   private messages: IMessage[] = [];
   private confirmed: Set<number> = new Set();
@@ -84,7 +76,6 @@ class LobbyPage extends Component {
   private countdownSeconds = LOBBY_TTL_DEFAULT;
 
   // Intervals / animation
-  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
   private animFrameId: number | null = null;
   private lastMessageTimestamp = 0;
@@ -96,52 +87,24 @@ class LobbyPage extends Component {
   // Current player
   private myPlayerId: number | null = null;
 
-  // Admin broadcast
-  private isAdmin = false;
   private confirmKick: BroadcastKickComponent | null = null;
+
+  // LobbyService listener reference
+  private lobbyStateListener: ((state: ILobbyState) => void) | null = null;
+  // Last confirmations for fish sync
+  private lastConfirmations: IConfirmationWithFish[] = [];
 
   // ── Render ───────────────────────────────────────────────────
 
   override async render(): Promise<string> {
     this.myPlayerId = Number(localStorage.getItem('biliardino_player_id')) || null;
-    this.isAdmin = isPlayerAdmin(this.myPlayerId);
 
-    // Fetch lobby state (single API call — includes lobby, confirmations, messages)
+    // Fetch lobby state via LobbyService (single source of truth)
     try {
-      const res = await fetch(`${API_BASE_URL}/lobby-state`);
-
-      if (res.ok) {
-        const data = await res.json();
-
-        // Lobby metadata
-        const lobby = data.lobby;
-        if (lobby?.exists) {
-          this.lobbyExists = true;
-          if (lobby.match) this.lobbyData = lobby.match as IRunningMatchDTO;
-          if (typeof lobby.ttl === 'number' && lobby.ttl > 0) {
-            this.countdownTotal = lobby.ttl;
-            this.countdownSeconds = lobby.ttl;
-          }
-        }
-
-        // Confirmations
-        const confirmations: IConfirmation[] = data.confirmations ?? [];
-        this.confirmed.clear();
-        for (const c of confirmations) this.confirmed.add(c.playerId);
-
-        // Messages (initial load)
-        if (data.messages?.length > 0) {
-          this.messages = data.messages;
-          for (const m of data.messages) {
-            this.lastMessageTimestamp = Math.max(this.lastMessageTimestamp, m.sentAt);
-          }
-        }
-
-        // Update global state
-        appState.lobbyActive = this.lobbyExists;
-      }
+      const state = await LobbyService.init();
+      this.applyLobbyState(state);
     } catch {
-      // fail-open -- render skeleton, polling will retry
+      // fail-open -- render skeleton, LobbyService will retry via WS/polling
     }
 
     // Resolve player objects for the teams
@@ -257,9 +220,9 @@ class LobbyPage extends Component {
     // Start countdown
     this.countdownInterval = setInterval(() => this.tickCountdown(), 1000);
 
-    // Perform an immediate lobby poll, then start periodic polling
-    this.pollLobby();
-    this.pollInterval = setInterval(() => this.pollLobby(), POLL_INTERVAL_MS);
+    // Subscribe to LobbyService state changes for real-time updates
+    this.lobbyStateListener = (state: ILobbyState) => this.onLobbyStateChange(state);
+    LobbyService.onStateChange(this.lobbyStateListener);
 
     // Start fish animation
     this.startFishAnimation();
@@ -310,10 +273,13 @@ class LobbyPage extends Component {
   }
 
   override destroy(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
+    // Unsubscribe from LobbyService (don't destroy — it's global)
+    if (this.lobbyStateListener) {
+      LobbyService.offStateChange(this.lobbyStateListener);
+      this.lobbyStateListener = null;
     }
+    LobbyService.release();
+
     if (this.countdownInterval) {
       clearInterval(this.countdownInterval);
       this.countdownInterval = null;
@@ -357,14 +323,11 @@ class LobbyPage extends Component {
 
   private renderTeams(): string {
     if (!this.lobbyData) {
-      if (this.isAdmin) {
-        if (this.lobbyExists) {
-          return this.renderConfirmKickCard();
-        }
-        return this.renderAdminBroadcastCard();
-      }
-      if (this.lobbyExists) {
+      debugger;
+      if (appState.lobbyActive) {
         return this.renderConfirmKickCard();
+      } else if (appState.isAdmin) {
+        return this.renderAdminBroadcastCard();
       }
       return `
         <div class="team-card glass-card rounded-xl p-6 text-center">
@@ -490,7 +453,7 @@ class LobbyPage extends Component {
                   border:1px solid ${isConfirmed ? `${teamColor}66` : 'rgba(255,255,255,0.08)'};
                   transition:all 0.3s">
         <div class="flex items-center gap-2 min-w-0">
-          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId })}
+          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId, playerClass })}
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <span class="text-white truncate font-ui"
@@ -704,96 +667,92 @@ class LobbyPage extends Component {
   }
 
   private onCountdownExpired(): void {
-    if (this.pollInterval) { clearInterval(this.pollInterval); this.pollInterval = null; }
     if (this.countdownInterval) { clearInterval(this.countdownInterval); this.countdownInterval = null; }
     // Could navigate away or show "time's up" state
   }
 
-  // ── Lobby polling (single /lobby-state call per tick) ──────
+  // ── Apply lobby state from LobbyService ────────────────────
 
-  private async pollLobby(): Promise<void> {
-    // Capture state before fetch (for transition detection)
+  /**
+   * Apply the ILobbyState to local component state.
+   * Used both for initial render and for real-time updates.
+   */
+  private applyLobbyState(state: ILobbyState): void {
+    // Lobby metadata
+    this.lobbyExists = state.exists;
+    if (state.match) this.lobbyData = state.match as IRunningMatchDTO;
+    if (state.exists && state.ttl > 0) {
+      // Only sync TTL if server differs significantly (avoid jitter)
+      if (Math.abs(this.countdownSeconds - state.ttl) > 5) {
+        this.countdownSeconds = state.ttl;
+      }
+      if (this.countdownTotal < state.ttl) {
+        this.countdownTotal = state.ttl;
+      }
+    }
+
+    // Confirmations
+    this.confirmed.clear();
+    for (const c of state.confirmations) this.confirmed.add(c.playerId);
+    this.lastConfirmations = state.confirmations;
+
+    // Messages
+    this.processMessages(state.messages);
+
+    // Resolve player objects for the teams
+    if (this.lobbyData) {
+      const ids = [
+        this.lobbyData.teamA.defence,
+        this.lobbyData.teamA.attack,
+        this.lobbyData.teamB.defence,
+        this.lobbyData.teamB.attack
+      ];
+      for (const id of ids) {
+        if (!this.players.has(id)) {
+          const p = getPlayerById(id);
+          if (p) this.players.set(id, p);
+        }
+      }
+    }
+  }
+
+  /**
+   * Callback from LobbyService when state changes (WS event or poll).
+   * Detects layout transitions and does targeted or full DOM updates.
+   */
+  private onLobbyStateChange(state: ILobbyState): void {
+    // Capture pre-update state for transition detection
     const wasConfirmed = this.isMyPresenceConfirmed;
     const hadLobby = !!this.lobbyData;
     const hadLobbyExists = this.lobbyExists;
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/lobby-state`);
-      if (!res.ok) return;
-      const data = await res.json();
+    this.applyLobbyState(state);
 
-      // ── Lobby metadata ──────────────────────────────────────
-      const lobby = data.lobby;
-      if (lobby) {
-        this.lobbyExists = !!lobby.exists;
-        appState.lobbyActive = this.lobbyExists;
-        appState.emit('lobby-change');
+    const isNowConfirmed = this.isMyPresenceConfirmed;
+    const layoutChanged = (!hadLobby && this.lobbyData)
+      || (!hadLobbyExists && this.lobbyExists)
+      || (wasConfirmed !== isNowConfirmed);
 
-        if (lobby.exists && lobby.match) {
-          this.lobbyData = lobby.match as IRunningMatchDTO;
-          const ids = [
-            this.lobbyData.teamA.defence,
-            this.lobbyData.teamA.attack,
-            this.lobbyData.teamB.defence,
-            this.lobbyData.teamB.attack
-          ];
-          for (const id of ids) {
-            if (!this.players.has(id)) {
-              const p = getPlayerById(id);
-              if (p) this.players.set(id, p);
-            }
-          }
-        }
-
-        if (lobby.exists && typeof lobby.ttl === 'number' && lobby.ttl > 0) {
-          const serverTtl = lobby.ttl;
-          if (Math.abs(this.countdownSeconds - serverTtl) > 5) {
-            this.countdownSeconds = serverTtl;
-          }
-          if (this.countdownTotal < serverTtl) {
-            this.countdownTotal = serverTtl;
-          }
-        }
-      }
-
-      // ── Confirmations ───────────────────────────────────────
-      const confirmations: IConfirmation[] = data.confirmations ?? [];
-      this.confirmed.clear();
-      for (const c of confirmations) this.confirmed.add(c.playerId);
-
-      // ── Messages ────────────────────────────────────────────
-      this.processMessages(data.messages ?? []);
-
-      const isNowConfirmed = this.isMyPresenceConfirmed;
-      const layoutChanged = (!hadLobby && this.lobbyData)
-        || (!hadLobbyExists && this.lobbyExists)
-        || (wasConfirmed !== isNowConfirmed);
-
-      if (layoutChanged) {
-        // Full re-render of main content when layout needs to change
-        this.rerenderMain();
-
-        // Sync fish after re-render (new DOM)
-        this.syncFish(confirmations);
-        return;
-      }
-
-      // Targeted DOM updates (no layout change needed)
-      this.updateReadyStatus();
-      this.syncFish(confirmations);
-      this.updateConfirmButtonState();
-
-      const countEl = this.$id('ready-count');
-      if (countEl) {
-        countEl.textContent = `${this.confirmed.size}/4 PRONTI`;
-        countEl.style.color = this.confirmed.size >= 4 ? '#4ADE80' : 'rgba(255,255,255,0.4)';
-      }
-
-      const fishCount = this.$id('fish-count');
-      if (fishCount) fishCount.textContent = `${this.confirmed.size} PESCI`;
-    } catch (err) {
-      console.error('[LobbyPage] Poll error:', err);
+    if (layoutChanged) {
+      // Full re-render of main content when layout needs to change
+      this.rerenderMain();
+      this.syncFish(this.lastConfirmations);
+      return;
     }
+
+    // Targeted DOM updates (no layout change needed)
+    this.updateReadyStatus();
+    this.syncFish(this.lastConfirmations);
+    this.updateConfirmButtonState();
+
+    const countEl = this.$id('ready-count');
+    if (countEl) {
+      countEl.textContent = `${this.confirmed.size}/4 PRONTI`;
+      countEl.style.color = this.confirmed.size >= 4 ? '#4ADE80' : 'rgba(255,255,255,0.4)';
+    }
+
+    const fishCount = this.$id('fish-count');
+    if (fishCount) fishCount.textContent = `${this.confirmed.size} PESCI`;
   }
 
   private updateReadyStatus(): void {
@@ -866,8 +825,8 @@ class LobbyPage extends Component {
       triggerImpact('medium'); // Haptic feedback for confirmation
       this.rerenderMain();
 
-      // Sync fish and messages via a single poll (reuses the same /lobby-state call)
-      await this.pollLobby();
+      // Sync state from server (WS event will also trigger, but force immediate)
+      await LobbyService.refresh();
     } catch (err: any) {
       console.error('[LobbyPage] Confirm error:', err);
       btn.disabled = false;
@@ -949,7 +908,7 @@ class LobbyPage extends Component {
            style="width:32px;height:32px;color:var(--color-gold)"></i>
         <p class="font-display text-xl text-(--color-gold) mb-2"
            style="letter-spacing:0.12em">
-          NESSUNA LOBBY ATTIVA
+          CREA UNA LOBBY
         </p>
         <p class="font-body text-sm mb-4" style="color:rgba(255,255,255,0.4)">
           Invia la notifica per iniziare una partita
@@ -969,7 +928,7 @@ class LobbyPage extends Component {
         <button id="admin-broadcast-btn"
                 class="px-6 py-2.5 rounded-lg font-ui transition-all duration-200 hover:brightness-110 active:scale-95"
                 style="background:linear-gradient(135deg, #FFD700, #F0A500); font-size:13px; letter-spacing:0.12em; color:#0F2A20">
-          AVVIA PARTITA
+          AVVIA
         </button>
         <p id="admin-broadcast-feedback" class="font-ui mt-4" style="font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:0.1em; min-height:16px"></p>
       </div>
@@ -1008,19 +967,29 @@ class LobbyPage extends Component {
     const btn = this.$id('admin-broadcast-btn') as HTMLButtonElement | null;
     if (!btn) return;
 
-    btn.addEventListener('click', () => this.handleBroadcast());
+    btn.addEventListener('click', e => this.handleBroadcast(e));
   }
 
-  private async handleBroadcast(): Promise<void> {
+  private async handleBroadcast(e: PointerEvent): Promise<void> {
     const btn = this.$id('admin-broadcast-btn') as HTMLButtonElement | null;
     const feedback = this.$id('admin-broadcast-feedback');
     const durationSelect = this.$id('admin-duration-select') as HTMLSelectElement | null;
     if (!btn) return;
 
+    // Trigger strong haptic + particle feedback on broadcast start
+    // Uncomment to test with any click
+    triggerImpact('medium');
+    createParticles(e.clientX, e.clientY,
+      [
+        { emoji: '🔔', canFlip: true },
+        { emoji: '📣', canFlip: true },
+        { emoji: '📢', canFlip: true }], 1000
+    );
+
     const durationSeconds = durationSelect ? parseInt(durationSelect.value, 10) : LOBBY_TTL_DEFAULT;
 
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.textContent = 'INVIO IN CORSO...';
 
     try {
       const token = localStorage.getItem('biliardino_admin_token');
@@ -1054,7 +1023,7 @@ class LobbyPage extends Component {
       appState.lobbyActive = true;
       appState.emit('lobby-change');
 
-      setTimeout(() => this.pollLobby(), 1500);
+      setTimeout(() => LobbyService.refresh(), 1500);
     } catch (err: any) {
       console.error('[LobbyPage] Broadcast error:', err);
       if (feedback) {
@@ -1095,8 +1064,8 @@ class LobbyPage extends Component {
       this.confirmed.add(this.myPlayerId);
       this.rerenderMain();
 
-      // Sync fish and messages via poll
-      await this.pollLobby();
+      // Sync state from server
+      await LobbyService.refresh();
     } catch (err: any) {
       console.error('[LobbyPage] Confirm kick error:', err);
       this.confirmKick?.showFeedback(
@@ -1154,7 +1123,7 @@ class LobbyPage extends Component {
   }
 
   private async pollMessages(): Promise<void> {
-    // Replaced by processMessages() called from pollLobby()
+    // Replaced by processMessages() called from LobbyService
     // Kept as no-op for safety in case of stale references
   }
 
@@ -1212,7 +1181,7 @@ class LobbyPage extends Component {
       const el = document.createElement('div');
       el.className = 'flex items-start gap-2';
       el.innerHTML = `
-        ${renderPlayerAvatar({ initials, color, size: 'xs', playerId: msg.playerId })}
+        ${renderPlayerAvatar({ initials, color, size: 'xs', playerId: msg.playerId, playerClass })}
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-0.5">
             ${fishSvg}
@@ -1242,7 +1211,7 @@ class LobbyPage extends Component {
 
   // ── Fish aquarium ────────────────────────────────────────────
 
-  private syncFish(confirmations: IConfirmation[]): void {
+  private syncFish(confirmations: IConfirmationWithFish[]): void {
     const activeIds = new Set(confirmations.map(c => c.playerId));
 
     // Remove fish for players who left

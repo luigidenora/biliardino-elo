@@ -63,10 +63,17 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
     // Pipeline: set + lpush + expire in 1 HTTP request to Upstash
     const pipeline = redisRaw.pipeline();
-    pipeline.set(prefixed(`message:${messageId}`), JSON.stringify(message), { ex: 240 });
+    pipeline.set(prefixed(`message:${messageId}`), JSON.stringify(message), { ex: 5400 });
     pipeline.lpush(prefixed('messages'), messageId);
-    pipeline.expire(prefixed('messages'), 240);
+    pipeline.expire(prefixed('messages'), 5400);
     await pipeline.exec();
+
+    // Publish event for real-time updates
+    try {
+      await redisRaw.publish('lobby_events', JSON.stringify({ type: 'message', playerId, timestamp: Date.now() }));
+    } catch (e) {
+      console.warn('Publish message event fallito:', (e as Error).message || e);
+    }
 
     return res.status(201).json(message);
   } catch (error) {

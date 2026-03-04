@@ -20,7 +20,10 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       pipeline.zrem(prefixed('availability_ts'), field);
       await pipeline.exec();
       try {
-        await redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, removed: true }));
+        await Promise.all([
+          redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, removed: true })),
+          redisRaw.publish('lobby_events', JSON.stringify({ type: 'confirmation-remove', playerId: playerIdNum, timestamp: Date.now() }))
+        ]);
       } catch (e) {
         console.warn('Publish cancel event fallito:', (e as Error).message || e);
       }
@@ -80,8 +83,11 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
     // Pubblica evento per aggiornamenti realtime (non critico, fuori dal pipeline)
     try {
-      // Publish on a stable topic name (no env prefix) so clients can subscribe
-      await redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, confirmedAt }));
+      // Publish on both topics: legacy availability_events + new lobby_events
+      await Promise.all([
+        redisRaw.publish('availability_events', JSON.stringify({ playerId: playerIdNum, confirmedAt })),
+        redisRaw.publish('lobby_events', JSON.stringify({ type: 'confirmation-add', playerId: playerIdNum, timestamp: Date.now() }))
+      ]);
     } catch (e) {
       // Non bloccare l'operazione se publish fallisce
       console.warn('Publish availability event fallito:', (e as Error).message || e);

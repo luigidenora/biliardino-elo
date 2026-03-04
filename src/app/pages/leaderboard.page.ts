@@ -702,11 +702,11 @@ class LeaderboardPage extends Component {
       : '';
 
     return `
-      <div class="rounded-xl overflow-hidden"
+      <div class="rounded-xl"
            style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px)">
 
         <!-- Desktop header -->
-        <div class="hidden md:grid gap-3 px-5 py-3 sort-header-row"
+        <div class="hidden md:grid gap-3 px-5 py-3 sort-header-row overflow-hidden rounded-t-xl"
              style="
                grid-template-columns: 48px 1fr 90px 90px 110px 90px;
                background: rgba(10,25,18,0.8);
@@ -731,7 +731,7 @@ class LeaderboardPage extends Component {
         </div>
 
         <!-- Mobile header -->
-        <div class="md:hidden grid gap-2 px-4 py-2.5"
+        <div class="md:hidden grid gap-2 px-4 py-2.5 overflow-hidden rounded-t-xl"
              style="
                grid-template-columns: 36px 1fr 52px 48px;
                background: rgba(10,25,18,0.8);

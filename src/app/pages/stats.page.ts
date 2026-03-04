@@ -230,7 +230,7 @@ class StatsPage extends Component {
           <i data-lucide="${r.icon}" style="width:12px;height:12px;color:${r.color}"></i>
           <span class="font-ui" style="font-size:9px; color:${r.color}; letter-spacing:0.1em">${r.label}</span>
         </div>
-        ${renderPlayerAvatar({ initials: getInitials(r.player.name), color, size: 'md', playerId: r.player.id })}
+        ${renderPlayerAvatar({ initials: getInitials(r.player.name), color, size: 'md', playerId: r.player.id, playerClass: r.player.class })}
         <div class="text-center">
           <div class="font-ui text-white truncate" style="font-size:13px; max-width:90px">${r.player.name}</div>
           <div class="font-body" style="font-size:10px; color:rgba(255,255,255,0.4)">${getClassName(r.player.class)}</div>
@@ -272,10 +272,10 @@ class StatsPage extends Component {
         <div class="pair-row flex items-center gap-3 px-4 py-2.5 rounded-lg"
              style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
           <div class="flex items-center gap-2 flex-1 min-w-0">
-            ${renderPlayerAvatar({ initials: getInitials(pr.p1.name), color: CLASS_COLORS[pr.p1.class] ?? '#8B7D6B', size: 'xs', playerId: pr.p1.id })}
+            ${renderPlayerAvatar({ initials: getInitials(pr.p1.name), color: CLASS_COLORS[pr.p1.class] ?? '#8B7D6B', size: 'xs', playerId: pr.p1.id, playerClass: pr.p1.class })}
             <span class="font-ui text-xs text-white truncate">${pr.p1.name}</span>
             <span class="font-body text-xs" style="color:rgba(255,255,255,0.3)">+</span>
-            ${renderPlayerAvatar({ initials: getInitials(pr.p2.name), color: CLASS_COLORS[pr.p2.class] ?? '#8B7D6B', size: 'xs', playerId: pr.p2.id })}
+            ${renderPlayerAvatar({ initials: getInitials(pr.p2.name), color: CLASS_COLORS[pr.p2.class] ?? '#8B7D6B', size: 'xs', playerId: pr.p2.id, playerClass: pr.p2.class })}
             <span class="font-ui text-xs text-white truncate">${pr.p2.name}</span>
           </div>
           <span class="font-display text-sm shrink-0" style="color:${dColor}; letter-spacing:0.05em">

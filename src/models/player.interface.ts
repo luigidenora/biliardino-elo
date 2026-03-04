@@ -20,5 +20,4 @@ export interface IPlayer extends IPlayerDTO {
   teammatesDelta?: Map<number, number>;
   teammatesMatchCount?: Map<number, number>;
   opponentsMatchCount?: Map<number, number>;
-  isAdmin?: boolean;
 }

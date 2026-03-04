@@ -6,8 +6,8 @@
  * che gestisce identità, notifiche e login admin.
  */
 
-import { API_BASE_URL } from '@/config/env.config';
 import gsap from 'gsap';
+import { LobbyService } from '../../services/lobby.service';
 import { getPlayerById } from '../../services/player.service';
 import { refreshIcons } from '../icons';
 import { router } from '../router';
@@ -40,7 +40,6 @@ export class HeaderComponent extends Component {
   private adminActive = false;
   private menuOpen = false;
   private handleRouteChange: (() => void) | null = null;
-  private lobbyPollInterval: ReturnType<typeof setInterval> | null = null;
   private handleLobbyChange: (() => void) | null = null;
 
   override render(): string {
@@ -172,8 +171,8 @@ export class HeaderComponent extends Component {
     /* ── Lobby active indicator ─── */
     this.handleLobbyChange = () => this.updateLobbyIndicator();
     appState.on('lobby-change', this.handleLobbyChange);
-    this.pollLobbyStatus();
-    this.lobbyPollInterval = setInterval(() => this.pollLobbyStatus(), LOBBY_POLL_MS);
+    // Initialize LobbyService (lazy — first consumer triggers WS + fetch)
+    LobbyService.init().then(() => this.updateLobbyIndicator());
   }
 
   override destroy(): void {
@@ -187,10 +186,7 @@ export class HeaderComponent extends Component {
     if (this.handleLobbyChange) {
       appState.off('lobby-change', this.handleLobbyChange);
     }
-    if (this.lobbyPollInterval) {
-      clearInterval(this.lobbyPollInterval);
-      this.lobbyPollInterval = null;
-    }
+    LobbyService.release();
   }
 
   private updateAdminVisibility(): void {
@@ -246,25 +242,6 @@ export class HeaderComponent extends Component {
   }
 
   // ── Lobby active indicator ──────────────────────────────────
-
-  private async pollLobbyStatus(): Promise<void> {
-    // Skip when lobby page is active — it already maintains appState.lobbyActive
-    const isLobbyPageActive = (appState as any).isLobbyPageActive as boolean | undefined;
-    if (isLobbyPageActive) return;
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/check-lobby`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const wasActive = appState.lobbyActive;
-      appState.lobbyActive = !!data.exists;
-      if (appState.lobbyActive !== wasActive) {
-        appState.emit('lobby-change');
-      }
-    } catch {
-      // network error — keep current state
-    }
-  }
 
   private updateLobbyIndicator(): void {
     const header = document.getElementById('app-header-inner');

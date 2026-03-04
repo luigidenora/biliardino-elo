@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { IMessage } from '../src/models/message.interface.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { generateFishName } from './_fishNames.js';
+import { withSecurityMiddleware } from './_middleware.js';
 import { prefixed, redis, redisRaw } from './_redisClient.js';
 
 interface Confirmation {
@@ -10,11 +11,21 @@ interface Confirmation {
 }
 
 /**
- * API per ottenere lo stato completo della lobby (conferme + messaggi)
+ * Unified Lobby API — returns full lobby state in a single call.
  *
- * GET /api/lobby-state
+ * GET /api/lobby
+ *
+ * Response: {
+ *   exists: boolean,
+ *   ttl: number,
+ *   match: IRunningMatchDTO | null,
+ *   count: number,
+ *   confirmations: Array<Confirmation & { fishName: string }>,
+ *   messages: IMessage[],
+ *   messageCount: number
+ * }
  */
-export default async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
+async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return res;
 
@@ -23,13 +34,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
-    // Fetch confirmations and messages in parallel
-    const [rawMap, messageIds] = await Promise.all([
+    // Fetch lobby registry, confirmations, and message IDs in parallel
+    const [lobbyData, rawMap, messageIds] = await Promise.all([
+      redis.get('lobby') as Promise<Record<string, unknown> | null>,
       redisRaw.hgetall(prefixed('availability')) as Promise<Record<string, string> | null>,
       redis.lrange('messages', 0, -1) as Promise<string[]>
     ]);
 
-    // Parse confirmations (@upstash/redis auto-deserializes JSON values)
+    // ── Lobby existence & TTL ────────────────────────────────
+    const exists = lobbyData !== null;
+    let ttl = 0;
+    if (exists) {
+      ttl = await redis.ttl('lobby');
+    }
+
+    // Extract match data (if present)
+    const match = (lobbyData && typeof lobbyData === 'object' && 'match' in lobbyData)
+      ? lobbyData.match
+      : null;
+
+    // ── Confirmations ────────────────────────────────────────
     const confirmations = Object.values(rawMap || {}).map((v) => {
       try {
         const data = (typeof v === 'string' ? JSON.parse(v) : v) as Confirmation;
@@ -42,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       }
     }).filter(Boolean) as Array<Confirmation & { fishName: string }>;
 
-    // Fetch messages
+    // ── Messages ─────────────────────────────────────────────
     const messages: IMessage[] = [];
     if (messageIds.length > 0) {
       const messagePromises = messageIds.map(id => redis.get<IMessage>(`message:${id}`));
@@ -53,13 +77,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     return res.status(200).json({
+      exists,
+      ttl,
+      match,
       count: confirmations.length,
       confirmations,
       messages,
       messageCount: messages.length
     });
   } catch (error) {
-    console.error('Errore lobby-state:', error);
+    console.error('Errore lobby:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withSecurityMiddleware(handler);
