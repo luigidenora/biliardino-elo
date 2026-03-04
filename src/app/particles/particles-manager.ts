@@ -151,16 +151,16 @@ function spawnBurst(
   y: number,
   emojis: EmojiOption[],
   gx: number,
-  gy: number,
+  gy: number
 ): void {
   const amount = 4;
   if (particles.length + amount > MAX_ACTIVE) return;
 
   for (let i = 0; i < amount; i++) {
     const xv = Math.random() * 16 - 8;
-    const yv =
-      (i === 0 ? 4 : i === 1 ? 8 : i === 2 ? 8 : 0) *
-      (0.25 + Math.random() * 0.25);
+    const yv
+      = (i === 0 ? 4 : i === 1 ? 8 : i === 2 ? 8 : 0)
+        * (0.25 + Math.random() * 0.25);
 
     const pick = emojis[Math.floor(Math.random() * emojis.length)];
 
@@ -179,7 +179,7 @@ function spawnBurst(
       fontSize: 20 + Math.ceil(Math.random() * 40),
       radius: 0,
       gx,
-      gy,
+      gy
     });
   }
 }
@@ -303,11 +303,11 @@ class ParticlesManager {
     y: number,
     emojis: EmojiOption[] = [
       { emoji: '✨', canFlip: false },
-      { emoji: '🔥', canFlip: false },
+      { emoji: '🔥', canFlip: false }
     ],
     duration?: number,
     gx: number = 0,
-    gy: number = -1.5,
+    gy: number = -1.5
   ): void {
     // Ensure initialization
     if (!this.initialized) {
@@ -370,7 +370,7 @@ export function createParticles(
   emojis?: EmojiOption[],
   duration?: number,
   gx?: number,
-  gy?: number,
+  gy?: number
 ): void {
   const manager = ParticlesManager.getInstance();
   manager.create(x, y, emojis, duration, gx, gy);
