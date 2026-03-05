@@ -1,0 +1,34 @@
+<div id="broadcast-kick" class="relative mx-auto" style="width:220px; height:100px; overflow:visible">
+
+  <!-- Foosball player — hidden, appears only on kick -->
+  <div id="kick-player" class="absolute" style="top:-200px; right:-100px; opacity:0; pointer-events:none">
+    {{kickPlayerSvg}}
+  </div>
+
+  <!-- White ball — always centered -->
+  <button id="broadcast-btn" class="absolute cursor-pointer border-0 bg-transparent p-0" style="left:70px; top:10px">
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <defs>
+        <radialGradient id="bk-ball" cx="0.38" cy="0.32" r="0.6">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="70%" stop-color="#eeeeee" />
+          <stop offset="100%" stop-color="#b8b8b8" />
+        </radialGradient>
+        <radialGradient id="bk-shine" cx="0.30" cy="0.25" r="0.20">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.9)" />
+          <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+        </radialGradient>
+        <filter id="bk-ds">
+          <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(0,0,0,0.25)" />
+        </filter>
+      </defs>
+      <circle cx="40" cy="40" r="35" fill="url(#bk-ball)" filter="url(#bk-ds)" />
+      <circle cx="40" cy="40" r="35" fill="url(#bk-shine)" />
+      <text x="40" y="43" text-anchor="middle" dominant-baseline="central" font-family="var(--font-display)"
+        font-size="13" fill="rgba(0,0,0,0.45)" letter-spacing="0.12em">INIZIA</text>
+    </svg>
+  </button>
+</div>
+
+<div id="broadcast-feedback" class="font-ui mt-4 text-center"
+  style="font-size:12px; letter-spacing:0.08em; min-height:20px; display:none"></div>

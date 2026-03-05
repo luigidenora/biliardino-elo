@@ -1,6 +1,9 @@
 import { getPlayerById } from '@/services/player.service';
 import gsap from 'gsap';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
+import { html, rawHtml } from '../utils/html-template.util';
+import cardTemplate from './match-history-card.component.html?raw';
+import historyTemplate from './match-history.component.html?raw';
 
 import type { IMatch } from '@/models/match.interface';
 import type { IPlayer } from '@/models/player.interface';
@@ -119,14 +122,10 @@ export function renderMatchHistory(options: MatchHistoryOptions): string {
     `
     : '';
 
-  return `
-    <div class="space-y-4" data-match-history>
-      ${header}
-      <div class="flex flex-col gap-4">
-        ${body}
-      </div>
-    </div>
-  `;
+  return html(historyTemplate, {
+    header: rawHtml(header),
+    body: rawHtml(body)
+  });
 }
 
 export function renderMatchCard(
@@ -180,74 +179,54 @@ export function renderMatchCard(
     </div>
   `;
 
+  const detailsHtml = buildMatchCardDetails(data);
+
+  return html(cardTemplate, {
+    matchId: data.id,
+    expandedAttr: state.expanded ? 'true' : 'false',
+    ariaExpanded: state.expanded ? 'true' : 'false',
+    borderGradient,
+    avgElo: Math.round((data.leftElo + data.rightElo) / 2),
+    deltaBg,
+    deltaBorder,
+    deltaColor,
+    deltaIcon,
+    deltaLabel,
+    centerRow: rawHtml(centerRowHtml),
+    chevron: rawHtml(chevronHtml),
+    leftPct: data.leftPct,
+    rightPct: data.rightPct,
+    leftBarStyle: data.leftWon ? winBarGrad : loseBarGrad,
+    rightBarStyle: data.leftWon ? loseBarGrad : winBarGrad,
+    detailsDisplay,
+    details: rawHtml(detailsHtml)
+  });
+}
+
+function buildMatchCardDetails(data: MatchCardData): string {
   return `
-    <div class="match-row relative overflow-hidden rounded-[14px]"
-         data-match-card
-         data-match-id="${data.id}"
-         data-expanded="${state.expanded ? 'true' : 'false'}"
-         style="background:rgba(8,22,16,0.82);border:1px solid rgba(255,255,255,0.07)">
-      <div class="absolute left-0 top-0 bottom-0 rounded-l-xl"
-           style="width:3px;background:${borderGradient}"></div>
-
-      <div class="flex items-center justify-between pl-4 pr-3" style="height:26px">
-        <div class="flex items-center gap-1">
-          <span class="font-ui" style="font-size:7px;font-weight:500;letter-spacing:0.56px;color:rgba(255,215,0,0.35)">ELO</span>
-          <span class="font-display" style="font-size:15px;color:#ffd700;letter-spacing:0.6px">${Math.round((data.leftElo + data.rightElo) / 2)}</span>
-        </div>
-        <div class="flex items-center gap-1 rounded-full"
-             style="padding:1px 9px;background:${deltaBg};border:1px solid ${deltaBorder}">
-          <i data-lucide="${deltaIcon}" style="width:9px;height:9px;color:${deltaColor}"></i>
-          <span class="font-display" style="font-size:12px;color:${deltaColor}">${deltaLabel}</span>
-        </div>
+    <div class="rounded-[10px] flex items-center justify-center gap-3"
+         style="height:31px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
+      <div class="flex items-center gap-1.5">
+        <div class="rounded-sm" style="width:6px;height:6px;background:rgba(255,255,255,0.7)"></div>
+        <span class="font-ui" style="font-size:8px;letter-spacing:0.56px;color:rgba(255,215,0,0.45)">ELO MEDIO BIANCHI</span>
+        <span class="font-display" style="font-size:17px;color:rgba(255,255,255,0.9)">${data.leftElo}</span>
       </div>
-
-      <div class="w-full flex items-center gap-1 sm:gap-2 pl-2 sm:pl-3 pr-1 sm:pr-2"
-           data-match-toggle
-           data-match-id="${data.id}"
-           role="button"
-           aria-expanded="${state.expanded ? 'true' : 'false'}"
-           style="height:88px;cursor:pointer">
-        ${centerRowHtml}
-
-        ${chevronHtml}
+      <span class="font-ui" style="font-size:12px;color:rgba(255,255,255,0.12)">|</span>
+      <div class="flex items-center gap-1.5">
+        <span class="font-display" style="font-size:17px;color:rgba(229,62,62,0.35)">${data.rightElo}</span>
+        <span class="font-ui" style="font-size:8px;letter-spacing:0.56px;color:rgba(255,215,0,0.45)">ELO MEDIO ROSSI</span>
+        <div class="rounded-sm" style="width:6px;height:6px;background:#e53e3e"></div>
       </div>
-
-      <div class="flex items-center gap-2 px-4 pb-3" style="height:13px">
-        <span class="font-display shrink-0" style="font-size:13px;color:rgba(255,255,255,0.75)">${data.leftPct}%</span>
-        <div class="flex-1 flex rounded-full overflow-hidden" style="height:6px;background:rgba(255,255,255,0.04)">
-          <div class="rounded-l-full" style="width:${data.leftPct}%;height:6px;${data.leftWon ? winBarGrad : loseBarGrad}"></div>
-          <div class="rounded-r-full" style="width:${data.rightPct}%;height:6px;${data.leftWon ? loseBarGrad : winBarGrad}"></div>
-        </div>
-        <span class="font-display shrink-0 text-right" style="font-size:13px;color:rgba(229,62,62,0.9)">${data.rightPct}%</span>
+    </div>
+    <div class="grid grid-cols-2 gap-4 mt-3">
+      <div class="flex items-center justify-evenly rounded-xl" style="background:rgba(0,0,0,0.15);padding:6px">
+        ${renderDetailPlayer(data.leftDef)}
+        ${renderDetailPlayer(data.leftAtt)}
       </div>
-
-      <div data-match-details
-           style="display:${detailsDisplay};border-top:1px solid rgba(255,255,255,0.05);padding:14px 12px 12px">
-        <div class="rounded-[10px] flex items-center justify-center gap-3"
-             style="height:31px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
-          <div class="flex items-center gap-1.5">
-            <div class="rounded-sm" style="width:6px;height:6px;background:rgba(255,255,255,0.7)"></div>
-            <span class="font-ui" style="font-size:8px;letter-spacing:0.56px;color:rgba(255,215,0,0.45)">ELO MEDIO BIANCHI</span>
-            <span class="font-display" style="font-size:17px;color:rgba(255,255,255,0.9)">${data.leftElo}</span>
-          </div>
-          <span class="font-ui" style="font-size:12px;color:rgba(255,255,255,0.12)">|</span>
-          <div class="flex items-center gap-1.5">
-            <span class="font-display" style="font-size:17px;color:rgba(229,62,62,0.35)">${data.rightElo}</span>
-            <span class="font-ui" style="font-size:8px;letter-spacing:0.56px;color:rgba(255,215,0,0.45)">ELO MEDIO ROSSI</span>
-            <div class="rounded-sm" style="width:6px;height:6px;background:#e53e3e"></div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mt-3">
-          <div class="flex items-center justify-evenly rounded-xl" style="background:rgba(0,0,0,0.15);padding:6px">
-            ${renderDetailPlayer(data.leftDef)}
-            ${renderDetailPlayer(data.leftAtt)}
-          </div>
-          <div class="flex items-center justify-evenly rounded-xl" style="background:rgba(0,0,0,0.15);padding:6px">
-            ${renderDetailPlayer(data.rightDef)}
-            ${renderDetailPlayer(data.rightAtt)}
-          </div>
-        </div>
+      <div class="flex items-center justify-evenly rounded-xl" style="background:rgba(0,0,0,0.15);padding:6px">
+        ${renderDetailPlayer(data.rightDef)}
+        ${renderDetailPlayer(data.rightAtt)}
       </div>
     </div>
   `;
@@ -293,7 +272,7 @@ export function renderMatchPlayerAvatar(player: IPlayer | undefined): string {
   return renderPlayerAvatar({
     initials: getInitials(player.name),
     color,
-    size: 'match',
+    size: 'sm',
     playerId: player.id,
     playerClass: player.class
   });

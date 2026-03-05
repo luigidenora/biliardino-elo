@@ -74,16 +74,16 @@ new MyComponent()
 ```ts
 // src/app/pages/my-page.page.ts
 import { Component } from '../components/component.base';
+import { html, rawHtml } from '../utils/html-template.util';
 import { MyService } from '../../services/my.service';
+import template from './my-page.page.html?raw';
 
 export default class MyPage extends Component {
   override async render(): Promise<string> {
     const data = await MyService.getData();
-    return `
-      <div id="my-page" class="space-y-5">
-        ${this.renderCard(data)}
-      </div>
-    `;
+    return html(template, {
+      cards: rawHtml(this.renderCards(data)),
+    });
   }
 
   override mount(): void {
@@ -96,40 +96,51 @@ export default class MyPage extends Component {
     // clear intervals/frames started in mount()
   }
 
-  private renderCard(data: MyData): string {
-    return `<div class="card glass-card-gold rounded-xl p-4">${data.title}</div>`;
+  private renderCards(data: MyData[]): string {
+    return data.map(item =>
+      `<div class="card glass-card-gold rounded-xl p-4">${item.title}</div>`
+    ).join('');
   }
 
   private handleClick(): void { /* ... */ }
 }
 ```
 
+```html
+<!-- my-page.page.html -->
+<div id="my-page" class="space-y-5">
+  {{cards}}
+</div>
+```
+
 ---
 
 ## HTML Templates and String Binding — MANDATORY
 
-Use the `bindHtml` utility (`src/app/utils/html-template.util.ts`) for all component templates that benefit from HTML file separation or require escaping.
+Every component uses `html()` + `.html?raw`. The `.ts` file contains only logic; the `.html` file contains structure.
 
 ### How it works
 
 ```ts
 import template from './my-component.html?raw';   // raw HTML file
-import { bindHtml, rawHtml } from '../utils/html-template.util';
+import { html, rawHtml } from '../utils/html-template.util';
 
 // {{key}} placeholders in the HTML are replaced with values
-const html = bindHtml(template)`${{ title, description }}`;
+const result = html(template, { title, description });
 
-// rawHtml() bypasses XSS escaping (use only for SVG / trusted HTML)
-const html = bindHtml(template)`${{ icon: rawHtml(svgString), title }}`;
+// rawHtml() bypasses XSS escaping — use for sub-components and SVG only
+const result = html(template, { icon: rawHtml(svgString), rows: rawHtml(rowsHtml) });
 ```
 
 ### Rules
 
-- **Prefer `.html?raw` template files** for components with non-trivial markup.
-- `{{key}}` is HTML-escaped by default — safe for user content.
-- Use `rawHtml()` only for SVG icons and composed HTML fragments (never for user input).
-- Supports nested access `{{player.name}}` and array flattening `{{items}}`.
-- For simple inline HTML (short helper methods), template literals are fine — no need to create an `.html` file for every small fragment.
+- **Every `render()` method must use `html(template, dict)` with a `.html?raw` import** — no inline HTML strings returned directly from `render()`.
+- Create one `.html` file per component (or per major render function for non-class helpers).
+- `{{key}}` is HTML-escaped by default — always use for user-facing data (names, scores, labels).
+- `rawHtml()` is exclusively for sub-component HTML and SVG. Never wrap raw user input in `rawHtml()`.
+- Dynamic fragments built from arrays or conditionals (`.map()`, player rows, nav items) are assembled in TypeScript helper methods and passed as `rawHtml()` bindings to the parent template.
+- Short helper methods that build repetitive list items (< ~8 lines each iteration) may remain as TypeScript template literals and must be wrapped with `rawHtml()` at the injection point.
+- Supports dot-notation access `{{player.name}}` and array flattening `{{items}}`.
 
 ---
 
@@ -315,7 +326,7 @@ Environment: copy `.env.example` → `.env.development.local`. Key vars: `VITE_D
 ## Agent rules
 
 - **Extend `Component`** for every new UI element — no exceptions.
-- **Use `bindHtml` + `.html?raw`** templates for components with substantial markup.
+- **Every `render()` must use `html(template, dict)` + `.html?raw`** — no inline HTML strings in `render()` methods. Dynamic fragments stay in TypeScript helpers and are composed via `rawHtml()` bindings.
 - **Call services** for data; never put business logic in components or route handlers.
 - **Use `@upstash/redis`** (imported from `api/_redisClient.ts`) for all Redis operations in API functions. Never use the Redis client in frontend code.
 - **New pages**: create the page file, add a route to `router.ts`, done. Do not modify bootstrap or router internals.

@@ -6,15 +6,15 @@
  * che gestisce identità, notifiche e login admin.
  */
 
-import gsap from 'gsap';
 import { LobbyService } from '../../services/lobby.service';
 import { getPlayerById } from '../../services/player.service';
 import { refreshIcons } from '../icons';
 import { router } from '../router';
 import { appState } from '../state';
-import { bindHtml, rawHtml } from '../utils/html-template.util';
+import { html, rawHtml } from '../utils/html-template.util';
 import { Component } from './component.base';
 import template from './header.component.html?raw';
+import { mobileDrawer } from './mobile-drawer.component';
 import { CLASS_COLORS, getInitials, renderPlayerAvatar } from './player-avatar.component';
 import { userDropdown } from './user-dropdown.component';
 
@@ -38,7 +38,6 @@ const LOBBY_POLL_MS = 50_000;
 
 export class HeaderComponent extends Component {
   private adminActive = false;
-  private menuOpen = false;
   private handleRouteChange: (() => void) | null = null;
   private handleLobbyChange: (() => void) | null = null;
 
@@ -52,14 +51,12 @@ export class HeaderComponent extends Component {
     const color = player ? (CLASS_COLORS[player.class] ?? '#E8A020') : '#E8A020';
     const avatarHtml = renderPlayerAvatar({ initials, color, size: 'xs', playerId: player?.id, playerClass: player?.class });
 
-    return bindHtml(template)`${{
+    return html(template, {
       desktopNav: rawHtml(this.renderDesktopNav(currentPath)),
-      mobileNav: rawHtml(this.renderMobileNav(currentPath)),
       userAvatarDesktop: rawHtml(avatarHtml),
       userAvatarMobile: rawHtml(avatarHtml),
-      userAvatarMobileMenu: rawHtml(avatarHtml),
       playerName
-    }}`;
+    });
   }
 
   private renderDesktopNav(currentPath: string): string {
@@ -83,28 +80,6 @@ export class HeaderComponent extends Component {
     }).join('');
   }
 
-  private renderMobileNav(currentPath: string): string {
-    return navItems.map((item) => {
-      const isActive = this.isActive(item.path, currentPath);
-      const hiddenAttr = item.adminOnly ? 'data-admin-only' : '';
-      return `
-        <a
-          href="${item.path}"
-          ${hiddenAttr}
-          class="mobile-nav-link flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-200 ${isActive
-              ? 'text-(--color-gold) bg-[rgba(255,215,0,0.12)]'
-              : 'text-white/70 hover:text-white hover:bg-white/6'
-          }"
-          style="font-family: var(--font-ui); font-size: 15px; letter-spacing: 0.08em"
-        >
-          <i data-lucide="${item.icon}" style="width:18px;height:18px"></i>
-          ${item.label}
-          ${isActive ? '<div class="ml-auto w-1.5 h-1.5 rounded-full bg-(--color-gold)"></div>' : ''}
-        </a>
-      `;
-    }).join('');
-  }
-
   override mount(): void {
     refreshIcons();
     // Gestione visibilità admin
@@ -114,54 +89,7 @@ export class HeaderComponent extends Component {
 
     /* ── User pill / avatar → open dropdown ─── */
     document.getElementById('user-pill')?.addEventListener('click', () => userDropdown.toggle());
-    document.getElementById('user-pill-mobile')?.addEventListener('click', () => {
-      userDropdown.toggle();
-    });
-    document.getElementById('mobile-menu-user')?.addEventListener('click', () => {
-      /* Close mobile nav first, then open dropdown */
-      const mobileMenu = document.getElementById('mobile-menu');
-      if (mobileMenu) {
-        this.menuOpen = false;
-        mobileMenu.style.display = 'none';
-        const iconOpen = document.getElementById('menu-icon-open');
-        const iconClose = document.getElementById('menu-icon-close');
-        if (iconOpen) iconOpen.style.display = 'block';
-        if (iconClose) iconClose.style.display = 'none';
-      }
-      setTimeout(() => userDropdown.open(), 50);
-    });
-
-    /* ── Mobile hamburger ─── */
-    const toggleBtn = document.getElementById('mobile-menu-toggle');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const iconOpen = document.getElementById('menu-icon-open');
-    const iconClose = document.getElementById('menu-icon-close');
-
-    toggleBtn?.addEventListener('click', () => {
-      this.menuOpen = !this.menuOpen;
-      if (this.menuOpen && mobileMenu) {
-        mobileMenu.style.display = 'block';
-        gsap.fromTo(mobileMenu, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.18 });
-        if (iconOpen) iconOpen.style.display = 'none';
-        if (iconClose) iconClose.style.display = 'block';
-      } else if (mobileMenu) {
-        gsap.to(mobileMenu, {
-          opacity: 0, y: -10, duration: 0.15,
-          onComplete: () => { mobileMenu.style.display = 'none'; }
-        });
-        if (iconOpen) iconOpen.style.display = 'block';
-        if (iconClose) iconClose.style.display = 'none';
-      }
-    });
-
-    mobileMenu?.querySelectorAll('.mobile-nav-link').forEach((link) => {
-      link.addEventListener('click', () => {
-        this.menuOpen = false;
-        if (mobileMenu) mobileMenu.style.display = 'none';
-        if (iconOpen) iconOpen.style.display = 'block';
-        if (iconClose) iconClose.style.display = 'none';
-      });
-    });
+    document.getElementById('user-pill-mobile')?.addEventListener('click', () => mobileDrawer.open());
 
     /* ── Active state on route change ─── */
     this.handleRouteChange = () => this.updateActiveStates();
@@ -206,33 +134,15 @@ export class HeaderComponent extends Component {
 
   private updateActiveStates(): void {
     const currentPath = router.getCurrentPath();
-    document.querySelectorAll('.nav-link, .mobile-nav-link').forEach((link) => {
+    document.querySelectorAll('.nav-link').forEach((link) => {
       const href = link.getAttribute('href');
       if (!href) return;
       const isActive = this.isActive(href, currentPath);
-      const isMobile = link.classList.contains('mobile-nav-link');
-      const inactiveTextClass = isMobile ? 'text-white/70' : 'text-white/90';
-
       link.classList.toggle('text-(--color-gold)', isActive);
       link.classList.toggle('bg-[rgba(255,215,0,0.12)]', isActive);
-      link.classList.toggle(inactiveTextClass, !isActive);
-
-      // Remove conflicting text class
-      if (isActive) {
-        link.classList.remove(inactiveTextClass);
-      } else {
-        link.classList.remove('text-(--color-gold)');
-      }
-
-      // Update active dot for mobile
-      if (isMobile) {
-        const dot = link.querySelector('.bg-\\(--color-gold\\)');
-        if (isActive && !dot) {
-          link.insertAdjacentHTML('beforeend', '<div class="ml-auto w-1.5 h-1.5 rounded-full bg-(--color-gold)"></div>');
-        } else if (!isActive && dot) {
-          dot.remove();
-        }
-      }
+      link.classList.toggle('text-white/90', !isActive);
+      if (isActive) link.classList.remove('text-white/90');
+      else link.classList.remove('text-(--color-gold)');
     });
   }
 
@@ -252,7 +162,7 @@ export class HeaderComponent extends Component {
     goldLine?.classList.toggle('lobby-active-line', appState.lobbyActive);
 
     // Toggle pulsing dots on lobby nav links
-    document.querySelectorAll('.nav-link, .mobile-nav-link').forEach((link) => {
+    document.querySelectorAll('.nav-link').forEach((link) => {
       const href = link.getAttribute('href');
       if (href !== '/lobby') return;
 

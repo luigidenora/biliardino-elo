@@ -37,24 +37,12 @@ function toHtml(value: unknown): string {
   return escapeHtml(JSON.stringify(value));
 }
 
-function collectBindings(values: unknown[]): Record<string, unknown> {
-  return values.reduce<Record<string, unknown>>((acc, value) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return acc;
-    return { ...acc, ...(value as Record<string, unknown>) };
-  }, {});
-}
-
 export function rawHtml(value: string): RawHtmlValue {
   return { __rawHtml: value };
 }
 
-export function bindHtml(template: string): (strings: TemplateStringsArray, ...values: unknown[]) => string {
-  return (_strings: TemplateStringsArray, ...values: unknown[]) => {
-    const bindings = collectBindings(values);
-
-    return template.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, key: string) => {
-      const value = getBindingValue(bindings, key);
-      return toHtml(value);
-    });
-  };
+export function html(template: string, dict: Record<string, unknown> = {}): string {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, key: string) => {
+    return toHtml(getBindingValue(dict, key));
+  });
 }

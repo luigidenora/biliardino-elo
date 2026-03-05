@@ -1,0 +1,43 @@
+<div class="match-row relative overflow-hidden rounded-[14px]" data-match-card data-match-id="{{matchId}}"
+  data-expanded="{{expandedAttr}}" style="background:rgba(8,22,16,0.82);border:1px solid rgba(255,255,255,0.07)">
+
+  <!-- Left team accent bar -->
+  <div class="absolute left-0 top-0 bottom-0 rounded-l-xl" style="width:3px;background:{{borderGradient}}"></div>
+
+  <!-- ELO bar -->
+  <div class="flex items-center justify-between pl-4 pr-3" style="height:26px">
+    <div class="flex items-center gap-1">
+      <span class="font-ui"
+        style="font-size:7px;font-weight:500;letter-spacing:0.56px;color:rgba(255,215,0,0.35)">ELO</span>
+      <span class="font-display" style="font-size:15px;color:#ffd700;letter-spacing:0.6px">{{avgElo}}</span>
+    </div>
+    <div class="flex items-center gap-1 rounded-full"
+      style="padding:1px 9px;background:{{deltaBg}};border:1px solid {{deltaBorder}}">
+      <i data-lucide="{{deltaIcon}}" style="width:9px;height:9px;color:{{deltaColor}}"></i>
+      <span class="font-display" style="font-size:12px;color:{{deltaColor}}">{{deltaLabel}}</span>
+    </div>
+  </div>
+
+  <!-- Center row: avatars + score (toggle target) -->
+  <div class="w-full flex items-center gap-1 sm:gap-2 pl-2 sm:pl-3 pr-1 sm:pr-2" data-match-toggle
+    data-match-id="{{matchId}}" role="button" aria-expanded="{{ariaExpanded}}" style="height:88px;cursor:pointer">
+    {{centerRow}}
+    {{chevron}}
+  </div>
+
+  <!-- Win probability bar -->
+  <div class="flex items-center gap-2 px-4 pb-3" style="height:13px">
+    <span class="font-display shrink-0" style="font-size:13px;color:rgba(255,255,255,0.75)">{{leftPct}}%</span>
+    <div class="flex-1 flex rounded-full overflow-hidden" style="height:6px;background:rgba(255,255,255,0.04)">
+      <div class="rounded-l-full" style="width:{{leftPct}}%;height:6px;{{leftBarStyle}}"></div>
+      <div class="rounded-r-full" style="width:{{rightPct}}%;height:6px;{{rightBarStyle}}"></div>
+    </div>
+    <span class="font-display shrink-0 text-right" style="font-size:13px;color:rgba(229,62,62,0.9)">{{rightPct}}%</span>
+  </div>
+
+  <!-- Expandable details panel -->
+  <div data-match-details
+    style="display:{{detailsDisplay}};border-top:1px solid rgba(255,255,255,0.05);padding:14px 12px 12px">
+    {{details}}
+  </div>
+</div>

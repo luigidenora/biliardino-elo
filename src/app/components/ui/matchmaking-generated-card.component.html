@@ -1,0 +1,56 @@
+<div class="glass-card-gold rounded-xl overflow-hidden">
+  <!-- Header -->
+  <div
+    class="px-4 md:px-5 py-3 flex items-center justify-between bg-[rgba(10,25,18,0.8)] border-b border-[rgba(255,215,0,0.2)]">
+    <div class="flex items-center gap-2">
+      <i data-lucide="swords" class="size-3.5 text-[var(--color-gold)]"></i>
+      <span class="font-ui text-[13px] text-[var(--color-gold)] tracking-[0.1em]">MATCH GENERATO</span>
+    </div>
+    <button id="delete-match-btn"
+      class="font-ui px-2 py-1 rounded text-[10px] transition-colors hover:bg-red-500/20 tracking-[0.08em] text-[#F87171] border border-[rgba(248,113,113,0.3)]">ELIMINA</button>
+  </div>
+
+  <!-- Teams -->
+  <div class="p-4 md:p-5 space-y-4">
+    {{teamCardA}}
+    <div class="flex items-center gap-3">
+      <div class="flex-1 h-px bg-white/10"></div>
+      <div
+        class="px-4 py-1.5 rounded-full font-display text-xl text-[var(--color-gold)] tracking-[0.1em] bg-[rgba(255,215,0,0.08)] border border-[rgba(255,215,0,0.25)]">
+        VS</div>
+      <div class="flex-1 h-px bg-white/10"></div>
+    </div>
+    {{teamCardB}}
+
+    <div class="flex justify-between px-2">
+      <span class="font-ui text-[11px] {{winProbAClass}}">{{winProbA}}% WIN</span>
+      <span class="font-ui text-[11px] {{winProbBClass}}">{{winProbB}}% WIN</span>
+    </div>
+  </div>
+
+  {{heuristicData}}
+
+  <!-- Score input -->
+  <div class="border-t border-white/10">
+    <div class="px-4 md:px-5 py-3 bg-[rgba(10,25,18,0.5)]">
+      <span class="font-ui text-[11px] text-white/50 tracking-[0.1em]">INSERISCI PUNTEGGIO</span>
+    </div>
+    <div class="p-4 md:p-5">
+      <div class="flex items-center justify-center gap-4">
+        <div class="text-center">
+          <div class="font-ui mb-1 text-[10px] text-[var(--color-team-red,#E53E3E)] tracking-[0.1em]">TEAM A</div>
+          <input id="score-team-a" type="number" min="0" max="8"
+            class="w-16 h-16 rounded-xl text-center font-display bg-white/5 text-white outline-none focus:ring-2 focus:ring-[var(--color-gold)]/50 transition-all text-[32px] border border-white/15"
+            placeholder="0" />
+        </div>
+        <span class="font-display text-white/30 text-[28px] mt-4">-</span>
+        <div class="text-center">
+          <div class="font-ui mb-1 text-[10px] text-[var(--color-team-blue,#3182CE)] tracking-[0.1em]">TEAM B</div>
+          <input id="score-team-b" type="number" min="0" max="8"
+            class="w-16 h-16 rounded-xl text-center font-display bg-white/5 text-white outline-none focus:ring-2 focus:ring-[var(--color-gold)]/50 transition-all text-[32px] border border-white/15"
+            placeholder="0" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

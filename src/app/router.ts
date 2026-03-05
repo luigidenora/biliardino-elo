@@ -9,7 +9,7 @@ import gsap from 'gsap';
 import { Component } from './components/component.base';
 import { appState } from './state';
 import errorTemplate from './templates/router-error.html?raw';
-import { bindHtml } from './utils/html-template.util';
+import { html } from './utils/html-template.util';
 
 // ── Route definition ──────────────────────────────────────
 
@@ -282,7 +282,7 @@ class Router {
     } catch (error) {
       console.error('[Router] Error rendering route:', error);
       if (this.contentEl) {
-        this.contentEl.innerHTML = bindHtml(errorTemplate)`${{}}`;
+        this.contentEl.innerHTML = html(errorTemplate);
         this.contentEl.style.opacity = '1';
         this.contentEl.style.transform = '';
       }

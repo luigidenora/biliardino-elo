@@ -4,33 +4,32 @@
  * The login dialog has been replaced by the UserDropdown singleton.
  */
 
-import { bindHtml, rawHtml } from '../utils/html-template.util';
+import { html, rawHtml } from '../utils/html-template.util';
 import { renderFieldBackground } from './field-background.component';
 import { HeaderComponent } from './header.component';
 import template from './layout.component.html?raw';
-import { PullToRefreshComponent } from './pull-to-refresh.component';
+import { bottomNav } from './bottom-nav.component';
+import { mobileDrawer } from './mobile-drawer.component';
 
 export class LayoutComponent {
   private header = new HeaderComponent();
-  private pullToRefresh = new PullToRefreshComponent();
 
   render(): string {
-    return bindHtml(template)`${{
+    return html(template, {
       fieldBackground: rawHtml(renderFieldBackground()),
       headerHtml: rawHtml(this.header.render())
-    }}`;
+    });
   }
 
   mount(): void {
     this.header.mount();
-    const appContent = document.getElementById('app-content');
-    if (appContent) {
-      this.pullToRefresh.init(appContent);
-    }
+    mobileDrawer.mount();
+    bottomNav.mount();
   }
 
   destroy(): void {
     this.header.destroy();
-    this.pullToRefresh.destroy();
+    mobileDrawer.destroy();
+    bottomNav.destroy();
   }
 }

@@ -11,323 +11,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-  <style>
-    :root {
-      color-scheme: dark;
-      --boot-bg: #0F2A20;
-      --boot-surface: rgba(255, 255, 255, 0.03);
-      --boot-border: rgba(255, 215, 0, 0.14);
-      --boot-strong: rgba(255, 255, 255, 0.2);
-      --boot-soft: rgba(255, 255, 255, 0.12);
-      --boot-mid: rgba(255, 255, 255, 0.16);
-      --boot-max-width: 1280px;
-      --boot-header-offset: 3.5rem;
-      /* matches --header-height (h-14) */
-    }
-
-    html,
-    body {
-      margin: 0;
-      min-height: 100%;
-      background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
-      color: #fff;
-    }
-
-    body {
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-
-    input,
-    select,
-    textarea {
-      /* Prevent iOS Safari auto-zoom when focusing form controls */
-      font-size: 16px;
-    }
-
-    .boot-shell {
-      min-height: calc(100vh - var(--boot-header-offset));
-      max-width: var(--boot-max-width);
-      margin: 0 auto;
-      padding: 20px 16px 32px;
-      /* py-5 px-4 */
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    #app {
-      min-height: 100vh;
-    }
-
-    #app-boot {
-      position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 60;
-      pointer-events: none;
-      background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 320ms ease, transform 320ms ease;
-      transform: translateY(0);
-    }
-
-    #app-boot.is-visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    #app-boot.is-visible.is-exiting {
-      opacity: 0;
-      visibility: visible;
-      transform: translateY(-6px);
-    }
-
-    #app-boot.is-hidden {
-      display: none !important;
-    }
-
-    .boot-row {
-      border-radius: 16px;
-      background: var(--boot-surface);
-      border: 1px solid var(--boot-border);
-    }
-
-    .boot-heading {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .boot-icon {
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
-      background: rgba(255, 215, 0, 0.28);
-      box-shadow: 0 0 14px rgba(255, 215, 0, 0.18);
-      flex-shrink: 0;
-    }
-
-    .boot-search {
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    .boot-pulse {
-      animation: boot-pulse 1.2s ease-in-out infinite;
-    }
-
-    .boot-line {
-      height: 12px;
-      border-radius: 999px;
-      background: var(--boot-soft);
-    }
-
-    .boot-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-
-    .boot-podium {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-
-    .boot-podium-desktop {
-      display: none;
-    }
-
-    .boot-podium-card {
-      border-radius: 16px;
-      border: 1px solid var(--boot-border);
-      background: rgba(255, 255, 255, 0.08);
-      padding: 16px 14px;
-      display: grid;
-      justify-items: center;
-      gap: 8px;
-      min-height: 190px;
-    }
-
-    .boot-podium-card.is-first {
-      border-color: rgba(255, 215, 0, 0.35);
-      background: rgba(255, 215, 0, 0.16);
-    }
-
-    .boot-medal {
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: var(--boot-mid);
-    }
-
-    .boot-card {
-      padding: 14px;
-    }
-
-    .boot-card-head {
-      height: 10px;
-      width: 64px;
-      border-radius: 999px;
-      background: var(--boot-mid);
-    }
-
-    .boot-card-body {
-      margin-top: 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .boot-avatar {
-      width: 42px;
-      height: 42px;
-      border-radius: 999px;
-      background: var(--boot-mid);
-      flex-shrink: 0;
-    }
-
-    .boot-table {
-      padding: 0;
-      display: grid;
-      gap: 0;
-      overflow: hidden;
-    }
-
-    .boot-table-head {
-      padding: 12px 12px;
-      background: rgba(10, 25, 18, 0.8);
-      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
-      display: grid;
-      grid-template-columns: 30px 1fr 55px 40px;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .boot-table-row {
-      background: rgba(255, 255, 255, 0.02);
-      padding: 10px 12px;
-      display: grid;
-      grid-template-columns: 30px 1fr 55px 40px;
-      align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .boot-player {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .boot-winrate {
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
-      overflow: hidden;
-    }
-
-    .boot-winrate>span {
-      display: block;
-      height: 100%;
-      width: 56%;
-      border-radius: 999px;
-      background: rgba(255, 215, 0, 0.85);
-    }
-
-    .boot-recent {
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 215, 0, 0.2);
-      background: rgba(15, 42, 32, 0.55);
-    }
-
-    .boot-recent-head {
-      padding: 11px 14px;
-      background: rgba(10, 25, 18, 0.8);
-      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .boot-recent-list {
-      padding: 10px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .boot-recent-item {
-      border-radius: 9px;
-      border: 1px solid rgba(74, 144, 217, 0.3);
-      background: rgba(255, 255, 255, 0.03);
-      padding: 10px;
-      display: grid;
-      gap: 6px;
-    }
-
-    @media (min-width: 768px) {
-      :root {
-        --boot-header-offset: 4rem;
-        /* matches --header-height-md (h-16) */
-      }
-
-      .boot-shell {
-        padding: 32px 24px 40px;
-        /* md:py-8 md:px-6 */
-        gap: 22px;
-      }
-
-      .boot-podium {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-      }
-
-      .boot-podium-desktop {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .boot-podium-mobile {
-        display: none;
-      }
-
-      .boot-podium-card {
-        min-height: 232px;
-      }
-
-      .boot-podium-card.is-first {
-        transform: translateY(-10px);
-      }
-
-      .boot-table-head,
-      .boot-table-row {
-        grid-template-columns: 40px 1fr 80px 70px 110px 90px;
-      }
-    }
-
-    @keyframes boot-pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.45;
-      }
-    }
-  </style>
   <link rel="icon" type="image/png" sizes="196x196" href="/icons/apple-icon-180.png">
+  <link rel="stylesheet" href="/src/style.css">
   <link rel="apple-touch-icon" href="/icons/apple-icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-startup-image" href="/icons/apple-splash-2048-2732.jpg"
@@ -411,6 +96,322 @@
   <link rel="apple-touch-startup-image" href="/icons/apple-splash-1136-640.jpg"
     media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
 </head>
+<style>
+  :root {
+    color-scheme: dark;
+    --boot-bg: #0F2A20;
+    --boot-surface: rgba(255, 255, 255, 0.03);
+    --boot-border: rgba(255, 215, 0, 0.14);
+    --boot-strong: rgba(255, 255, 255, 0.2);
+    --boot-soft: rgba(255, 255, 255, 0.12);
+    --boot-mid: rgba(255, 255, 255, 0.16);
+    --boot-max-width: 1280px;
+    --boot-header-offset: 3.5rem;
+    /* matches --header-height (h-14) */
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
+    color: #fff;
+  }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  }
+
+  input,
+  select,
+  textarea {
+    /* Prevent iOS Safari auto-zoom when focusing form controls */
+    font-size: 16px;
+  }
+
+  .boot-shell {
+    min-height: calc(100vh - var(--boot-header-offset));
+    max-width: var(--boot-max-width);
+    margin: 0 auto;
+    padding: 20px 16px 32px;
+    /* py-5 px-4 */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  #app {
+    min-height: 100vh;
+  }
+
+  #app-boot {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 320ms ease, transform 320ms ease;
+    transform: translateY(0);
+  }
+
+  #app-boot.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  #app-boot.is-visible.is-exiting {
+    opacity: 0;
+    visibility: visible;
+    transform: translateY(-6px);
+  }
+
+  #app-boot.is-hidden {
+    display: none !important;
+  }
+
+  .boot-row {
+    border-radius: 16px;
+    background: var(--boot-surface);
+    border: 1px solid var(--boot-border);
+  }
+
+  .boot-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .boot-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(255, 215, 0, 0.28);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.18);
+    flex-shrink: 0;
+  }
+
+  .boot-search {
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .boot-pulse {
+    animation: boot-pulse 1.2s ease-in-out infinite;
+  }
+
+  .boot-line {
+    height: 12px;
+    border-radius: 999px;
+    background: var(--boot-soft);
+  }
+
+  .boot-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .boot-podium {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .boot-podium-desktop {
+    display: none;
+  }
+
+  .boot-podium-card {
+    border-radius: 16px;
+    border: 1px solid var(--boot-border);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 16px 14px;
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    min-height: 190px;
+  }
+
+  .boot-podium-card.is-first {
+    border-color: rgba(255, 215, 0, 0.35);
+    background: rgba(255, 215, 0, 0.16);
+  }
+
+  .boot-medal {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--boot-mid);
+  }
+
+  .boot-card {
+    padding: 14px;
+  }
+
+  .boot-card-head {
+    height: 10px;
+    width: 64px;
+    border-radius: 999px;
+    background: var(--boot-mid);
+  }
+
+  .boot-card-body {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .boot-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    background: var(--boot-mid);
+    flex-shrink: 0;
+  }
+
+  .boot-table {
+    padding: 0;
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .boot-table-head {
+    padding: 12px 12px;
+    background: rgba(10, 25, 18, 0.8);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    display: grid;
+    grid-template-columns: 30px 1fr 55px 40px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .boot-table-row {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 30px 1fr 55px 40px;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .boot-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .boot-winrate {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+  }
+
+  .boot-winrate>span {
+    display: block;
+    height: 100%;
+    width: 56%;
+    border-radius: 999px;
+    background: rgba(255, 215, 0, 0.85);
+  }
+
+  .boot-recent {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    background: rgba(15, 42, 32, 0.55);
+  }
+
+  .boot-recent-head {
+    padding: 11px 14px;
+    background: rgba(10, 25, 18, 0.8);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .boot-recent-list {
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .boot-recent-item {
+    border-radius: 9px;
+    border: 1px solid rgba(74, 144, 217, 0.3);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px;
+    display: grid;
+    gap: 6px;
+  }
+
+  @media (min-width: 768px) {
+    :root {
+      --boot-header-offset: 4rem;
+      /* matches --header-height-md (h-16) */
+    }
+
+    .boot-shell {
+      padding: 32px 24px 40px;
+      /* md:py-8 md:px-6 */
+      gap: 22px;
+    }
+
+    .boot-podium {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .boot-podium-desktop {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .boot-podium-mobile {
+      display: none;
+    }
+
+    .boot-podium-card {
+      min-height: 232px;
+    }
+
+    .boot-podium-card.is-first {
+      transform: translateY(-10px);
+    }
+
+    .boot-table-head,
+    .boot-table-row {
+      grid-template-columns: 40px 1fr 80px 70px 110px 90px;
+    }
+  }
+
+  @keyframes boot-pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.45;
+    }
+  }
+</style>
 
 <body>
   <div id="app" aria-busy="true" aria-live="polite"></div>
@@ -492,7 +493,6 @@
           <div class="boot-line" style="width: 98px"></div>
         </div>
       </div>
-      <div class="boot-search"></div>
       <div class="boot-row boot-table">
         <div class="boot-table-head">
           <div class="boot-line" style="height:10px;background:rgba(255,215,0,0.45)"></div>
@@ -528,7 +528,7 @@
           <div class="boot-line"></div>
           <div class="boot-line"></div>
           <div class="boot-line"></div>
-          <div class="boot-winrate"><span style="width:72%;background:rgba(74,222,128,0.85)"></span></div>
+          <div class="boot-winrate"><span style="width:32%;background:rgba(248,113,113,0.85)"></span></div>
         </div>
         <div class="boot-table-row">
           <div class="boot-medal"></div>
@@ -545,7 +545,7 @@
           <div class="boot-winrate"><span></span></div>
         </div>
         <div class="boot-table-row">
-          <div class="boot-line" style="width:12px;height:14px;background:var(--boot-mid)"></div>
+          <div class="boot-medal"></div>
           <div class="boot-player">
             <div class="boot-avatar" style="width:34px;height:34px"></div>
             <div class="boot-grid" style="gap:6px;flex:1">
@@ -556,7 +556,35 @@
           <div class="boot-line"></div>
           <div class="boot-line"></div>
           <div class="boot-line"></div>
-          <div class="boot-winrate"><span style="width:26%;background:rgba(248,113,113,0.85)"></span></div>
+          <div class="boot-winrate"><span style="width:60%;background:rgba(74,222,128,0.85)"></span></div>
+        </div>
+        <div class="boot-table-row">
+          <div class="boot-medal"></div>
+          <div class="boot-player">
+            <div class="boot-avatar" style="width:34px;height:34px"></div>
+            <div class="boot-grid" style="gap:6px;flex:1">
+              <div class="boot-line" style="width: 64%"></div>
+              <div class="boot-line" style="width: 42%; height:9px"></div>
+            </div>
+          </div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-winrate"><span style="width:90%;background:rgba(74,222,128,0.85)"></span></div>
+        </div>
+        <div class="boot-table-row">
+          <div class="boot-medal"></div>
+          <div class="boot-player">
+            <div class="boot-avatar" style="width:34px;height:34px"></div>
+            <div class="boot-grid" style="gap:6px;flex:1">
+              <div class="boot-line" style="width: 64%"></div>
+              <div class="boot-line" style="width: 42%; height:9px"></div>
+            </div>
+          </div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-line"></div>
+          <div class="boot-winrate"><span style="width:22%;background:rgba(248,113,113,0.85)"></span></div>
         </div>
       </div>
       <div class="boot-recent">

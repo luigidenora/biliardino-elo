@@ -2,7 +2,10 @@ import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
 import { getClass, getRank } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { html, rawHtml } from '../../utils/html-template.util';
 import { getInitials, renderPlayerAvatar } from '../player-avatar.component';
+import generatedCardTemplate from './matchmaking-generated-card.component.html?raw';
+import playerListTemplate from './matchmaking-player-list.component.html?raw';
 
 import type { IPlayer } from '@/models/player.interface';
 import type { IMatchProposal } from '@/services/matchmaking.service';
@@ -114,51 +117,17 @@ export function renderMatchmakingPlayerList({
     `;
   }).join('');
 
-  return `
-    <div class="glass-card rounded-xl overflow-hidden">
-      <div class="flex items-center justify-between px-4 md:px-5 py-3 bg-[rgba(10,25,18,0.8)] border-b border-[rgba(255,215,0,0.2)]">
-        <div class="flex items-center gap-2">
-          <i data-lucide="users" class="size-3.5 text-[var(--color-gold)]"></i>
-          <span class="font-ui text-[13px] tracking-[0.1em] text-[var(--color-gold)]">DISPONIBILITA GIOCATORI</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <button id="select-all-btn" class="font-ui px-2 py-1 rounded text-[10px] transition-colors hover:bg-white/10 tracking-[0.08em] text-white/50 border border-white/15">TUTTI</button>
-          <button id="deselect-all-btn" class="font-ui px-2 py-1 rounded text-[10px] transition-colors hover:bg-white/10 tracking-[0.08em] text-white/50 border border-white/15">NESSUNO</button>
-        </div>
-      </div>
-
-      <div class="px-4 md:px-5 py-2 bg-[rgba(10,25,18,0.5)] border-b border-white/5">
-        <div class="relative">
-          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 size-[13px] text-white/30"></i>
-          <input id="matchmaking-search" type="text" placeholder="Cerca giocatore…"
-                 class="w-full pl-9 pr-3 py-2 rounded-lg text-white placeholder:text-white/25 outline-none transition-all duration-200 bg-white/5 border border-white/10 focus:border-[rgba(255,215,0,0.3)] font-body text-[13px]" />
-        </div>
-      </div>
-
-      <div class="px-4 md:px-5 py-2 bg-[rgba(10,25,18,0.5)] border-b border-white/5">
-        <div class="flex items-center justify-between mb-1.5">
-          <span id="selected-count-label" class="font-ui text-[11px] text-white/50 tracking-[0.08em]">${selectedCount} / ${minPlayers} SELEZIONATI</span>
-          <span id="progress-status" class="font-ui text-[10px] tracking-[0.08em] ${progressComplete ? 'text-[#4ADE80]' : 'text-white/30'}">${progressComplete ? 'PRONTO' : 'MIN. ' + minPlayers}</span>
-        </div>
-        <div class="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
-          <div id="progress-fill" class="h-full rounded-full transition-all duration-500"
-               style="width:${progressPct}%; background:${progressComplete ? 'linear-gradient(90deg,#4ADE80,#22C55E)' : 'linear-gradient(90deg,#FFD700,#F0A500)'}"></div>
-        </div>
-      </div>
-
-      <div id="confirmations-panel" class="px-4 md:px-5 py-2 hidden bg-[rgba(74,222,128,0.05)] border-b border-[rgba(74,222,128,0.15)]">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <i data-lucide="wifi" class="size-3 text-[#4ADE80]"></i>
-            <span class="font-ui text-[11px] text-[#4ADE80] tracking-[0.08em]">CONFERME LIVE</span>
-          </div>
-          <span id="conf-count-badge" class="font-ui px-2 py-0.5 rounded-full text-[11px] text-[#4ADE80] bg-[rgba(74,222,128,0.15)] border border-[rgba(74,222,128,0.3)]">0</span>
-        </div>
-      </div>
-
-      <div id="player-rows-container">${playerRows}</div>
-    </div>
-  `;
+  return html(playerListTemplate, {
+    selectedCount,
+    minPlayers,
+    progressStatusClass: progressComplete ? 'text-[#4ADE80]' : 'text-white/30',
+    progressStatus: progressComplete ? 'PRONTO' : 'MIN. ' + minPlayers,
+    progressPct,
+    progressFillStyle: progressComplete
+      ? 'linear-gradient(90deg,#4ADE80,#22C55E)'
+      : 'linear-gradient(90deg,#FFD700,#F0A500)',
+    playerRows: rawHtml(playerRows),
+  });
 }
 
 export function renderMatchmakingDisclaimerCard(): string {
@@ -307,57 +276,15 @@ export function renderGeneratedMatchCard(match: IMatchProposal): string {
   const winProbA = expectedScore(avgEloA, avgEloB);
   const winProbB = 1 - winProbA;
 
-  return `
-    <div class="glass-card-gold rounded-xl overflow-hidden">
-      <div class="px-4 md:px-5 py-3 flex items-center justify-between bg-[rgba(10,25,18,0.8)] border-b border-[rgba(255,215,0,0.2)]">
-        <div class="flex items-center gap-2">
-          <i data-lucide="swords" class="size-3.5 text-[var(--color-gold)]"></i>
-          <span class="font-ui text-[13px] text-[var(--color-gold)] tracking-[0.1em]">MATCH GENERATO</span>
-        </div>
-        <button id="delete-match-btn" class="font-ui px-2 py-1 rounded text-[10px] transition-colors hover:bg-red-500/20 tracking-[0.08em] text-[#F87171] border border-[rgba(248,113,113,0.3)">ELIMINA</button>
-      </div>
-
-      <div class="p-4 md:p-5 space-y-4">
-        ${renderMatchmakingTeamCard('A', match.teamA.defence, match.teamA.attack, avgEloA)}
-        <div class="flex items-center gap-3">
-          <div class="flex-1 h-px bg-white/10"></div>
-          <div class="px-4 py-1.5 rounded-full font-display text-xl text-[var(--color-gold)] tracking-[0.1em] bg-[rgba(255,215,0,0.08)] border border-[rgba(255,215,0,0.25)]">VS</div>
-          <div class="flex-1 h-px bg-white/10"></div>
-        </div>
-        ${renderMatchmakingTeamCard('B', match.teamB.defence, match.teamB.attack, avgEloB)}
-
-        <div class="flex justify-between px-2">
-          <span class="font-ui text-[11px] ${winProbA > 0.5 ? 'text-[#4ADE80]' : 'text-white/40'}">${(winProbA * 100).toFixed(1)}% WIN</span>
-          <span class="font-ui text-[11px] ${winProbB > 0.5 ? 'text-[#4ADE80]' : 'text-white/40'}">${(winProbB * 100).toFixed(1)}% WIN</span>
-        </div>
-      </div>
-
-      ${match.heuristicData ? renderMatchmakingHeuristicData(match) : ''}
-
-      <div class="border-t border-white/10">
-        <div class="px-4 md:px-5 py-3 bg-[rgba(10,25,18,0.5)]">
-          <span class="font-ui text-[11px] text-white/50 tracking-[0.1em]">INSERISCI PUNTEGGIO</span>
-        </div>
-        <div class="p-4 md:p-5">
-          <div class="flex items-center justify-center gap-4">
-            <div class="text-center">
-              <div class="font-ui mb-1 text-[10px] text-[var(--color-team-red,#E53E3E)] tracking-[0.1em]">TEAM A</div>
-              <input id="score-team-a" type="number" min="0" max="8"
-                     class="w-16 h-16 rounded-xl text-center font-display bg-white/5 text-white outline-none focus:ring-2 focus:ring-[var(--color-gold)]/50 transition-all text-[32px] border border-white/15"
-                     placeholder="0" />
-            </div>
-            <span class="font-display text-white/30 text-[28px] mt-4">-</span>
-            <div class="text-center">
-              <div class="font-ui mb-1 text-[10px] text-[var(--color-team-blue,#3182CE)] tracking-[0.1em]">TEAM B</div>
-              <input id="score-team-b" type="number" min="0" max="8"
-                     class="w-16 h-16 rounded-xl text-center font-display bg-white/5 text-white outline-none focus:ring-2 focus:ring-[var(--color-gold)]/50 transition-all text-[32px] border border-white/15"
-                     placeholder="0" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+  return html(generatedCardTemplate, {
+    teamCardA: rawHtml(renderMatchmakingTeamCard('A', match.teamA.defence, match.teamA.attack, avgEloA)),
+    teamCardB: rawHtml(renderMatchmakingTeamCard('B', match.teamB.defence, match.teamB.attack, avgEloB)),
+    winProbAClass: winProbA > 0.5 ? 'text-[#4ADE80]' : 'text-white/40',
+    winProbA: (winProbA * 100).toFixed(1),
+    winProbBClass: winProbB > 0.5 ? 'text-[#4ADE80]' : 'text-white/40',
+    winProbB: (winProbB * 100).toFixed(1),
+    heuristicData: rawHtml(match.heuristicData ? renderMatchmakingHeuristicData(match) : ''),
+  });
 }
 
 export function renderMatchmakingPanel(match: IMatchProposal | null, minPlayers: number, selectedCount: number): string {

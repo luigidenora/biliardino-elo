@@ -4,13 +4,13 @@
  */
 
 import { getPlayerById } from '../../services/player.service';
-import { bindHtml, rawHtml } from '../utils/html-template.util';
+import { html, rawHtml } from '../utils/html-template.util';
 import template from './player-avatar.component.html?raw';
 
 const BASE_PATH = import.meta.env.BASE_URL;
 let avatarRenderSequence = 0;
 
-export type AvatarSize = 'xs' | 'sm' | 'md' | 'base' | 'lg' | 'xl' | 'match';
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'base' | 'lg' | 'xl';
 
 export const CLASS_COLORS: Record<number, string> = {
   0: '#FFD700', 1: '#4A90D9', 2: '#27AE60', 3: '#C0C0C0', 4: '#8B7D6B'
@@ -22,8 +22,7 @@ const sizeMap: Record<AvatarSize, { container: string; text: string; dot: string
   md: { container: 'w-[52px] h-[52px]', text: 'text-sm', dot: 'w-3 h-3', coreInsetClass: 'inset-[8%]' },
   base: { container: 'w-[57px] h-[57px]', text: 'text-base', dot: 'w-3 h-3', coreInsetClass: 'inset-[8%]' },
   lg: { container: 'w-[76px] h-[76px]', text: 'text-lg', dot: 'w-3.5 h-3.5', coreInsetClass: 'inset-[8%]' },
-  xl: { container: 'w-[114px] h-[114px]', text: 'text-2xl', dot: 'w-4 h-4', coreInsetClass: 'inset-[8%]' },
-  match: { container: 'w-[112px] h-[112px]', text: 'text-[11px]', dot: 'w-3 h-3', coreInsetClass: 'inset-[8%]' }
+  xl: { container: 'w-[114px] h-[114px]', text: 'text-2xl', dot: 'w-4 h-4', coreInsetClass: 'inset-[8%]' }
 };
 
 const frameTransformMap: Record<number, { translateX: number; translateY: number; scale: number; origin: string }> = {
@@ -100,7 +99,7 @@ export function renderPlayerAvatar({ initials, color, size = 'md', online, playe
          style="top:0;left:0;width:100%;height:100%;filter:url(#${filterId});transform-origin:${frameTransform?.origin ?? '50% 50%'};transform:translate(${frameTransform?.translateX ?? 0}%,${frameTransform?.translateY ?? 0}%) scale(${frameTransform?.scale ?? 1.07})"
          loading="lazy" />`;
 
-  return bindHtml(template)`${{
+  return html(template, {
     containerClass: s.container,
     avatarCoreInsetClass: s.coreInsetClass,
     color,
@@ -108,7 +107,7 @@ export function renderPlayerAvatar({ initials, color, size = 'md', online, playe
     avatarContent: rawHtml(avatarContent),
     frameOverlay: rawHtml(frameOverlay),
     statusDot: rawHtml(statusDot)
-  }}`;
+  });
 }
 
 /**

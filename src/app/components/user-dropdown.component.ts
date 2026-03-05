@@ -23,7 +23,10 @@ import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import gsap from 'gsap';
+import { html, rawHtml } from '../utils/html-template.util';
 import { CLASS_COLORS, getInitials, renderPlayerAvatar } from './player-avatar.component';
+import skeletonTemplate from './user-dropdown-skeleton.component.html?raw';
+import panelTemplate from './user-dropdown.component.html?raw';
 
 /* ── Keys localStorage ─────────────────────────────────────── */
 const PLAYER_ID_KEY = 'biliardino_player_id';
@@ -493,7 +496,7 @@ class UserDropdownComponent {
 
   private updatePillDot(): void {
     const color = NOTIF_DOT[this.notifState];
-    ['notif-state-dot', 'notif-state-dot-mobile'].forEach((id) => {
+    ['notif-state-dot', 'notif-state-dot-mobile', 'drawer-notif-dot'].forEach((id) => {
       const dot = document.getElementById(id);
       if (!dot) return;
       if (color === null) {
@@ -531,38 +534,15 @@ class UserDropdownComponent {
   /* ── Render ────────────────────────────────────────────────── */
 
   private renderPanelSkeleton(): string {
-    return `
-      <div id="dd-identity" class="p-4"></div>
-      <div class="dd-sep" style="height:1px;background:rgba(255,255,255,0.06);margin:0 16px"></div>
-      <div id="dd-notif" class="p-4"></div>
-      <div class="dd-sep" style="height:1px;background:rgba(255,255,255,0.06);margin:0 16px"></div>
-      <div id="dd-admin" class="p-4 pb-3"></div>
-    `;
+    return html(skeletonTemplate);
   }
 
   private renderPanelContent(): string {
-    return `
-      <!-- caret -->
-      <div style="
-        position:absolute;top:-6px;right:72px;
-        width:11px;height:11px;
-        background:rgba(7,18,12,0.98);
-        border-top:1px solid rgba(255,215,0,0.22);
-        border-left:1px solid rgba(255,215,0,0.22);
-        transform:rotate(45deg);
-        pointer-events:none;
-      "></div>
-
-      <div id="dd-identity" class="p-4">${this.renderIdentitySection()}</div>
-
-      <div style="height:1px;background:rgba(255,255,255,0.06);margin:0 16px"></div>
-
-      <div id="dd-notif" class="p-4 flex flex-wrap justify-between">${this.renderNotifSection()}</div>
-
-      <div style="height:1px;background:rgba(255,255,255,0.06);margin:0 16px"></div>
-
-      <div id="dd-admin" class="p-4 pb-3">${this.renderAdminSection()}</div>
-    `;
+    return html(panelTemplate, {
+      identitySection: rawHtml(this.renderIdentitySection()),
+      notifSection: rawHtml(this.renderNotifSection()),
+      adminSection: rawHtml(this.renderAdminSection()),
+    });
   }
 
   /* ── Identity section ──────────────────────────────────────── */
