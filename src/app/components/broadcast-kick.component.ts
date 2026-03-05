@@ -132,9 +132,7 @@ export class BroadcastKickComponent {
     // 5. Ball flies away with arc trajectory
     tl.to(ball, {
       scaleX: 1, scaleY: 1, x: -240, rotation: 720, duration: 0.4, ease: 'power1.out'
-    }, '-=0.1').then(() => {
-      haptics.trigger([{ duration: 120 }], { intensity: 0.9 });
-    });
+    }, '-=0.1');
 
     // 6. Ball returns to center Y during flight (natural arc)
     tl.to(ball, {
@@ -148,6 +146,8 @@ export class BroadcastKickComponent {
 
     // 8. Ball disappears after flying off-screen
     tl.to(ball, { opacity: 0, duration: 0.15 }, '-=0.1');
+
+    haptics.trigger([{ duration: 120, delay: 1000 }], { intensity: 0.9 });
 
     await tl.then();
     return true;
