@@ -257,9 +257,9 @@ class Router {
       component.setParams(match.params);
 
       // 4. Render HTML
-      const html = await component.render();
+      const renderHtml = await component.render();
       if (this.contentEl) {
-        this.contentEl.innerHTML = html;
+        this.contentEl.innerHTML = renderHtml;
         this.contentEl.style.opacity = '0';
         this.contentEl.style.transform = 'translateY(10px)';
       }
