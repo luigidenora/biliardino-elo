@@ -9,7 +9,18 @@ const CACHE_CONTROL_DOC = 'id';
 const CACHE_HASH_PLAYERS_KEY = 'firestore_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'firestore_cache_hash_matches';
 
-const { useCacheMatches, useCachePlayers } = await shouldUseCache();
+// Lazy cache state — initialized on first data fetch to avoid blocking module evaluation
+let _cacheStateResolved = false;
+let useCachePlayers = false;
+let useCacheMatches = false;
+
+async function ensureCacheInitialized(): Promise<void> {
+  if (_cacheStateResolved) return;
+  _cacheStateResolved = true;
+  const state = await shouldUseCache();
+  useCachePlayers = state.useCachePlayers;
+  useCacheMatches = state.useCacheMatches;
+}
 
 function toFiniteNumber(value: unknown, fallback: number): number {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -100,6 +111,7 @@ async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMat
 }
 
 export async function fetchPlayers(): Promise<IPlayer[]> {
+  await ensureCacheInitialized();
   const snap = await getDocsCacheServer(PLAYERS_COLLECTION, useCachePlayers);
 
   const players = snap.docs.flatMap((d) => {
@@ -138,6 +150,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 }
 
 export async function fetchMatches(): Promise<IMatch[]> {
+  await ensureCacheInitialized();
   const snap = await getDocsCacheServer(MATCHES_COLLECTION, useCacheMatches);
   const matches: IMatch[] = [];
 

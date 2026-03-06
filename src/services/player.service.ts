@@ -8,7 +8,8 @@ const derankTreshold = Math.round(100 * 0.3);
 let playersArray: IPlayer[] = [];
 let rankOutdated = true;
 
-await loadPlayers();
+/** Resolves when the initial player data has been fetched and is ready. */
+export const playersReady: Promise<void> = loadPlayers();
 
 export function getPlayerById(id: number): IPlayer | undefined {
   return playersMap.get(id);

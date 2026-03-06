@@ -19,6 +19,7 @@ import { LayoutComponent } from './components/layout.component';
 import { userDropdown } from './components/user-dropdown.component';
 import { initParticlesSystem } from './particles/particles-manager';
 import { router } from './router';
+import { matchesReady } from '@/services/match.service';
 import { appState } from './state';
 import { trace } from './utils/trace';
 
@@ -104,7 +105,12 @@ async function bootstrap(): Promise<void> {
   userDropdown.mount();
   trace('Bootstrap', 'userDropdown mounted');
 
-  // 4. Start the router (reads current hash, renders first page)
+  // 4. Wait for players and matches to be loaded before routing
+  trace('Bootstrap', 'waiting for data (players + matches)');
+  await matchesReady;
+  trace('Bootstrap', 'data ready — starting router');
+
+  // 5. Start the router (reads current hash, renders first page)
   trace('Bootstrap', 'calling router.init()');
   router.init();
   trace('Bootstrap', 'router.init() returned (async navigation in flight)');
