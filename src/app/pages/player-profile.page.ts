@@ -139,7 +139,7 @@ export default class PlayerProfilePage extends Component {
       m => m.teamA.defence === id || m.teamA.attack === id
         || m.teamB.defence === id || m.teamB.attack === id
     );
-    const recentMatches = playerMatches.slice(-10).reverse();
+    const recentMatches = playerMatches.slice(-20).reverse();
 
     // ── Radar chart data ───────────────────────────────────
     const stats = getPlayerStats(id);
@@ -314,7 +314,7 @@ export default class PlayerProfilePage extends Component {
                style="background: var(--glass-bg);
                       backdrop-filter: blur(var(--glass-blur));
                       border: 1px solid var(--glass-border);
-                      max-height: 340px">
+                      max-height: 400px">
             <h3 class="font-ui text-xs uppercase tracking-widest mb-3"
                 style="color: var(--color-text-muted)">
               ULTIME PARTITE
@@ -403,29 +403,49 @@ export default class PlayerProfilePage extends Component {
     const opp2 = getPlayerById(opponentTeam.attack);
     const oppNames = [opp1?.name ?? '?', opp2?.name ?? '?'].join(' & ');
 
-    const score = `${match.score[0]} - ${match.score[1]}`;
+    const winColor  = isWin ? 'var(--color-win)'  : 'var(--color-loss)';
+    const winBg     = isWin ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)';
+    const deltaColor = roundedDelta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
 
     return `
-      <div class="flex items-center gap-2 py-2 px-3 rounded-lg"
-           style="background: rgba(255,255,255,0.03);
-                  border: 1px solid rgba(255,255,255,0.04)">
-        <div class="flex-1 min-w-0">
-          <p class="font-body text-xs truncate" style="color: #fff">${oppNames}</p>
-          <p class="font-body text-[10px]" style="color: var(--color-text-dim)">
+      <div style="display:grid;
+                  grid-template-columns:3px 28px 1fr auto auto;
+                  align-items:center;
+                  gap:0;
+                  border-radius:8px;
+                  overflow:hidden;
+                  background:rgba(255,255,255,0.03);
+                  border:1px solid rgba(255,255,255,0.05)">
+        <!-- Colored accent bar -->
+        <div style="height:100%; background:${winColor}; opacity:0.7"></div>
+
+        <!-- W / L label -->
+        <div style="display:flex; align-items:center; justify-content:center; padding:10px 4px; background:${winBg}">
+          <span class="font-ui" style="font-size:9px; font-weight:700; letter-spacing:0.06em; color:${winColor}">
+            ${isWin ? 'W' : 'L'}
+          </span>
+        </div>
+
+        <!-- Opponents + date -->
+        <div style="padding:8px 10px; min-width:0; overflow:hidden">
+          <p class="font-body" style="font-size:11px; color:rgba(255,255,255,0.88); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3">
+            vs ${oppNames}
+          </p>
+          <p class="font-body" style="font-size:10px; color:var(--color-text-dim); line-height:1.2; margin-top:2px">
             ${formatFullDate(match.createdAt)}
           </p>
         </div>
-        <div class="text-center px-2">
-          <p class="font-display text-sm" style="color: #fff">${score}</p>
-        </div>
-        <div class="flex flex-col items-end gap-0.5">
-          <span class="font-ui text-[10px] px-1.5 py-0.5 rounded"
-                style="background: ${isWin ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};
-                       color: ${isWin ? 'var(--color-win)' : 'var(--color-loss)'}">
-            ${isWin ? 'WIN' : 'LOSS'}
+
+        <!-- Score -->
+        <div style="padding:8px 6px; text-align:center; white-space:nowrap">
+          <span class="font-display" style="font-size:14px; color:#fff; line-height:1">
+            ${match.score[0]}<span style="color:rgba(255,255,255,0.3)">–</span>${match.score[1]}
           </span>
-          <span class="font-body text-[10px]"
-                style="color: ${roundedDelta >= 0 ? 'var(--color-win)' : 'var(--color-loss)'}">
+        </div>
+
+        <!-- ELO delta -->
+        <div style="padding:8px 10px 8px 4px; text-align:right; white-space:nowrap; min-width:48px">
+          <span class="font-ui" style="font-size:11px; font-weight:600; color:${deltaColor}">
             ${deltaSign}${roundedDelta}
           </span>
         </div>
