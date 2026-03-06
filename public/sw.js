@@ -137,7 +137,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Asset statici app: stale-while-revalidate
+  // Bundle JS/CSS di Vite (content-hash nell'URL): non intercettare mai.
+  // Se caches.match() si blocca (bug Safari/iOS) durante un dynamic import
+  // del router, la splash screen resta visibile per sempre. Il browser HTTP
+  // cache li gestisce perfettamente poiché l'URL è immutabile per definizione.
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    return;
+  }
+
+  // Altri asset statici same-origin (icone, manifest, sw-version…): cache-first
+  // con aggiornamento in background (stale-while-revalidate).
   event.respondWith(
     caches.match(request).then((cached) => {
       const networkPromise = fetch(request)
@@ -166,7 +175,7 @@ self.addEventListener('fetch', (event) => {
 async function handleNavigationRequest(event) {
   try {
     const preloadResponse = await event.preloadResponse;
-    if (preloadResponse) {
+    if (preloadResponse && preloadResponse.ok && preloadResponse.headers.get('content-type')?.includes('text/html')) {
       const copy = preloadResponse.clone();
       caches.open(STATIC_CACHE()).then(cache =>
         cache.put('/index.html', copy).catch((err) => {
@@ -181,7 +190,7 @@ async function handleNavigationRequest(event) {
     }
 
     const networkResponse = await fetch(event.request);
-    if (networkResponse.ok) {
+    if (networkResponse.ok && networkResponse.headers.get('content-type')?.includes('text/html')) {
       const copy = networkResponse.clone();
       caches.open(STATIC_CACHE()).then(cache =>
         cache.put('/index.html', copy).catch((err) => {

@@ -33,8 +33,6 @@ const navItems: NavItem[] = [
   { path: '/add-player', label: 'Giocatore', icon: 'user-plus', adminOnly: true }
 ];
 
-const LOBBY_POLL_MS = 50_000;
-
 export class HeaderComponent extends Component {
   private handleRouteChange: (() => void) | null = null;
   private handleLobbyChange: (() => void) | null = null;

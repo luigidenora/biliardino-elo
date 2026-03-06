@@ -48,6 +48,7 @@ export default defineConfig(config => ({
     }
   },
   build: {
+    target: 'es2022',
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')
@@ -56,7 +57,8 @@ export default defineConfig(config => ({
         manualChunks: {
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore/lite'],
           gsap: ['gsap'],
-          chartjs: ['chart.js']
+          chartjs: ['chart.js'],
+          lucide: ['lucide']
         }
       }
     }

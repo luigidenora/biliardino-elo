@@ -1,15 +1,17 @@
 /**
- * Runtime tracing utility — always bundled, opt-in via console.
+ * Runtime tracing utility — enabled by default, disabilitabile via console.
  *
- * Enable:  window.enableTracing()   (persists across reloads via localStorage)
  * Disable: window.disableTracing()
+ * Enable:  window.enableTracing()
  *
  * Usage: trace('Router', 'onPathChange', { path })
  */
 
 const LS_KEY = 'biliardino_tracing';
+const LS_DISABLED_KEY = 'biliardino_tracing_disabled';
 
-let _enabled = localStorage.getItem(LS_KEY) === '1';
+// ON by default — opt-out via window.disableTracing()
+let _enabled = localStorage.getItem(LS_DISABLED_KEY) !== '1';
 
 declare global {
   interface Window {
@@ -20,22 +22,43 @@ declare global {
 
 window.enableTracing = () => {
   _enabled = true;
+  localStorage.removeItem(LS_DISABLED_KEY);
   localStorage.setItem(LS_KEY, '1');
-  console.info('[Trace] Tracing ENABLED — will persist across reloads. Use window.disableTracing() to stop.');
+  console.info('[Trace] Tracing ENABLED.');
 };
 
 window.disableTracing = () => {
   _enabled = false;
+  localStorage.setItem(LS_DISABLED_KEY, '1');
   localStorage.removeItem(LS_KEY);
-  console.info('[Trace] Tracing DISABLED.');
+  console.info('[Trace] Tracing DISABLED. Use window.enableTracing() to re-enable.');
 };
 
-if (_enabled) {
-  console.info('[Trace] Tracing is ON (persisted). Use window.disableTracing() to stop.');
-}
+console.info(`[Trace] Tracing is ${_enabled ? 'ON' : 'OFF'}. Use window.${_enabled ? 'disableTracing' : 'enableTracing'}() to toggle.`);
+
+// ── Global error catchers — catch silent crashes anywhere in the app ──────────
+// These fire even for module-evaluation errors and unhandled promise rejections.
+
+window.addEventListener('error', (event) => {
+  const ts = performance.now().toFixed(1);
+  console.error(
+    `[Trace +${ts}ms] [GLOBAL] Unhandled error — message: "${event.message}" | file: ${event.filename}:${event.lineno}:${event.colno}`,
+    event.error
+  );
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const ts = performance.now().toFixed(1);
+  console.error(
+    `[Trace +${ts}ms] [GLOBAL] Unhandled promise rejection`,
+    event.reason
+  );
+});
 
 /**
  * Emit a trace log. No-op when tracing is disabled.
+ * Uses console.info so the messages are always visible in DevTools
+ * without enabling Verbose level (important for prod debugging).
  * @param module  Short module name, e.g. 'Router', 'Bootstrap', 'State'
  * @param step    Human-readable step label
  * @param data    Optional extra data to log
@@ -44,8 +67,8 @@ export function trace(module: string, step: string, data?: unknown): void {
   if (!_enabled) return;
   const ts = performance.now().toFixed(1);
   if (data !== undefined) {
-    console.debug(`[Trace +${ts}ms] [${module}] ${step}`, data);
+    console.info(`[Trace +${ts}ms] [${module}] ${step}`, data);
   } else {
-    console.debug(`[Trace +${ts}ms] [${module}] ${step}`);
+    console.info(`[Trace +${ts}ms] [${module}] ${step}`);
   }
 }

@@ -83,7 +83,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     try {
       await lobbyChannel().emit('lobby.confirmation_add', { playerId: playerIdNum, timestamp: Date.now() });
     } catch (e) {
-      // Non bloccare l'operazione se emit fallisce
       console.warn('Emit availability event fallito:', (e as Error).message || e);
     }
 

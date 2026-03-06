@@ -16,7 +16,6 @@ import { addMatch } from '@/services/match.service';
 import { findBestMatch } from '@/services/matchmaking.service';
 import { getAllPlayers, getClass, getPlayerById, getRank } from '@/services/player.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
-import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import haptics from '@/utils/haptics.util';
 import gsap from 'gsap';
@@ -29,6 +28,7 @@ import type { ILobbyState } from '@/models/lobby.interface';
 import type { IRunningMatchDTO } from '@/models/match.interface';
 import type { IPlayer } from '@/models/player.interface';
 import type { IMatchProposal } from '@/services/matchmaking.service';
+import { RealtimeClient } from '@/services/realtime-client';
 import { fuzzyMatch, highlightChars } from '@/utils/fuzzy-search.util';
 import { renderMatchmakingPageHeader, renderMatchmakingPlayerList } from '../components/ui/matchmaking.ui';
 
@@ -59,6 +59,8 @@ class MatchmakingPage extends Component {
   private generatedMatch: IMatchProposal | null = null;
   private confirmedPlayerIds: Set<number> = new Set();
   private lobbyStateListener: ((state: ILobbyState) => void) | null = null;
+  private sseClient: RealtimeClient | null = null;
+  private sseVisibilityHandler: (() => void) | null = null;
   private isGenerating = false;
   private isSaving = false;
   private searchQuery = '';
@@ -105,11 +107,25 @@ class MatchmakingPage extends Component {
   // ── Mount / Destroy ───────────────────────────────────────────
 
   override mount(): void {
+    // Inject spinner keyframe once
+    if (!document.getElementById('_matchmaking-spin-style')) {
+      const style = document.createElement('style');
+      style.id = '_matchmaking-spin-style';
+      style.textContent = '@keyframes _spin { to { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+
     refreshIcons();
 
     this.bindToggleButtons();
     this.bindActionButtons();
     this.bindSearchFilter();
+
+    // Initialize confirmations panel to "no confirmations" state immediately
+    this.updateConfirmationsPanel({
+      exists: false, ttl: 0, match: null, count: 0, confirmations: [], messages: [], messageCount: 0
+    });
+
     this.startConfirmationsPolling();
 
     // GSAP entrance animations
@@ -542,21 +558,8 @@ class MatchmakingPage extends Component {
   }
 
   private initPlayerStates(players: IPlayer[]): void {
-    // Check for daily availability
-    const dayKeyMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-    const todayKey = dayKeyMap[new Date().getDay()];
-    const todaysAvailable = (availabilityList as any)[todayKey] as string[] | undefined;
-
     for (const player of players) {
-      let state: PlayerState = 0;
-
-      if (this.confirmedPlayerIds.has(player.id)) {
-        state = 1;
-      } else if (Array.isArray(todaysAvailable) && todaysAvailable.includes(player.name)) {
-        state = 1;
-      }
-
-      this.playerStates.set(player.id, state);
+      this.playerStates.set(player.id, 0);
     }
   }
 
@@ -705,18 +708,39 @@ class MatchmakingPage extends Component {
   }
 
   private updateGenerateButton(): void {
-    const enabled = this.getSelectedCount() >= MIN_PLAYERS;
+    const canGenerate = this.getSelectedCount() >= MIN_PLAYERS && !this.isGenerating && !this.isSaving;
 
-    // Update ALL instances (mobile + desktop panels have duplicate IDs)
     for (const btn of this.$$('#generate-match-btn') as HTMLButtonElement[]) {
-      btn.disabled = !enabled;
-      btn.classList.toggle('opacity-40', !enabled);
-      btn.classList.toggle('cursor-not-allowed', !enabled);
-      btn.style.background = enabled
+      btn.disabled = !canGenerate;
+      btn.classList.toggle('opacity-40', !canGenerate);
+      btn.classList.toggle('cursor-not-allowed', !canGenerate);
+      btn.style.background = canGenerate
         ? 'linear-gradient(135deg, #FFD700, #F0A500)'
         : 'rgba(255,215,0,0.1)';
-      btn.style.color = enabled ? '#0F2A20' : 'rgba(255,215,0,0.5)';
-      btn.style.boxShadow = enabled ? '0 0 30px rgba(255,215,0,0.25)' : 'none';
+      btn.style.color = canGenerate ? '#0F2A20' : 'rgba(255,215,0,0.5)';
+      btn.style.boxShadow = canGenerate ? '0 0 30px rgba(255,215,0,0.25)' : 'none';
+    }
+  }
+
+  private setGenerateButtonLoading(loading: boolean): void {
+    const SPINNER = `<svg style="display:inline-block;width:14px;height:14px;animation:_spin 0.6s linear infinite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+    for (const btn of this.$$('#generate-match-btn') as HTMLButtonElement[]) {
+      btn.disabled = loading;
+      if (loading) {
+        btn.style.opacity = '0.7';
+        btn.innerHTML = `${SPINNER} GENERAZIONE...`;
+      }
+    }
+  }
+
+  private setSaveButtonLoading(loading: boolean): void {
+    for (const btn of this.$$('#save-match-btn') as HTMLButtonElement[]) {
+      btn.disabled = loading;
+      if (loading) {
+        btn.style.opacity = '0.7';
+        const SPINNER = `<svg style="display:inline-block;width:14px;height:14px;animation:_spin 0.6s linear infinite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+        btn.innerHTML = `${SPINNER} SALVATAGGIO...`;
+      }
     }
   }
 
@@ -734,6 +758,7 @@ class MatchmakingPage extends Component {
     }
 
     this.isGenerating = true;
+    this.setGenerateButtonLoading(true);
 
     try {
       const match = findBestMatch(selectedIds, priorityIds);
@@ -750,11 +775,15 @@ class MatchmakingPage extends Component {
 
       // Re-render the match panel
       this.refreshMatchPanels();
+
+      // On mobile, scroll up so the new match card is visible
+      this.scrollToMobileMatchPanel();
     } catch (error) {
       console.error('Error generating match:', error);
       alert('Errore durante la generazione della partita.');
     } finally {
       this.isGenerating = false;
+      this.updateGenerateButton();
     }
   }
 
@@ -769,7 +798,9 @@ class MatchmakingPage extends Component {
       console.error('Failed to clear running match:', error);
     }
 
+    this.resetAllPlayerStates();
     this.refreshMatchPanels();
+    this.refreshPlayerListPanel();
   }
 
   private async handleSaveMatch(): Promise<void> {
@@ -781,15 +812,16 @@ class MatchmakingPage extends Component {
     if (!this.validateScores(scoreA, scoreB)) return;
 
     this.isSaving = true;
-    const saveBtn = this.$id('save-match-btn') as HTMLButtonElement | null;
-    if (saveBtn) saveBtn.disabled = true;
+    this.setSaveButtonLoading(true);
+    this.updateGenerateButton();
 
     try {
       await this.executeMatchSave(scoreA!, scoreB!);
     } catch (error) {
       console.error('Error saving match:', error);
       alert('Errore durante il salvataggio della partita. Riprova.');
-      if (saveBtn) saveBtn.disabled = false;
+      // Restore buttons on error (match panel still visible)
+      this.refreshMatchPanels();
     } finally {
       this.isSaving = false;
     }
@@ -831,8 +863,9 @@ class MatchmakingPage extends Component {
     this.confirmedPlayerIds.clear();
     appState.lobbyActive = false;
     appState.emit('lobby-change');
+    this.resetAllPlayerStates();
     this.refreshMatchPanels();
-    this.updateProgressBar();
+    this.refreshPlayerListPanel();
   }
 
   private handleSelectAll(): void {
@@ -942,6 +975,27 @@ class MatchmakingPage extends Component {
       const state = LobbyService.getState();
       if (state) this.applyConfirmations(state);
     });
+
+    // SSE: any lobby event triggers an immediate refresh (no debounce needed — we just call refresh)
+    this.sseClient = new RealtimeClient({
+      onStatusChange: (status) => console.log('[Matchmaking] SSE', status)
+    });
+    this.sseClient.onEvent(() => {
+      LobbyService.refresh();
+    });
+    this.sseClient.connect();
+
+    // Pause SSE when tab is hidden, reconnect + refresh on visible
+    this.sseVisibilityHandler = () => {
+      if (!this.sseClient) return;
+      if (document.visibilityState === 'hidden') {
+        this.sseClient.disconnect();
+      } else {
+        this.sseClient.connect();
+        LobbyService.refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', this.sseVisibilityHandler);
   }
 
   private stopConfirmationsPolling(): void {
@@ -950,6 +1004,15 @@ class MatchmakingPage extends Component {
       this.lobbyStateListener = null;
     }
     LobbyService.release();
+
+    if (this.sseVisibilityHandler) {
+      document.removeEventListener('visibilitychange', this.sseVisibilityHandler);
+      this.sseVisibilityHandler = null;
+    }
+    if (this.sseClient) {
+      this.sseClient.disconnect();
+      this.sseClient = null;
+    }
   }
 
   private applyConfirmations(state: ILobbyState): void {
@@ -987,17 +1050,36 @@ class MatchmakingPage extends Component {
     const panel = this.$id('confirmations-panel');
     if (!panel) return;
 
-    if (data.count > 0) {
-      panel.classList.remove('hidden');
-    } else {
-      panel.classList.add('hidden');
+    // Always visible — remove hidden class added by template default
+    panel.classList.remove('hidden');
+
+    if (data.count === 0) {
+      panel.innerHTML = `
+        <div class="flex items-center gap-2">
+          <i data-lucide="wifi-off" style="width:12px;height:12px;color:rgba(255,255,255,0.2)"></i>
+          <span class="font-ui text-[11px] tracking-[0.08em]" style="color:rgba(255,255,255,0.3)">NESSUNA CONFERMA IN LOBBY</span>
+        </div>
+      `;
+      refreshIcons();
       return;
     }
 
-    const badge = this.$id('conf-count-badge');
-    if (badge) {
-      badge.textContent = String(data.count);
-    }
+    const playerNames = data.confirmations
+      .map(c => getPlayerById(c.playerId)?.name ?? `#${c.playerId}`)
+      .join(', ');
+
+    panel.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <i data-lucide="wifi" style="width:12px;height:12px;color:#4ADE80;flex-shrink:0"></i>
+          <span class="font-ui text-[11px] text-[#4ADE80] tracking-[0.08em] shrink-0">CONFERME LIVE</span>
+          <span class="font-body text-[11px] truncate" style="color:rgba(255,255,255,0.5)">${playerNames}</span>
+        </div>
+        <span class="font-ui px-2 py-0.5 rounded-full text-[11px] text-[#4ADE80] shrink-0"
+              style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3)">${data.count}</span>
+      </div>
+    `;
+    refreshIcons();
   }
 
   private async clearConfirmations(): Promise<void> {
@@ -1072,6 +1154,10 @@ class MatchmakingPage extends Component {
     // Re-bind action buttons for the new DOM
     this.bindActionButtons();
 
+    // Ensure button/progress states are consistent after re-render
+    this.updateGenerateButton();
+    this.updateProgressBar();
+
     // Animate the new content
     gsap.from('.match-panel-card', {
       opacity: 0,
@@ -1079,6 +1165,34 @@ class MatchmakingPage extends Component {
       duration: 0.3,
       ease: 'power2.out'
     });
+  }
+
+  private refreshPlayerListPanel(): void {
+    const players = getAllPlayers().toSorted((a, b) => a.name.localeCompare(b.name));
+    const panel = this.$id('player-list-panel');
+    if (!panel) return;
+    panel.innerHTML = this.renderPlayerList(players);
+    refreshIcons();
+    this.bindToggleButtons();
+    this.bindSearchFilter();
+    this.updateConfirmationsPanel(LobbyService.getState() ?? {
+      exists: false, ttl: 0, match: null, count: 0, confirmations: [], messages: [], messageCount: 0
+    });
+  }
+
+  private resetAllPlayerStates(): void {
+    for (const [id] of this.playerStates) {
+      this.playerStates.set(id, 0);
+    }
+    this.updateProgressBar();
+    this.updateGenerateButton();
+  }
+
+  private scrollToMobileMatchPanel(): void {
+    if (window.innerWidth >= 1024) return;
+    const panel = this.$id('match-panel-mobile');
+    if (!panel) return;
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   }
 }
 

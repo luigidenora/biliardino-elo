@@ -81,6 +81,7 @@ class Router {
   private currentComponent: Component | null = null;
   private contentEl: HTMLElement | null = null;
   private transitioning = false;
+  private pendingNavigation: string | null = null;
 
   /**
    * Initialize the router: normalize legacy hash URLs and bind popstate + link interception.
@@ -137,7 +138,9 @@ class Router {
 
   private async onPathChange(): Promise<void> {
     if (this.transitioning) {
-      trace('Router', 'onPathChange skipped — already transitioning');
+      // Store the latest desired path; will be replayed after current transition
+      this.pendingNavigation = this.getCurrentPath();
+      trace('Router', 'onPathChange queued — transitioning in progress');
       return;
     }
 
@@ -322,6 +325,11 @@ class Router {
     } finally {
       this.transitioning = false;
       trace('Router', 'transitioning = false');
+      // Replay any navigation that arrived while we were transitioning
+      if (this.pendingNavigation !== null) {
+        this.pendingNavigation = null;
+        void this.onPathChange();
+      }
     }
   }
 }

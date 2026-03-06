@@ -9,6 +9,7 @@
   "scripts": {
     "prebuild": "node scripts/generate-sw-version.js",
     "build": "vite build",
+    "preview": "vite preview",
     "predev": "node scripts/generate-sw-version.js",
     "dev": "vite",
     "lint": "eslint --fix",
