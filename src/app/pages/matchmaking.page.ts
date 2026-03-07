@@ -455,7 +455,8 @@ class MatchmakingPage extends Component {
     const items = [
       { icon: 'bar-chart-3', label: 'Bilanciamento', score: h.matchBalance.score, max: h.matchBalance.max, color: '#4A90D9' },
       { icon: 'star', label: 'Priorita', score: h.priority.score, max: h.priority.max, color: '#FFD700' },
-      { icon: 'dices', label: 'Diversita', score: h.diversity.score, max: h.diversity.max, color: '#27AE60' },
+      { icon: 'dices', label: 'Diversita team', score: h.diversityTeam.score, max: h.diversityTeam.max, color: '#27AE60' },
+      { icon: 'dices', label: 'Diversita avversari', score: h.diversityOpponent.score, max: h.diversityOpponent.max, color: '#2ECC71' },
       { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' },
       { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' }
     ];
@@ -978,7 +979,7 @@ class MatchmakingPage extends Component {
 
     // SSE: any lobby event triggers an immediate refresh (no debounce needed — we just call refresh)
     this.sseClient = new RealtimeClient({
-      onStatusChange: (status) => console.log('[Matchmaking] SSE', status)
+      onStatusChange: status => console.log('[Matchmaking] SSE', status)
     });
     this.sseClient.onEvent(() => {
       LobbyService.refresh();
