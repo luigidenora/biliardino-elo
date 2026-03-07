@@ -18,8 +18,8 @@ export interface IMatchmakingConfig {
    */
   diversityTeamWeight: number;
   /**
- * Weight for opponent diversity (0-1). Higher values prioritize new player combinations.
- */
+   * Weight for opponent diversity (0-1). Higher values prioritize new player combinations.
+   */
   diversityOpponentWeight: number;
   /**
    * Randomness factor (0-1). Adds variation to avoid always selecting the same match.
@@ -146,8 +146,8 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
   const priorityScore = teamMatchessNormalized * config.priorityWeight;
 
   // DIVERSITY TEAM SCORE
-  const diversityTeammateCount = getTeammateDiversity(defA, attA, defB, attB);
-  const diversityTeamNormalized = 1 - (diversityTeammateCount / maxDiversity.team);
+  const diversityTeamCount = getTeammateDiversity(defA, attA, defB, attB);
+  const diversityTeamNormalized = 1 - (diversityTeamCount / maxDiversity.team);
   const diversityTeamScore = diversityTeamNormalized * config.diversityTeamWeight;
 
   // DIVERSITY OPPONENT SCORE
