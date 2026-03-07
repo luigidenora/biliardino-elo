@@ -123,15 +123,14 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       return [];
     }
 
-    const elo = toFiniteNumber(data.elo, 1000);
     const defenceRaw = toFiniteNumber(data.defence, 50);
     const defence = defenceRaw > 1 ? defenceRaw / 100 : defenceRaw;
 
     return {
       id: parsedId,
       name: String(data.name ?? 'Sconosciuto'),
-      elo,
-      startElo: elo,
+      elo: 1000,
+      startElo: 1000,
       defence: Math.min(1, Math.max(0, defence)),
       matches: 0,
       bestElo: -1,
