@@ -18,8 +18,6 @@ const CLASS_COLORS: Record<number, string> = {
 
 const MATCH_AVATAR_SIZE = 112;
 const MATCH_AVATAR_STACK_OFFSET = 88;
-const MATCH_AVATAR_STACK_WIDTH = MATCH_AVATAR_SIZE + MATCH_AVATAR_STACK_OFFSET;
-const MATCH_AVATAR_STACK_HEIGHT = MATCH_AVATAR_SIZE;
 
 export interface MatchHistoryOptions {
   matches: IMatch[];
@@ -290,8 +288,7 @@ function renderTeamAvatars(
   return `
     <div class="relative shrink-0 ${originClass} scale-[0.82] sm:scale-100 transition-transform duration-300"
          data-avatar-stack
-         data-side="${options.side}"
-          style="width:${MATCH_AVATAR_STACK_WIDTH}px;height:${MATCH_AVATAR_STACK_HEIGHT}px">
+         data-side="${options.side}">
       <div class="absolute transition-all duration-300 ease-out"
            data-avatar-slot="back"
          style="left:${MATCH_AVATAR_STACK_OFFSET}px;top:0px">

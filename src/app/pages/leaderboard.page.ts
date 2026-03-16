@@ -18,6 +18,7 @@ import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
+import { renderRoleBadge } from '../components/role-badge.component';
 import { userDropdown } from '../components/user-dropdown.component';
 import { refreshIcons } from '../icons';
 
@@ -210,6 +211,35 @@ class LeaderboardPage extends Component {
     return deltas;
   }
 
+  private getTodayRankDeltas(): Map<number, number> {
+    const players = this.getAllRankedPlayers();
+    const todayDeltas = this.getTodayEloDeltas();
+
+    // Estimate yesterday ELO = current ELO − today bonus-adjusted delta
+    const yesterdayElos = new Map<number, number>();
+    for (const p of players) {
+      const entry = todayDeltas.get(p.id);
+      yesterdayElos.set(p.id, p.elo - (entry?.delta ?? 0));
+    }
+
+    // Sort by yesterday ELO descending → yesterday ranks
+    const sorted = [...players].sort(
+      (a, b) => (yesterdayElos.get(b.id) ?? 0) - (yesterdayElos.get(a.id) ?? 0)
+    );
+    const yesterdayRanks = new Map<number, number>();
+    sorted.forEach((p, i) => yesterdayRanks.set(p.id, i + 1));
+
+    // Delta = positions gained (positive = improved)
+    const result = new Map<number, number>();
+    for (const p of players) {
+      const entry = todayDeltas.get(p.id);
+      if (entry && entry.matches > 0) {
+        result.set(p.id, (yesterdayRanks.get(p.id) ?? getRank(p.id)) - getRank(p.id));
+      }
+    }
+    return result;
+  }
+
   // ── Section Renderers ──────────────────────────────────────
 
   private renderPageHeader(): string {
@@ -301,12 +331,6 @@ class LeaderboardPage extends Component {
 
       const renderLeftPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
         const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
-        const isDef = role === 'DIF';
-        const roleBg = isDef ? 'rgba(96,165,250,0.12)' : 'rgba(248,113,113,0.12)';
-        const roleBorder = isDef ? 'rgba(96,165,250,0.25)' : 'rgba(248,113,113,0.25)';
-        const roleColor = isDef ? '#60a5fa' : '#f87171';
-        const roleIcon = isDef ? 'shield' : 'swords';
-        const roleLabel = isDef ? 'DIFENSORE' : 'ATTACCANTE';
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-3 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors">
             <div class="relative shrink-0">
@@ -315,11 +339,7 @@ class LeaderboardPage extends Component {
             <div class="min-w-0 flex-1">
               <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
               <div class="flex items-center gap-1 mt-1">
-                <span class="inline-flex items-center gap-1 rounded px-1.5 py-px"
-                      style="background:${roleBg};border:1px solid ${roleBorder}">
-                  <i data-lucide="${roleIcon}" style="width:9px;height:9px;color:${roleColor}"></i>
-                  <span class="font-ui" style="font-size:9px;letter-spacing:0.1em;color:${roleColor}">${roleLabel}</span>
-                </span>
+                ${renderRoleBadge({ role: role === 'DIF' ? 'defence' : 'attack', size: 'lg', showLabel: true })}
               </div>
               <div class="flex items-center gap-1.5 mt-1">
                 <span class="font-display" style="font-size:22px;color:#FFD700;letter-spacing:0.05em;line-height:1">${elo}</span>
@@ -332,12 +352,6 @@ class LeaderboardPage extends Component {
 
       const renderRightPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
         const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
-        const isDef = role === 'DIF';
-        const roleBg = isDef ? 'rgba(96,165,250,0.12)' : 'rgba(248,113,113,0.12)';
-        const roleBorder = isDef ? 'rgba(96,165,250,0.25)' : 'rgba(248,113,113,0.25)';
-        const roleColor = isDef ? '#60a5fa' : '#f87171';
-        const roleIcon = isDef ? 'shield' : 'swords';
-        const roleLabel = isDef ? 'DIFENSORE' : 'ATTACCANTE';
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-5 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors flex-row-reverse">
             <div class="relative shrink-0">
@@ -346,11 +360,7 @@ class LeaderboardPage extends Component {
             <div class="min-w-0 flex-1 text-right">
               <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
               <div class="flex items-center gap-1 mt-1 justify-end">
-                <span class="inline-flex items-center gap-1 rounded px-1.5 py-px"
-                      style="background:${roleBg};border:1px solid ${roleBorder}">
-                  <i data-lucide="${roleIcon}" style="width:9px;height:9px;color:${roleColor}"></i>
-                  <span class="font-ui" style="font-size:9px;letter-spacing:0.1em;color:${roleColor}">${roleLabel}</span>
-                </span>
+                ${renderRoleBadge({ role: role === 'DIF' ? 'defence' : 'attack', size: 'lg', showLabel: true })}
               </div>
               <div class="flex items-center gap-1.5 mt-1 justify-end">
                 <span class="font-display" style="font-size:22px;color:#FFD700;letter-spacing:0.05em;line-height:1">${elo}</span>
@@ -621,8 +631,10 @@ class LeaderboardPage extends Component {
     const todayDeltas = this.getTodayEloDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
 
+    const todayRankDeltas = this.getTodayRankDeltas();
+
     const rows = players.map((p, idx) =>
-      this.renderRankingRow(p, idx, players.length, todayDeltas, selectedPlayerId)
+      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId)
     ).join('');
 
     const emptyState = players.length === 0
@@ -641,7 +653,7 @@ class LeaderboardPage extends Component {
         <!-- Desktop header -->
         <div class="hidden md:grid gap-3 px-5 py-3 sort-header-row overflow-hidden rounded-t-xl"
              style="
-               grid-template-columns: 48px 1fr 90px 90px 110px 90px;
+               grid-template-columns: 52px 1fr 100px 70px 90px 90px 70px 65px 88px;
                background: rgba(10,25,18,0.8);
                border-bottom: 1px solid rgba(255,215,0,0.2);
              ">
@@ -661,6 +673,9 @@ class LeaderboardPage extends Component {
           <div class="sort-header cursor-pointer hover:text-(--color-gold) transition-colors"
                data-sort-key="winrate"
                style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">WIN RATE</div>
+          <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">RUOLO</div>
+          <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">G/S</div>
+          <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">FORMA</div>
         </div>
 
         <!-- Mobile header -->
@@ -689,6 +704,7 @@ class LeaderboardPage extends Component {
     idx: number,
     total: number,
     todayDeltas: Map<number, { delta: number; matches: number }>,
+    rankDeltas: Map<number, number>,
     selectedPlayerId: number
   ): string {
     const rank = getRank(player.id);
@@ -711,9 +727,67 @@ class LeaderboardPage extends Component {
       else todayBadge = `<span class="font-body text-xs" style="color:rgba(255,255,255,0.3)"> =</span>`;
     }
 
+    // ── Rank delta — icona freccia, no box ───────────────
+    const rankDelta = rankDeltas.get(player.id);
+    let rankDeltaBadge = '';
+    if (rankDelta !== undefined && rankDelta !== 0) {
+      const arrowIcon = rankDelta > 0 ? 'arrow-up' : 'arrow-down';
+      const arrowColor = rankDelta > 0 ? '#4ADE80' : '#F87171';
+      const arrowVal = Math.abs(rankDelta);
+      rankDeltaBadge = `
+        <div class="inline-flex items-center gap-0.5 mt-0.5">
+          <i data-lucide="${arrowIcon}" style="width:12px;height:12px;color:${arrowColor};flex-shrink:0"></i>
+          <span style="font-size:12px;color:${arrowColor};font-family:var(--font-ui);font-weight:700;line-height:1">${arrowVal}</span>
+        </div>`;
+    }
+
     const rankDisplay = rank <= 3
-      ? `<span style="font-size:${rank === 1 ? '18px' : '16px'}">${MEDALS[rank]}</span>`
-      : `<span style="font-family:var(--font-display); font-size:16px; color:rgba(255,255,255,0.5)">${rank}</span>`;
+      ? `<div class="flex flex-col items-center gap-0.5"><span style="font-size:${rank === 1 ? '18px' : '16px'}">${MEDALS[rank]}</span>${rankDeltaBadge}</div>`
+      : `<div class="flex flex-col items-center gap-0.5"><span style="font-family:var(--font-display);font-size:16px;color:rgba(255,255,255,0.5)">${rank}</span>${rankDeltaBadge}</div>`;
+
+    // ── Role: icona + % su una riga sola ─────────────────
+    const defMatches = player.matchesAsDefender;
+    const attMatches = player.matchesAsAttacker;
+    const roleCell = renderRoleBadge({ defenceMatches: defMatches, attackMatches: attMatches, size: 'base' });
+
+    // ── Goal ratio ────────────────────────────────────────
+    const totalGoals = player.goalsFor + player.goalsAgainst;
+    const goalRatioPct = totalGoals > 0 ? Math.round((player.goalsFor / totalGoals) * 100) : 0;
+    const goalRatioColor = goalRatioPct >= 55 ? '#4ADE80' : goalRatioPct >= 45 ? '#FFD700' : '#F87171';
+    const goalsCell = `
+      <div class="flex flex-col gap-0.5">
+        <span style="font-family:var(--font-display);font-size:15px;color:${goalRatioColor};letter-spacing:0.05em;line-height:1">${goalRatioPct}%</span>
+        <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.3)">${player.goalsFor}/${player.goalsAgainst}</span>
+      </div>
+    `;
+
+    // ── Forma: 5 pallini + Δ ELO ─────────────────────────
+    const last5 = player.matchesDelta.slice(-5);
+    const formaEloSum = last5.reduce((acc, d) => acc + d, 0);
+    const formaEloRounded = Math.round(formaEloSum);
+    const formaEloColor = formaEloRounded > 0 ? '#4ADE80' : formaEloRounded < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
+    const formaEloStr = formaEloRounded > 0 ? `+${formaEloRounded}` : `${formaEloRounded}`;
+    const formaDots = last5.map(d =>
+      `<div style="width:7px;height:7px;border-radius:50%;background:${d > 0 ? '#4ADE80' : '#F87171'};flex-shrink:0"></div>`
+    ).join('');
+    const formaCell = `
+      <div class="flex flex-col justify-center gap-1">
+        <div class="flex items-center gap-1 flex-wrap">${formaDots}</div>
+        ${last5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:9px;color:${formaEloColor};letter-spacing:0.03em;white-space:nowrap">${formaEloStr} ELO</span>` : ''}
+      </div>
+    `;
+
+    // ── Mobile sub-row ────────────────────────────────────
+    const mobileFormaDots = last5.map(d =>
+      `<div style="width:5px;height:5px;border-radius:50%;background:${d > 0 ? '#4ADE80' : '#F87171'};flex-shrink:0"></div>`
+    ).join('');
+    const mobileSubRow = `
+      <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+        ${renderRoleBadge({ defenceMatches: defMatches, attackMatches: attMatches, size: 'sm' })}
+        <div class="flex items-center gap-px">${mobileFormaDots}</div>
+        ${last5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:7px;color:${formaEloColor};font-weight:600">${formaEloStr}</span>` : ''}
+      </div>
+    `;
 
     const isSelected = selectedPlayerId && player.id === selectedPlayerId;
     const rowBg = isSelected
@@ -744,6 +818,7 @@ class LeaderboardPage extends Component {
                style="font-family:var(--font-ui); font-size:13px; font-weight:600">
             ${displayName}
           </div>
+          ${mobileSubRow}
         </div>
       </div>
     `;
@@ -772,8 +847,8 @@ class LeaderboardPage extends Component {
 
         <!-- Desktop row -->
         <div class="hidden md:grid gap-3 px-5 py-3.5 items-center transition-all duration-200 hover:bg-white/5"
-             style="grid-template-columns: 48px 1fr 90px 90px 110px 90px">
-          <div>${rankDisplay}</div>
+             style="grid-template-columns: 52px 1fr 100px 70px 90px 90px 70px 65px 88px">
+          <div class="flex justify-center">${rankDisplay}</div>
           <div>${avatarAndNameDesktop}</div>
           <div>
             <span style="font-family:var(--font-display); font-size:20px; color:${eloColor}; letter-spacing:0.05em">${elo}</span>${todayBadge}
@@ -781,12 +856,15 @@ class LeaderboardPage extends Component {
           <div style="font-family:var(--font-ui); font-size:14px; color:rgba(255,255,255,0.7)">${player.matches}</div>
           <div>${winLoss}</div>
           <div>${winRateBar}</div>
+          <div class="flex justify-center">${roleCell}</div>
+          <div>${goalsCell}</div>
+          <div>${formaCell}</div>
         </div>
 
         <!-- Mobile row -->
         <div class="md:hidden grid gap-3 px-4 py-3 items-center transition-all duration-200 hover:bg-white/5"
              style="grid-template-columns: auto 1fr 52px 48px">
-          <div>${rankDisplay}</div>
+          <div class="flex justify-center">${rankDisplay}</div>
           <div class="min-w-0">${avatarAndNameMobile}</div>
           <div>
             <span style="font-family:var(--font-display); font-size:17px; color:${eloColor}">${elo}</span>${todayBadge}
@@ -820,6 +898,7 @@ class LeaderboardPage extends Component {
 
     const players = this.getSortedPlayers();
     const todayDeltas = this.getTodayEloDeltas();
+    const todayRankDeltas = this.getTodayRankDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
 
     if (players.length === 0) {
@@ -833,7 +912,7 @@ class LeaderboardPage extends Component {
     }
 
     tbody.innerHTML = players.map((p, idx) =>
-      this.renderRankingRow(p, idx, players.length, todayDeltas, selectedPlayerId)
+      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId)
     ).join('');
 
     refreshIcons();
