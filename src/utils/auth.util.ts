@@ -52,39 +52,57 @@ async function promptLogin(): Promise<void> {
 export function withAuthentication(
   action: () => void | Promise<void>,
   requireAdmin: boolean = false
-): void {
+): Promise<boolean> {
   // In dev mode (__DEV_MODE__) salta completamente l'autenticazione Firebase.
   // In produzione questo blocco viene eliminato da Rollup (dead-code elimination).
   if (__DEV_MODE__) {
     console.log('[DEV] Skipping authentication, executing action directly');
-    void action();
-    return;
+    return Promise.resolve(action()).then(() => true);
   }
-  let started = false;
 
-  onAuthStateChanged(AUTH, async (user) => {
-    if (started) return;
+  return new Promise<boolean>((resolve) => {
+    let started = false;
+    let unsubscribed = false;
 
-    if (!user || started) {
-      await promptLogin();
-      return;
-    }
+    const resolveOnce = (value: boolean): void => {
+      if (started) return;
+      started = true;
+      resolve(value);
+    };
 
-    started = true;
+    const unsubscribe = onAuthStateChanged(AUTH, async (user) => {
+      if (unsubscribed || started) return;
 
-    // Verifica admin se richiesto (check locale, sicurezza reale via JWT sulle API admin)
-    if (requireAdmin) {
-      const playerId = localStorage.getItem('biliardino_player_id');
+      try {
+        if (!user) {
+          await promptLogin();
+          return;
+        }
 
-      if (!playerId || !isPlayerAdmin(Number(playerId))) {
-        showAdminDenied(!playerId
-          ? 'Utente non riconosciuto. Effettua il login come giocatore prima.'
-          : 'Accesso negato. Solo gli admin possono accedere a questa pagina.');
-        return;
+        // Verifica admin se richiesto (check locale, sicurezza reale via JWT sulle API admin)
+        if (requireAdmin) {
+          const playerId = localStorage.getItem('biliardino_player_id');
+
+          if (!playerId || !isPlayerAdmin(Number(playerId))) {
+            showAdminDenied(!playerId
+              ? 'Utente non riconosciuto. Effettua il login come giocatore prima.'
+              : 'Accesso negato. Solo gli admin possono accedere a questa pagina.');
+            resolveOnce(false);
+            return;
+          }
+        }
+
+        await action();
+        resolveOnce(true);
+      } catch {
+        resolveOnce(false);
+      } finally {
+        if (!unsubscribed) {
+          unsubscribe();
+          unsubscribed = true;
+        }
       }
-    }
-
-    await action();
+    });
   });
 }
 
@@ -100,7 +118,7 @@ function showAdminDenied(message: string): void {
           display: inline-block;
           padding: 0.75rem 2rem;
           background: linear-gradient(135deg, #FFD700, #F0A500);
-          color: #0F2A20;
+          color: var(--color-bg-deep);
           text-decoration: none;
           border-radius: 12px;
           font-weight: 600;

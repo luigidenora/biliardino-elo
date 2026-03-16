@@ -137,7 +137,7 @@ export function renderMatchmakingPlayerList({
     progressFillStyle: progressComplete
       ? 'linear-gradient(90deg,#4ADE80,#22C55E)'
       : 'linear-gradient(90deg,#FFD700,#F0A500)',
-    playerRows: rawHtml(playerRows),
+    playerRows: rawHtml(playerRows)
   });
 }
 
@@ -165,7 +165,7 @@ export function renderMatchmakingEmptyState(minPlayers: number): string {
 
 export function renderMatchmakingGenerateButton(enabled: boolean): string {
   return `
-    <button class="generate-match-btn w-full py-3.5 md:py-4 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 ${enabled ? 'bg-[linear-gradient(135deg,#FFD700,#F0A500)] text-[#0F2A20] shadow-[0_0_30px_rgba(255,215,0,0.25)]' : 'bg-[rgba(255,215,0,0.1)] text-[rgba(255,215,0,0.5)] opacity-40 cursor-not-allowed'} border border-[rgba(255,215,0,0.4)] font-display text-lg tracking-[0.15em]"
+    <button class="generate-match-btn w-full py-3.5 md:py-4 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 ${enabled ? 'bg-[linear-gradient(135deg,#FFD700,#F0A500)] text-(--color-bg-deep) shadow-[0_0_30px_rgba(255,215,0,0.25)]' : 'bg-[rgba(255,215,0,0.1)] text-[rgba(255,215,0,0.5)] opacity-40 cursor-not-allowed'} border border-[rgba(255,215,0,0.4)] font-display text-lg tracking-[0.15em]"
             ${enabled ? '' : 'disabled'}>
       <i data-lucide="swords" class="size-[18px]"></i>
       GENERA MATCH
@@ -243,7 +243,8 @@ export function renderMatchmakingHeuristicData(match: IMatchProposal): string {
   const items = [
     { icon: 'bar-chart-3', label: 'Bilanciamento', score: h.matchBalance.score, max: h.matchBalance.max, color: '#4A90D9' },
     { icon: 'star', label: 'Priorita', score: h.priority.score, max: h.priority.max, color: '#FFD700' },
-    { icon: 'dices', label: 'Diversita', score: h.diversity.score, max: h.diversity.max, color: '#27AE60' },
+    { icon: 'dices', label: 'Diversita team', score: h.diversityTeam.score, max: h.diversityTeam.max, color: '#27AE60' },
+    { icon: 'dices', label: 'Diversita avversari', score: h.diversityOpponent.score, max: h.diversityOpponent.max, color: '#2ECC71' },
     { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' },
     { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' }
   ];
@@ -294,7 +295,7 @@ export function renderGeneratedMatchCard(match: IMatchProposal): string {
     winProbA: (winProbA * 100).toFixed(1),
     winProbBClass: winProbB > 0.5 ? 'text-[#4ADE80]' : 'text-white/40',
     winProbB: (winProbB * 100).toFixed(1),
-    heuristicData: rawHtml(match.heuristicData ? renderMatchmakingHeuristicData(match) : ''),
+    heuristicData: rawHtml(match.heuristicData ? renderMatchmakingHeuristicData(match) : '')
   });
 }
 
@@ -306,7 +307,7 @@ export function renderMatchmakingPanel(match: IMatchProposal | null, minPlayers:
         ${renderMatchmakingDisclaimerCard()}
         ${renderGeneratedMatchCard(match)}
         <button id="save-match-btn"
-                class="w-full py-3.5 md:py-4 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 bg-[linear-gradient(135deg,#FFD700,#F0A500)] border border-[rgba(255,215,0,0.4)] font-display text-lg tracking-[0.15em] text-[#0F2A20] shadow-[0_0_30px_rgba(255,215,0,0.25)]">
+          class="w-full py-3.5 md:py-4 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 bg-[linear-gradient(135deg,#FFD700,#F0A500)] border border-[rgba(255,215,0,0.4)] font-display text-lg tracking-[0.15em] text-(--color-bg-deep) shadow-[0_0_30px_rgba(255,215,0,0.25)]">
           <i data-lucide="trophy" class="size-[18px]"></i>
           SALVA PARTITA
         </button>

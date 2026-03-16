@@ -17,6 +17,7 @@ import '../pwa';
 // ── App ────────────────────────────────────────────────────
 import { matchesReady } from '@/services/match.service';
 import { LayoutComponent } from './components/layout.component';
+import { pullToRefresh } from './components/pull-to-refresh.component';
 import { userDropdown } from './components/user-dropdown.component';
 import { initParticlesSystem } from './particles/particles-manager';
 import { router } from './router';
@@ -49,8 +50,12 @@ function initFoosballCursor(): void {
     setTimeout(() => dot.classList.remove('bounce'), 300);
   });
 
-  document.addEventListener('mouseleave', () => { dot.style.opacity = '0'; });
-  document.addEventListener('mouseenter', () => { dot.style.opacity = '1'; });
+  document.addEventListener('mouseleave', () => {
+    dot.style.opacity = '0';
+  });
+  document.addEventListener('mouseenter', () => {
+    dot.style.opacity = '1';
+  });
 }
 
 function tryDismissBootOverlay(): void {
@@ -104,7 +109,7 @@ async function bootstrap(): Promise<void> {
   trace('Bootstrap', 'hydrateFromLocalStorage done', {
     playerId: appState.currentPlayerId,
     isAdmin: appState.isAdmin,
-    isAuthenticated: appState.isAuthenticated,
+    isAuthenticated: appState.isAuthenticated
   });
 
   // 1b. Initialize particles system
@@ -130,6 +135,9 @@ async function bootstrap(): Promise<void> {
   // 3. Mount the unified user dropdown (panel + backdrop appended to body)
   userDropdown.mount();
   trace('Bootstrap', 'userDropdown mounted');
+
+  pullToRefresh.mount();
+  trace('Bootstrap', 'pullToRefresh mounted');
 
   // 4. Wait for players and matches to be loaded before routing
   trace('Bootstrap', 'waiting for data (players + matches)');

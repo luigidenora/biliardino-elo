@@ -1,7 +1,7 @@
 import { computeMatch } from '@/utils/update-elo.util';
 import { IMatch, IMatchDTO, ITeam } from '../models/match.interface';
-import { fetchMatches, parseMatchDTO } from './repository.service';
 import { playersReady } from './player.service';
+import { fetchMatches, parseMatchDTO } from './repository.service';
 
 let matches: IMatch[] = [];
 
@@ -16,6 +16,7 @@ export const matchesReady: Promise<void> = (async () => {
 export async function loadAllMatches(): Promise<void> {
   matches = await fetchMatches();
   matches.sort((a, b) => a.createdAt - b.createdAt);
+  computeMatches();
 }
 
 export function getAllMatches(): IMatch[] {

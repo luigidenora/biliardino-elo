@@ -10,6 +10,7 @@
  */
 
 import { attachMatchHistoryInteractions, renderMatchHistory } from '@/app/components/match-history.component';
+import { refreshCoreData, registerAppRefreshHandler } from '@/services/app-refresh.service';
 import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
 import { getAllPlayers, getBonusK, getPlayerById, getRank } from '@/services/player.service';
@@ -60,29 +61,29 @@ class LeaderboardPage extends Component {
   private sortKey: SortKey = 'rank';
   private sortAsc = false;
   private matchHistoryCleanup: (() => void) | null = null;
+  private unregisterRefreshHandler: (() => void) | null = null;
+  private isDestroyed = false;
+  private heroContent: 'podium' | 'live-match' = 'podium';
 
   async render(): Promise<string> {
-    let runningMatch;
-    try {
-      runningMatch = await fetchRunningMatch();
-    } catch {
-      runningMatch = null;
-    }
-    const hasMatch = !!runningMatch;
     return `
       <div class="space-y-5 md:space-y-6" id="leaderboard-page">
         ${this.renderPageHeader()}
         ${this.renderReminderBanner()}
         ${this.renderIdentityBanner()}
-        ${this.renderLiveMatch(runningMatch ?? null)}
-        ${hasMatch ? '' : this.renderPodium()}
+        <div id="leaderboard-hero-slot" data-hero-content="podium">
+          ${this.renderPodium()}
+        </div>
         ${this.renderRankingTable()}
-        ${this.renderRecentMatches()}
+        <div id="leaderboard-history-slot">
+          ${this.renderRecentMatches()}
+        </div>
       </div>
     `;
   }
 
   override mount(): void {
+    this.isDestroyed = false;
     refreshIcons();
 
     // Identity banner CTA
@@ -112,6 +113,7 @@ class LeaderboardPage extends Component {
     if (root) {
       this.matchHistoryCleanup = attachMatchHistoryInteractions(root);
     }
+    this.unregisterRefreshHandler = registerAppRefreshHandler(() => this.handlePullRefresh());
 
     // GSAP animations — header + components (parent #app-content handles page fade)
     gsap.from('#leaderboard-page .page-header', { opacity: 0, y: -20, duration: 0.4, ease: 'power2.out' });
@@ -120,12 +122,19 @@ class LeaderboardPage extends Component {
     gsap.from('.stat-card-new', { y: 15, stagger: 0.08, duration: 0.3, ease: 'power2.out', delay: 0.1 });
     gsap.from('.ranking-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.3 });
     gsap.from('.match-history-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.4 });
+
+    void this.refreshHeroContent();
   }
 
   override destroy(): void {
+    this.isDestroyed = true;
     if (this.matchHistoryCleanup) {
       this.matchHistoryCleanup();
       this.matchHistoryCleanup = null;
+    }
+    if (this.unregisterRefreshHandler) {
+      this.unregisterRefreshHandler();
+      this.unregisterRefreshHandler = null;
     }
   }
 
@@ -270,7 +279,7 @@ class LeaderboardPage extends Component {
         </div>
         <button id="identity-banner-btn"
                 class="shrink-0 px-3 py-1.5 rounded-lg font-ui text-xs whitespace-nowrap transition-all hover:brightness-110 active:scale-[0.98]"
-                style="background:linear-gradient(135deg,#FFD700,#F0A500); color:#0F2A20; letter-spacing:0.06em">
+          style="background:linear-gradient(135deg,#FFD700,#F0A500); color:var(--color-bg-deep); letter-spacing:0.06em">
           SCEGLI
         </button>
       </div>
@@ -526,7 +535,7 @@ class LeaderboardPage extends Component {
 
       return `
         <a href="/profile/${p.id}"
-           class="podium-card ${elevatedClass} group flex flex-col items-center p-4 md:p-5 gap-2 md:gap-3 rounded-xl md:!max-h-[265.33px]"
+           class="podium-card ${elevatedClass} group flex flex-col items-center p-4 md:p-5 gap-2 md:gap-3 rounded-xl md:max-h-[265.33px]!"
            style="
              background: ${bg};
              border: 1px solid ${border};
@@ -551,7 +560,7 @@ class LeaderboardPage extends Component {
           </div>
 
           <!-- Stats: WR | ELO | Matches -->
-          <div class="flex gap-4 text-center">
+          <div class="flex gap-4 sm:gap-1 text-center">
             <div>
               <div style="font-family:var(--font-ui); font-size:14px; color:white">${winRate}%</div>
               <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">WIN RATE</div>
@@ -862,7 +871,55 @@ class LeaderboardPage extends Component {
     });
   }
 
+  private async handlePullRefresh(): Promise<void> {
+    await refreshCoreData();
+
+    if (this.isDestroyed) return;
+
+    await this.refreshHeroContent();
+    if (this.isDestroyed) return;
+
+    this.refreshTable();
+    this.refreshRecentMatches();
+    this.updateSortIndicators();
+  }
+
   // ── Dynamic Updates ─────────────────────────────────────────
+
+  private async refreshHeroContent(): Promise<void> {
+    const heroSlot = this.$('#leaderboard-hero-slot');
+    if (!heroSlot) return;
+
+    let runningMatch;
+    try {
+      runningMatch = await fetchRunningMatch();
+    } catch {
+      runningMatch = null;
+    }
+
+    // Keep the initial podium/static hero when there is no live running match.
+    if (!runningMatch) return;
+
+    if (this.isDestroyed) return;
+
+    const nextHtml = this.renderLiveMatch(runningMatch);
+    if (!nextHtml) return;
+
+    if (this.heroContent === 'live-match' && heroSlot.innerHTML.trim() === nextHtml.trim()) {
+      return;
+    }
+
+    this.heroContent = 'live-match';
+    heroSlot.setAttribute('data-hero-content', 'live-match');
+    heroSlot.innerHTML = nextHtml;
+    refreshIcons();
+
+    gsap.fromTo(
+      heroSlot,
+      { opacity: 0.92, y: 4 },
+      { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'opacity,transform' }
+    );
+  }
 
   private refreshTable(): void {
     const tbody = this.$('#ranking-tbody');
@@ -886,6 +943,25 @@ class LeaderboardPage extends Component {
     tbody.innerHTML = players.map((p, idx) =>
       this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId)
     ).join('');
+
+    refreshIcons();
+  }
+
+  private refreshRecentMatches(): void {
+    const historySlot = this.$('#leaderboard-history-slot');
+    if (!historySlot) return;
+
+    if (this.matchHistoryCleanup) {
+      this.matchHistoryCleanup();
+      this.matchHistoryCleanup = null;
+    }
+
+    historySlot.innerHTML = this.renderRecentMatches();
+
+    const root = this.$('#leaderboard-page') ?? this.el;
+    if (root) {
+      this.matchHistoryCleanup = attachMatchHistoryInteractions(root);
+    }
 
     refreshIcons();
   }

@@ -1,6 +1,7 @@
 import { list } from '@vercel/blob';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
+import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { combineMiddlewares, withSecurityMiddleware } from './_middleware.js';
 import { getRandomMessage } from './_randomMessage.js';
@@ -223,6 +224,6 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 // Applica auth + security middleware
 export default combineMiddlewares(
   handler,
-  // h => withAuth(h, 'admin'),
+  h => withAuth(h, 'admin'),
   h => withSecurityMiddleware(h, { timeout: 60000 }) // 60s per notifiche multiple
 );

@@ -234,7 +234,7 @@ class MatchmakingPage extends Component {
                      font-family:'Bebas Neue',sans-serif;
                      font-size:18px;
                      letter-spacing:0.15em;
-                     color:${enabled ? '#0F2A20' : 'rgba(255,215,0,0.5)'};
+                color:${enabled ? 'var(--color-bg-deep)' : 'rgba(255,215,0,0.5)'};
                      ${enabled ? 'box-shadow:0 0 30px rgba(255,215,0,0.25)' : ''}"
               ${enabled ? '' : 'disabled'}>
         <i data-lucide="swords" style="width:18px;height:18px"></i>
@@ -348,7 +348,7 @@ class MatchmakingPage extends Component {
                        font-family:'Bebas Neue',sans-serif;
                        font-size:18px;
                        letter-spacing:0.15em;
-                       color:#0F2A20;
+                 color:var(--color-bg-deep);
                        box-shadow:0 0 30px rgba(255,215,0,0.25)">
           <i data-lucide="trophy" style="width:18px;height:18px"></i>
           SALVA PARTITA
@@ -455,7 +455,8 @@ class MatchmakingPage extends Component {
     const items = [
       { icon: 'bar-chart-3', label: 'Bilanciamento', score: h.matchBalance.score, max: h.matchBalance.max, color: '#4A90D9' },
       { icon: 'star', label: 'Priorita', score: h.priority.score, max: h.priority.max, color: '#FFD700' },
-      { icon: 'dices', label: 'Diversita', score: h.diversity.score, max: h.diversity.max, color: '#27AE60' },
+      { icon: 'dices', label: 'Diversita team', score: h.diversityTeam.score, max: h.diversityTeam.max, color: '#27AE60' },
+      { icon: 'dices', label: 'Diversita avversari', score: h.diversityOpponent.score, max: h.diversityOpponent.max, color: '#2ECC71' },
       { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' },
       { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' }
     ];
@@ -717,7 +718,7 @@ class MatchmakingPage extends Component {
       btn.style.background = canGenerate
         ? 'linear-gradient(135deg, #FFD700, #F0A500)'
         : 'rgba(255,215,0,0.1)';
-      btn.style.color = canGenerate ? '#0F2A20' : 'rgba(255,215,0,0.5)';
+      btn.style.color = canGenerate ? 'var(--color-bg-deep)' : 'rgba(255,215,0,0.5)';
       btn.style.boxShadow = canGenerate ? '0 0 30px rgba(255,215,0,0.25)' : 'none';
     }
   }
@@ -978,7 +979,7 @@ class MatchmakingPage extends Component {
 
     // SSE: any lobby event triggers an immediate refresh (no debounce needed — we just call refresh)
     this.sseClient = new RealtimeClient({
-      onStatusChange: (status) => console.log('[Matchmaking] SSE', status)
+      onStatusChange: status => console.log('[Matchmaking] SSE', status)
     });
     this.sseClient.onEvent(() => {
       LobbyService.refresh();

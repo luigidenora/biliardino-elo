@@ -154,7 +154,7 @@ class AddPlayerPage extends Component {
           <button type="submit"
                   class="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 font-display text-lg transition-all"
                   style="letter-spacing:0.12em; background:linear-gradient(135deg,#FFD700,#F0A500);
-                         color:#0F2A20; border:none; cursor:pointer;
+                         color:var(--color-bg-deep); border:none; cursor:pointer;
                          box-shadow:0 0 20px rgba(255,215,0,0.2)">
             AGGIUNGI GIOCATORE
           </button>

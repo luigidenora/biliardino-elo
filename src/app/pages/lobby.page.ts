@@ -428,7 +428,7 @@ class LobbyPage extends Component {
                   style="${
                     this.isMyPresenceConfirmed
                       ? 'background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.4); font-size:12px; letter-spacing:0.1em; color:#F87171'
-                      : 'background:linear-gradient(135deg, #FFD700, #F0A500); font-size:12px; letter-spacing:0.1em; color:#0F2A20'
+                      : 'background:linear-gradient(135deg, #FFD700, #F0A500); font-size:12px; letter-spacing:0.1em; color:var(--color-bg-deep)'
                   }; display:${this.isLobbyParticipant() ? 'block' : 'none'}">
             ${this.isMyPresenceConfirmed ? 'ANNULLA CONFERMA' : 'CONFERMA PRESENZA'}
           </button>
@@ -537,7 +537,7 @@ class LobbyPage extends Component {
                 <button type="submit"
                         class="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:brightness-110 shrink-0"
                         style="background:linear-gradient(135deg, #FFD700, #F0A500)">
-                  <i data-lucide="send" style="width:14px;height:14px;color:#0F2A20"></i>
+                  <i data-lucide="send" style="width:14px;height:14px;color:var(--color-bg-deep)"></i>
                 </button>
               </form>
             </div>
@@ -884,7 +884,7 @@ class LobbyPage extends Component {
       btn.textContent = 'CONFERMA PRESENZA';
       btn.style.background = 'linear-gradient(135deg, #FFD700, #F0A500)';
       btn.style.border = '';
-      btn.style.color = '#0F2A20';
+      btn.style.color = 'var(--color-bg-deep)';
     }
   }
 
@@ -931,7 +931,7 @@ class LobbyPage extends Component {
         </div>
         <button id="admin-broadcast-btn"
                 class="px-6 py-2.5 rounded-lg font-ui transition-all duration-200 hover:brightness-110 active:scale-95"
-                style="background:linear-gradient(135deg, #FFD700, #F0A500); font-size:13px; letter-spacing:0.12em; color:#0F2A20">
+          style="background:linear-gradient(135deg, #FFD700, #F0A500); font-size:13px; letter-spacing:0.12em; color:var(--color-bg-deep)">
           AVVIA
         </button>
         <p id="admin-broadcast-feedback" class="font-ui mt-4" style="font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:0.1em; min-height:16px"></p>

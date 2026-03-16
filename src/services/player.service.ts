@@ -122,7 +122,9 @@ export function checkDerankThreshold(elo: number): boolean {
 }
 
 export async function loadPlayers(): Promise<void> {
+  playersMap.clear();
   playersArray = await fetchPlayers();
+  rankOutdated = true;
 
   for (const player of playersArray) {
     playersMap.set(player.id, player);

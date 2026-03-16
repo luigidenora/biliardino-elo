@@ -246,17 +246,15 @@ class Router {
     try {
       const { withAuthentication } = await import('@/utils/auth.util');
       trace('Router', 'auth.util loaded');
-      return new Promise<boolean>((resolve) => {
-        withAuthentication(
-          () => {
-            trace('Router', 'withAuthentication callback — authorized');
-            appState.isAuthenticated = true;
-            if (requireAdmin) appState.isAdmin = true;
-            resolve(true);
-          },
-          requireAdmin
-        );
-      });
+      const authorized = await withAuthentication(
+        () => {
+          trace('Router', 'withAuthentication callback — authorized');
+          appState.isAuthenticated = true;
+          if (requireAdmin) appState.isAdmin = true;
+        },
+        requireAdmin
+      );
+      return authorized;
     } catch (err) {
       trace('Router', 'checkAuth threw error → redirect to /', { error: String(err) });
       this.navigate('/');

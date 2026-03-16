@@ -97,7 +97,7 @@ class UserDropdownComponent {
     ].join(' ');
     this.panelEl.style.cssText = [
       'display:none',
-      'background:rgba(7,18,12,0.98)',
+      'background:var(--color-bg-overlay)',
       'border:1px solid rgba(255,215,0,0.22)',
       'border-radius:16px',
       'box-shadow:0 24px 64px rgba(0,0,0,0.7),0 4px 20px rgba(255,215,0,0.1)',
@@ -695,7 +695,7 @@ class UserDropdownComponent {
       action = `
         <button data-action="notif-subscribe"
                 class="w-full mt-3 py-2 rounded-xl font-ui text-xs text-center transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
-                style="background:linear-gradient(135deg,#FFD700,#F0A500);color:#0F2A20;letter-spacing:0.08em">
+          style="background:linear-gradient(135deg,#FFD700,#F0A500);color:var(--color-bg-deep);letter-spacing:0.08em">
           Attiva notifiche
         </button>
       `;
@@ -784,7 +784,7 @@ class UserDropdownComponent {
             <div class="flex gap-2 pt-1">
                   <button type="submit" id="dd-login-submit"
                     class="px-3 py-2 rounded-xl font-ui text-xs text-center transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
-                    style="background:linear-gradient(135deg,#FFD700,#F0A500);color:#0F2A20;letter-spacing:0.08em">
+                    style="background:linear-gradient(135deg,#FFD700,#F0A500);color:var(--color-bg-deep);letter-spacing:0.08em">
                     Accedi
                   </button>
                   <button type="button" data-action="cancel-login"
