@@ -1,6 +1,9 @@
 import { createParticles, EmojiOption } from '@/app/particles/particles-manager';
+import haptics from '@/utils/haptics.util';
 import { Component } from './component.base';
 
+// Each step = how many px of pull triggers a new burst + haptic
+const STEP_PX = 18;
 // Below this threshold the pull is ignored
 const DEAD_ZONE_PX = 10;
 // At this distance the gesture is "armed" — releasing will reload
@@ -103,6 +106,19 @@ class PullToRefreshComponent extends Component {
       this.spawnBurst(1);
       this.lastSpawnTime = now;
     }
+
+    // Vibrate on step changes (discrete intervals)
+    const currentStep = Math.floor(this.pullDistance / STEP_PX);
+    if (currentStep > this.lastBurstStep) {
+      this.lastBurstStep = currentStep;
+      this.vibrate(currentStep);
+    }
+
+    // First time we cross the threshold: strong "ready" buzz
+    if (!this.armed && this.pullDistance >= ARM_THRESHOLD_PX) {
+      this.armed = true;
+      this.vibrate(99);
+    }
   }
 
   private onTouchEnd(): void {
@@ -131,6 +147,38 @@ class PullToRefreshComponent extends Component {
       const x = 40 + Math.random() * (window.innerWidth - 80);
       // Gravity downward so balls fall from the header edge
       createParticles(x, y, FOOTBALL_EMOJIS, 0, 0, 1.5);
+    }
+  }
+
+  // ── Haptics ───────────────────────────────────────────────────────────────
+
+  /**
+   * Trigger multi-step haptic feedback scaled by pull step.
+   * More steps = more impulses in the pattern.
+   */
+  private vibrate(step: number): void {
+    if (step === 0) return;
+
+    try {
+      const baseIntensity = Math.min(0.3 + step * 0.08, 0.9);
+      const pattern: Array<{ duration: number; delay?: number }> = [];
+
+      // Add impulses based on step count (1 impulse per step, up to 5)
+      const impulseCount = Math.min(step, 5);
+      for (let i = 0; i < impulseCount; i++) {
+        if (i === 0) {
+          // First impulse, no delay
+          pattern.push({ duration: 40 });
+        } else {
+          // Subsequent impulses with delay between them
+          pattern.push({ delay: 40, duration: 40 });
+        }
+      }
+
+      // Intensity goes in the second parameter (options)
+      haptics.trigger(pattern, { intensity: baseIntensity });
+    } catch {
+      // not supported
     }
   }
 }
