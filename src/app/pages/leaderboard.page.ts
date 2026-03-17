@@ -74,9 +74,13 @@ class LeaderboardPage extends Component {
         <div id="leaderboard-hero-slot" data-hero-content="podium">
           ${this.renderPodium()}
         </div>
-        ${this.renderRankingTable()}
+        <div id="leaderboard-table-slot">
+          <div class="rounded-xl" style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px); height:200px; display:flex; align-items:center; justify-content:center">
+            <div style="color:rgba(255,255,255,0.3); font-family:var(--font-ui); letter-spacing:0.1em; font-size:13px">CARICAMENTO CLASSIFICA...</div>
+          </div>
+        </div>
         <div id="leaderboard-history-slot">
-          ${this.renderRecentMatches()}
+          <div style="color:rgba(255,255,255,0.3); font-family:var(--font-ui); letter-spacing:0.1em; font-size:13px; padding:20px; text-align:center">CARICAMENTO PARTITE...</div>
         </div>
       </div>
     `;
@@ -91,23 +95,11 @@ class LeaderboardPage extends Component {
       userDropdown.open();
     });
 
-    // Bind sortable headers
-    const headers = this.$$('.sort-header');
-    for (const th of headers) {
-      th.addEventListener('click', () => {
-        const key = (th as HTMLElement).dataset.sortKey as SortKey;
-        if (!key) return;
-        if (this.sortKey === key) {
-          this.sortAsc = !this.sortAsc;
-        } else {
-          this.sortKey = key;
-          this.sortAsc = false;
-        }
-        this.refreshTable();
-        this.updateSortIndicators();
-      });
-    }
-    this.updateSortIndicators();
+    // Get data for lazy loading (compute early but don't render yet)
+    const players = this.getSortedPlayers();
+    const todayDeltas = this.getTodayEloDeltas();
+    const todayRankDeltas = this.getTodayRankDeltas();
+    const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
 
     const root = this.$('#leaderboard-page') ?? this.el;
     if (root) {
@@ -115,15 +107,63 @@ class LeaderboardPage extends Component {
     }
     this.unregisterRefreshHandler = registerAppRefreshHandler(() => this.handlePullRefresh());
 
-    // GSAP animations — header + components (parent #app-content handles page fade)
+    // GSAP animations — fast initial animations for header + podium
     gsap.from('#leaderboard-page .page-header', { opacity: 0, y: -20, duration: 0.4, ease: 'power2.out' });
-    gsap.from('.live-match-card', { opacity: 0, y: 15, duration: 0.5, ease: 'power2.out', delay: 0.1 });
     gsap.from('.podium-card', { scale: 0.9, y: 12, stagger: 0.1, duration: 0.45, ease: 'back.out(1.4)', clearProps: 'transform' });
-    gsap.from('.stat-card-new', { y: 15, stagger: 0.08, duration: 0.3, ease: 'power2.out', delay: 0.1 });
-    gsap.from('.ranking-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.3 });
-    gsap.from('.match-history-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.4 });
 
+    // Kick off live match check
     void this.refreshHeroContent();
+
+    // === LAZY LOAD TABLE + HISTORY after animations start ===
+    // Schedule render after paint using requestIdleCallback or setTimeout (for broader support)
+    const scheduleLoad = () => {
+      if (this.isDestroyed) return;
+
+      // Render ranking table
+      const tableSlot = this.$('#leaderboard-table-slot');
+      if (tableSlot) {
+        tableSlot.innerHTML = this.renderRankingTable();
+        refreshIcons();
+
+        // Bind sortable headers after table is rendered
+        const headers = this.$$('.sort-header');
+        for (const th of headers) {
+          th.addEventListener('click', () => {
+            const key = (th as HTMLElement).dataset.sortKey as SortKey;
+            if (!key) return;
+            if (this.sortKey === key) {
+              this.sortAsc = !this.sortAsc;
+            } else {
+              this.sortKey = key;
+              this.sortAsc = false;
+            }
+            this.refreshTable();
+            this.updateSortIndicators();
+          });
+        }
+        this.updateSortIndicators();
+
+        // Animate table rows in
+        gsap.from('.ranking-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.1 });
+      }
+
+      // Render match history
+      const historySlot = this.$('#leaderboard-history-slot');
+      if (historySlot) {
+        historySlot.innerHTML = this.renderRecentMatches();
+        refreshIcons();
+
+        // Animate history rows in
+        gsap.from('.match-history-row', { x: -10, stagger: 0.03, duration: 0.25, ease: 'power2.out', delay: 0.15 });
+      }
+    };
+
+    // Use requestIdleCallback if available (modern browsers), otherwise setTimeout
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(scheduleLoad, { timeout: 1000 });
+    } else {
+      setTimeout(scheduleLoad, 100);
+    }
   }
 
   override destroy(): void {

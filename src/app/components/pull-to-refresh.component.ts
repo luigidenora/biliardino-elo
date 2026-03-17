@@ -1,9 +1,6 @@
 import { createParticles, EmojiOption } from '@/app/particles/particles-manager';
-import haptics from '@/utils/haptics.util';
 import { Component } from './component.base';
 
-// Each step = how many px of pull triggers a new burst + haptic
-const STEP_PX = 18;
 // Below this threshold the pull is ignored
 const DEAD_ZONE_PX = 10;
 // At this distance the gesture is "armed" — releasing will reload
@@ -104,7 +101,6 @@ class PullToRefreshComponent extends Component {
     const now = Date.now();
     if (now - this.lastSpawnTime > 100) {
       this.spawnBurst(1);
-      haptics.trigger('nudge');
       this.lastSpawnTime = now;
     }
   }
