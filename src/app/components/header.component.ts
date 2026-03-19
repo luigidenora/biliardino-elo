@@ -8,6 +8,7 @@
 
 import gsap from 'gsap';
 import { getPlayerById } from '../../services/player.service';
+import { LobbyService } from '../../services/lobby.service';
 import { refreshIcons } from '../icons';
 import { router } from '../router';
 import { appState } from '../state';
@@ -73,6 +74,10 @@ export class HeaderComponent extends Component {
 
   override mount(): void {
     refreshIcons();
+
+    // Keep lobby state synchronized globally while app shell is mounted.
+    LobbyService.acquire().catch(() => { /* fail-open: header indicator will recover on next refresh */ });
+
     this.desktopSliderEl = document.getElementById('desktop-nav-slider');
     // Gestione visibilità admin
     this.updateAdminVisibility();
@@ -98,6 +103,8 @@ export class HeaderComponent extends Component {
   }
 
   override destroy(): void {
+    LobbyService.release();
+
     if (this.handleRouteChange) {
       window.removeEventListener('popstate', this.handleRouteChange);
       appState.off('route-change', this.handleRouteChange);
