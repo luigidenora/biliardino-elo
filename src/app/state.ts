@@ -26,7 +26,9 @@ class AppState {
   matchesLoaded = false;
 
   // ── Lobby (single source of truth — written by LobbyService) ──
-  lobbyActive = false;
+  /** @deprecated Use `lobbyExists` — kept for backward compatibility. */
+  get lobbyActive(): boolean { return this.lobbyExists; }
+  set lobbyActive(v: boolean) { this.lobbyExists = v; }
   lobbyExists = false;
   lobbyTtl = 0;
   lobbyMatch: IRunningMatchDTO | null = null;
@@ -38,7 +40,6 @@ class AppState {
    */
   updateLobbyState(state: ILobbyState): void {
     this.lobbyExists = state.exists;
-    this.lobbyActive = state.exists;
     this.lobbyTtl = state.ttl;
     this.lobbyMatch = state.match;
     this.lobbyConfirmationsCount = state.count;
@@ -49,7 +50,6 @@ class AppState {
    */
   resetLobbyState(): void {
     this.lobbyExists = false;
-    this.lobbyActive = false;
     this.lobbyTtl = 0;
     this.lobbyMatch = null;
     this.lobbyConfirmationsCount = 0;
@@ -87,7 +87,7 @@ class AppState {
     trace('State', 'hydrateFromLocalStorage', {
       playerId: this.currentPlayerId,
       playerName: this.currentPlayerName,
-      isAdmin: this.isAdmin,
+      isAdmin: this.isAdmin
     });
   }
 }

@@ -44,6 +44,8 @@ class LobbyServiceImpl {
   private consecutiveErrors = 0;
   private activeFetchController: AbortController | null = null;
   private lifecycleVersion = 0;
+  /** Guards against concurrent fetches — reuses the in-flight promise. */
+  private fetchInFlight: Promise<ILobbyState> | null = null;
 
   // ── Public API ─────────────────────────────────────────────
 
@@ -73,8 +75,32 @@ class LobbyServiceImpl {
 
   /**
    * Fetch fresh state from the unified /api/lobby endpoint.
+   * Concurrent calls are deduplicated — the in-flight promise is reused.
    */
   async refresh(): Promise<ILobbyState> {
+    if (this.fetchInFlight) return this.fetchInFlight;
+    this.fetchInFlight = this.doFetch();
+    try {
+      return await this.fetchInFlight;
+    } finally {
+      this.fetchInFlight = null;
+    }
+  }
+
+  /**
+   * Force-refresh and reset the poll timer — use after user-triggered actions
+   * (confirm, broadcast) so the next poll happens a full interval later.
+   */
+  async refreshNow(): Promise<ILobbyState> {
+    const result = await this.refresh();
+    // Reset the poll schedule so we don't double-fetch shortly after
+    if (this.initialized && document.visibilityState !== 'hidden') {
+      this.scheduleNextPoll();
+    }
+    return result;
+  }
+
+  private async doFetch(): Promise<ILobbyState> {
     const lifecycleVersion = this.lifecycleVersion;
     const controller = new AbortController();
     this.activeFetchController = controller;
@@ -155,6 +181,7 @@ class LobbyServiceImpl {
     this.lifecycleVersion++;
     this.activeFetchController?.abort();
     this.activeFetchController = null;
+    this.fetchInFlight = null;
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     this.stopPoll();
     this.consumerCount = 0;
@@ -172,16 +199,39 @@ class LobbyServiceImpl {
   // ── State management ──────────────────────────────────────
 
   private updateState(data: ILobbyState): void {
-    const wasActive = this.state.exists;
+    const prev = this.state;
     this.state = data;
 
+    // Always sync appState (TTL, counts) — it's the global source of truth
     appState.updateLobbyState(data);
 
-    if (wasActive !== data.exists) {
+    // Emit lobby-change only when existence changes
+    if (prev.exists !== data.exists) {
       appState.emit('lobby-change');
     }
 
-    this.notifyListeners();
+    // Notify listeners only when meaningful state changed
+    if (this.hasChanged(prev, data)) {
+      this.notifyListeners();
+    }
+  }
+
+  /** Compare fields that actually matter for UI — ignores TTL jitter. */
+  private hasChanged(prev: ILobbyState, next: ILobbyState): boolean {
+    if (prev.exists !== next.exists) return true;
+    if (prev.count !== next.count) return true;
+    if (prev.messageCount !== next.messageCount) return true;
+
+    // Match composition changed
+    const prevMatchKey = prev.match
+      ? `${prev.match.teamA.defence}-${prev.match.teamA.attack}-${prev.match.teamB.defence}-${prev.match.teamB.attack}`
+      : null;
+    const nextMatchKey = next.match
+      ? `${next.match.teamA.defence}-${next.match.teamA.attack}-${next.match.teamB.defence}-${next.match.teamB.attack}`
+      : null;
+    if (prevMatchKey !== nextMatchKey) return true;
+
+    return false;
   }
 
   private notifyListeners(): void {

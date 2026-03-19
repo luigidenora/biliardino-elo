@@ -124,14 +124,7 @@ class LobbyPage extends Component {
 
   /** Resolve IPlayer objects for team members from the local cache. */
   private resolvePlayers(): void {
-    if (!this.lobbyData) return;
-    const ids = [
-      this.lobbyData.teamA.defence,
-      this.lobbyData.teamA.attack,
-      this.lobbyData.teamB.defence,
-      this.lobbyData.teamB.attack
-    ];
-    for (const id of ids) {
+    for (const id of this.getLobbyPlayerIds()) {
       if (!this.players.has(id)) {
         const p = getPlayerById(id);
         if (p) this.players.set(id, p);
@@ -140,51 +133,49 @@ class LobbyPage extends Component {
   }
 
   private renderMain(): string {
-    if (this.isMyPresenceConfirmed) {
-      const color = this.getCountdownColor();
+    if (!this.canAccessLobbyPanels) {
       return `
-        <div class="space-y-3">
-
-          <!-- Countdown bar — always visible when scrolled past header -->
-          <div id="confirmed-ttl-bar"
-               class="flex items-center justify-between px-4 py-2.5 rounded-xl"
-               style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08)">
-            <div class="flex items-center gap-2">
-              <i data-lucide="timer" style="width:13px;height:13px;color:${color}"></i>
-              <span class="font-ui"
-                    style="font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.1em">
-                LOBBY SCADE TRA
-              </span>
-            </div>
-            <span id="confirmed-countdown-text" class="font-display"
-                  style="font-size:16px; color:${color}; letter-spacing:0.08em; transition:color 0.5s">
-              ${this.formatCountdown(this.countdownSeconds)}
-            </span>
-          </div>
-
-          <!-- Aquarium — expanded, unlocked -->
-          ${this.renderAquarium(true)}
-
-          <!-- Chat — full-width, unlocked -->
-          ${this.renderChat()}
-
-          <!-- Abandon button — always visible -->
-          ${this.renderAbandonButton()}
-
-        </div>
-      `;
-    }
-
-    // Unconfirmed layout: teams + locked aquarium + locked chat (side column on lg)
-    return `
-      <div class="flex flex-col lg:grid lg:grid-cols-[1fr_320px] gap-4 md:gap-5">
         <div class="space-y-4">
           <div id="teams-section">
             ${this.renderTeams()}
           </div>
-          ${this.renderAquarium(false)}
         </div>
-        ${this.renderChat()}
+      `;
+    }
+
+    const color = this.getCountdownColor();
+
+    // Stable layout for participants: only labels/lock states change.
+    return `
+      <div class="space-y-3">
+
+        <div id="confirmed-ttl-bar"
+             class="flex items-center justify-between px-4 py-2.5 rounded-xl"
+             style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08)">
+          <div class="flex items-center gap-2">
+            <i data-lucide="timer" style="width:13px;height:13px;color:${color}"></i>
+            <span class="font-ui"
+                  style="font-size:11px; color:rgba(255,255,255,0.4); letter-spacing:0.1em">
+              ${this.isMyPresenceConfirmed ? 'LOBBY SCADE TRA' : 'CONFERMA LA PRESENZA'}
+            </span>
+          </div>
+          <span id="confirmed-countdown-text" class="font-display"
+                style="font-size:16px; color:${color}; letter-spacing:0.08em; transition:color 0.5s">
+            ${this.formatCountdown(this.countdownSeconds)}
+          </span>
+        </div>
+
+        <div class="flex flex-col lg:grid lg:grid-cols-[1fr_320px] gap-4 md:gap-5">
+          <div class="space-y-4">
+            <div id="teams-section">
+              ${this.renderTeams()}
+            </div>
+            ${this.renderAquarium(true)}
+            ${this.renderAbandonButton()}
+          </div>
+          ${this.renderChat()}
+        </div>
+
       </div>
     `;
   }
@@ -230,8 +221,23 @@ class LobbyPage extends Component {
     this.lobbyStateListener = (state: ILobbyState) => this.onLobbyStateChange(state);
     LobbyService.onStateChange(this.lobbyStateListener);
 
-    // Kick off server fetch (non-blocking). Once resolved, onLobbyStateChange updates the UI.
-    LobbyService.acquire().catch(() => { /* fail-open: polling/SSE will retry */ });
+    // Kick off server fetch (non-blocking). Ensure we unblock the initial UI once
+    // the first acquire() cycle completes, even if no state-change event was emitted.
+    LobbyService.acquire()
+      .then((state) => {
+        if (!this.serverResponded) {
+          this.applyLobbyState(state);
+          this.rerenderMain();
+          this.syncFish(this.lastConfirmations);
+        }
+      })
+      .catch(() => {
+        // Fail-open: stop showing loading forever and allow fallback admin UI.
+        if (!this.serverResponded) {
+          this.serverResponded = true;
+          this.rerenderMain();
+        }
+      });
 
     // Start fish animation
     this.startFishAnimation();
@@ -358,8 +364,11 @@ class LobbyPage extends Component {
           </div>
         `;
       }
-      if (this.lobbyExists || appState.lobbyActive) {
-        return this.renderConfirmKickCard();
+      if (this.lobbyExists) {
+        const alreadyConfirmed = this.myPlayerId ? this.confirmed.has(this.myPlayerId) : false;
+        if (!alreadyConfirmed) return this.renderConfirmKickCard();
+        // Already confirmed — no card needed, panels are visible via canAccessLobbyPanels
+        return '';
       } else if (appState.isAdmin) {
         return this.renderAdminBroadcastCard();
       }
@@ -373,6 +382,24 @@ class LobbyPage extends Component {
           </p>
           <p class="font-body text-sm" style="color:rgba(255,255,255,0.4)">
             Aspetta la notifica per giocare!
+          </p>
+        </div>
+      `;
+    }
+
+    // Active lobby exists, but this user is not one of the 4 players.
+    // Do not show match composition/details in this view.
+    if (!this.isLobbyParticipant()) {
+      return `
+        <div class="team-card glass-card rounded-xl p-6 text-center">
+          <i data-lucide="shield" class="mx-auto mb-3"
+             style="width:30px;height:30px;color:rgba(255,255,255,0.35)"></i>
+          <p class="font-display text-xl text-(--color-gold) mb-2"
+             style="letter-spacing:0.12em">
+            LOBBY ATTIVA
+          </p>
+          <p class="font-body text-sm" style="color:rgba(255,255,255,0.45)">
+            Dettagli partita nascosti in questa schermata.
           </p>
         </div>
       `;
@@ -633,12 +660,16 @@ class LobbyPage extends Component {
   }
 
   private renderAbandonButton(): string {
+    const canAbandon = this.isMyPresenceConfirmed;
+
     return `
       <div class="pb-2">
         <button id="abandon-lobby-btn"
+                ${canAbandon ? '' : 'disabled'}
                 class="w-full py-3 rounded-xl font-ui transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
                 style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.35);
-                       font-size:13px; letter-spacing:0.12em; color:#F87171">
+                       font-size:13px; letter-spacing:0.12em; color:#F87171;
+                       opacity:${canAbandon ? '1' : '0.45'}; cursor:${canAbandon ? 'pointer' : 'not-allowed'}">
           <span class="flex items-center justify-center gap-2">
             <i data-lucide="log-out" style="width:14px;height:14px"></i>
             ABBANDONA LOBBY
@@ -725,7 +756,9 @@ class LobbyPage extends Component {
     if (fromServer) {
       this.serverResponded = true;
     }
-    if (state.match) this.lobbyData = state.match as IRunningMatchDTO;
+    this.lobbyData = state.exists && state.match
+      ? state.match as IRunningMatchDTO
+      : null;
     if (state.exists && state.ttl > 0) {
       // Only sync TTL if server differs significantly (avoid jitter)
       if (Math.abs(this.countdownSeconds - state.ttl) > 5) {
@@ -745,49 +778,34 @@ class LobbyPage extends Component {
     this.processMessages(state.messages);
 
     // Resolve player objects for the teams
-    if (this.lobbyData) {
-      const ids = [
-        this.lobbyData.teamA.defence,
-        this.lobbyData.teamA.attack,
-        this.lobbyData.teamB.defence,
-        this.lobbyData.teamB.attack
-      ];
-      for (const id of ids) {
-        if (!this.players.has(id)) {
-          const p = getPlayerById(id);
-          if (p) this.players.set(id, p);
-        }
-      }
-    }
+    this.resolvePlayers();
   }
 
   /**
-   * Callback from LobbyService when state changes (WS event or poll).
-   * Detects layout transitions and does targeted or full DOM updates.
+   * Callback from LobbyService when meaningful state changes.
+   * LobbyService already filters out no-op updates (TTL jitter, etc.).
    */
   private onLobbyStateChange(state: ILobbyState): void {
-    // Capture pre-update state for transition detection
-    const wasConfirmed = this.isMyPresenceConfirmed;
-    const hadLobby = !!this.lobbyData;
-    const hadLobbyExists = this.lobbyExists;
+    // Snapshot pre-update layout state
+    const hadPanelAccess = this.canAccessLobbyPanels;
+    const hadLobby = this.hasActiveLobby;
     const wasServerResponded = this.serverResponded;
 
     this.applyLobbyState(state);
 
-    const isNowConfirmed = this.isMyPresenceConfirmed;
-    const layoutChanged = (!hadLobby && this.lobbyData)
-      || (!hadLobbyExists && this.lobbyExists)
-      || (wasConfirmed !== isNowConfirmed)
-      || (!wasServerResponded && this.serverResponded);
+    // Full re-render when the overall layout shape changes
+    const layoutChanged
+      = hadPanelAccess !== this.canAccessLobbyPanels
+        || hadLobby !== this.hasActiveLobby
+        || (!wasServerResponded && this.serverResponded);
 
     if (layoutChanged) {
-      // Full re-render of main content when layout needs to change
       this.rerenderMain();
       this.syncFish(this.lastConfirmations);
       return;
     }
 
-    // Targeted DOM updates (no layout change needed)
+    // Targeted DOM patches — no layout rebuild needed
     this.updateReadyStatus();
     this.syncFish(this.lastConfirmations);
     this.updateConfirmButtonState();
@@ -824,10 +842,6 @@ class LobbyPage extends Component {
     }
   }
 
-  private updateUnlockedState(): void {
-    // No-op: confirmation transitions are handled by rerenderMain()
-  }
-
   // ── Confirm attendance ───────────────────────────────────────
 
   private bindConfirmButton(): void {
@@ -849,6 +863,7 @@ class LobbyPage extends Component {
     const btn = this.$id('abandon-lobby-btn') as HTMLButtonElement | null;
     if (!btn) return;
     btn.addEventListener('click', async () => {
+      if (!this.isMyPresenceConfirmed) return;
       await this.handleCancelConfirmation(btn);
     });
   }
@@ -857,22 +872,14 @@ class LobbyPage extends Component {
     btn.disabled = true;
     btn.textContent = '...';
     try {
-      const res = await fetch(`${API_BASE_URL}/confirm-availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.myPlayerId,
-          subscription: localStorage.getItem('biliardino_subscription')
-        })
-      });
-      if (!res.ok) throw new Error('Errore nella conferma');
+      await this.sendConfirmationRequest('POST');
 
       // Update single source of truth, then re-render the whole main section
       this.confirmed.add(this.myPlayerId!);
       this.rerenderMain();
 
-      // Sync state from server (WS event will also trigger, but force immediate)
-      await LobbyService.refresh();
+      // Sync state from server and reset poll timer
+      await LobbyService.refreshNow();
     } catch (err: any) {
       console.error('[LobbyPage] Confirm error:', err);
       btn.disabled = false;
@@ -885,12 +892,7 @@ class LobbyPage extends Component {
     btn.disabled = true;
     btn.textContent = '...';
     try {
-      const res = await fetch(`${API_BASE_URL}/confirm-availability`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: this.myPlayerId })
-      });
-      if (!res.ok) throw new Error('Errore nella cancellazione');
+      await this.sendConfirmationRequest('DELETE');
 
       // Update single source of truth, then re-render the whole main section
       this.confirmed.delete(this.myPlayerId);
@@ -900,10 +902,6 @@ class LobbyPage extends Component {
       btn.disabled = false;
       this.updateConfirmButtonState();
     }
-  }
-
-  private lockAfterCancel(): void {
-    // No-op: handled by rerenderMain()
   }
 
   private updateConfirmButtonState(): void {
@@ -935,14 +933,8 @@ class LobbyPage extends Component {
   }
 
   private isLobbyParticipant(): boolean {
-    if (!this.myPlayerId || !this.lobbyData) return false;
-    const ids = [
-      this.lobbyData.teamA.defence,
-      this.lobbyData.teamA.attack,
-      this.lobbyData.teamB.defence,
-      this.lobbyData.teamB.attack
-    ];
-    return ids.includes(this.myPlayerId);
+    if (!this.myPlayerId) return false;
+    return this.getLobbyPlayerIds().includes(this.myPlayerId);
   }
 
   // ── Admin Broadcast ─────────────────────────────────────────
@@ -984,7 +976,6 @@ class LobbyPage extends Component {
   private renderConfirmKickCard(): string {
     this.confirmKick?.destroy();
     this.confirmKick = new BroadcastKickComponent();
-    const alreadyConfirmed = this.myPlayerId ? this.confirmed.has(this.myPlayerId) : false;
     return `
       <div class="team-card glass-card rounded-xl p-6 text-center overflow-visible">
         <p class="font-display text-xl text-(--color-gold) mb-2"
@@ -992,19 +983,12 @@ class LobbyPage extends Component {
           LOBBY ATTIVA
         </p>
         <p class="font-body text-sm mb-6" style="color:rgba(255,255,255,0.4)">
-          ${alreadyConfirmed ? 'Hai già confermato la tua presenza' : 'Premi la palla per confermare la tua presenza'}
+          Premi la palla per confermare la tua presenza
         </p>
-        ${alreadyConfirmed
-            ? `<span class="font-ui" style="font-size:14px; color:#4ADE80; letter-spacing:0.1em">CONFERMATO</span>`
-            : this.confirmKick.render()
-        }
-        ${!alreadyConfirmed
-          ? `
-          <p class="font-ui mt-4" style="font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:0.1em">
-            PREMI LA PALLA PER CONFERMARE LA PRESENZA
-          </p>
-        `
-          : ''}
+        ${this.confirmKick.render()}
+        <p class="font-ui mt-4" style="font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:0.1em">
+          PREMI LA PALLA PER CONFERMARE LA PRESENZA
+        </p>
       </div>
     `;
   }
@@ -1077,7 +1061,8 @@ class LobbyPage extends Component {
       appState.lobbyActive = true;
       appState.emit('lobby-change');
 
-      setTimeout(() => LobbyService.refresh(), 1500);
+      // Sync fresh state immediately — no delay needed
+      await LobbyService.refreshNow();
     } catch (err: any) {
       console.error('[LobbyPage] Broadcast error:', err);
       if (feedback) {
@@ -1103,16 +1088,7 @@ class LobbyPage extends Component {
     if (!kicked) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/confirm-availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.myPlayerId,
-          subscription: localStorage.getItem('biliardino_subscription')
-        })
-      });
-
-      if (!res.ok) throw new Error('Errore nella conferma');
+      await this.sendConfirmationRequest('POST');
 
       haptics.trigger('success');
 
@@ -1120,8 +1096,8 @@ class LobbyPage extends Component {
       this.confirmed.add(this.myPlayerId);
       this.rerenderMain();
 
-      // Sync state from server
-      await LobbyService.refresh();
+      // Sync state from server and reset poll timer
+      await LobbyService.refreshNow();
     } catch (err: any) {
       console.error('[LobbyPage] Confirm kick error:', err);
       haptics.trigger('error');
@@ -1180,11 +1156,6 @@ class LobbyPage extends Component {
     } catch (err) {
       console.error('[LobbyPage] Send message error:', err);
     }
-  }
-
-  private async pollMessages(): Promise<void> {
-    // Replaced by processMessages() called from LobbyService
-    // Kept as no-op for safety in case of stale references
   }
 
   private processMessages(messages: IMessage[]): void {
@@ -1475,6 +1446,48 @@ class LobbyPage extends Component {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  private get hasActiveLobby(): boolean {
+    return this.lobbyExists && !!this.lobbyData;
+  }
+
+  private get canAccessLobbyPanels(): boolean {
+    // Prefer confirmed-presence as primary access signal to avoid UI lockouts
+    // when team composition data is temporarily unavailable.
+    return this.lobbyExists && (this.isMyPresenceConfirmed || this.isLobbyParticipant());
+  }
+
+  private getLobbyPlayerIds(): number[] {
+    if (!this.lobbyData) return [];
+    return [
+      this.lobbyData.teamA.defence,
+      this.lobbyData.teamA.attack,
+      this.lobbyData.teamB.defence,
+      this.lobbyData.teamB.attack
+    ];
+  }
+
+  private async sendConfirmationRequest(method: 'POST' | 'DELETE'): Promise<void> {
+    if (!this.myPlayerId) throw new Error('Giocatore non selezionato');
+
+    const body = method === 'POST'
+      ? {
+          playerId: this.myPlayerId,
+          subscription: localStorage.getItem('biliardino_subscription')
+        }
+      : { playerId: this.myPlayerId };
+
+    const res = await fetch(`${API_BASE_URL}/confirm-availability`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const action = method === 'POST' ? 'conferma' : 'cancellazione';
+      throw new Error(`Errore nella ${action}`);
+    }
   }
 }
 
