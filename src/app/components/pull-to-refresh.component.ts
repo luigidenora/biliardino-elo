@@ -1,4 +1,5 @@
 import { createParticles, EmojiOption } from '@/app/particles/particles-manager';
+import { refreshCurrentView } from '@/services/app-refresh.service';
 import haptics from '@/utils/haptics.util';
 import { Component } from './component.base';
 
@@ -12,7 +13,9 @@ const ARM_THRESHOLD_PX = 90;
 const PULL_RESISTANCE = 0.55;
 
 const FOOTBALL_EMOJIS: EmojiOption[] = [
-  { emoji: '⚽', canFlip: false }
+  { emoji: '⚽', canFlip: true },
+  { emoji: '♻️', canFlip: true },
+  { emoji: '🦈', canFlip: true }
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -25,6 +28,7 @@ class PullToRefreshComponent extends Component {
   private lastBurstStep = 0;
   private lastSpawnTime = 0;
   private armed = false;
+  private isRefreshing = false;
 
   private onTouchStartBound = (e: TouchEvent): void => this.onTouchStart(e);
   private onTouchMoveBound = (e: TouchEvent): void => this.onTouchMove(e);
@@ -36,10 +40,10 @@ class PullToRefreshComponent extends Component {
 
   override mount(): void {
     if (!this.shouldHandlePullGesture()) return;
-    window.addEventListener('touchstart', this.onTouchStartBound, { passive: true });
-    window.addEventListener('touchmove', this.onTouchMoveBound, { passive: false });
-    window.addEventListener('touchend', this.onTouchEndBound, { passive: true });
-    window.addEventListener('touchcancel', this.onTouchEndBound, { passive: true });
+    window.addEventListener('touchstart', this.onTouchStartBound);
+    window.addEventListener('touchmove', this.onTouchMoveBound);
+    window.addEventListener('touchend', this.onTouchEndBound);
+    window.addEventListener('touchcancel', this.onTouchEndBound);
   }
 
   override destroy(): void {
@@ -132,7 +136,21 @@ class PullToRefreshComponent extends Component {
     this.armed = false;
 
     if (shouldRefresh) {
-      window.location.reload();
+      void this.performRefresh();
+    }
+  }
+
+  private async performRefresh(): Promise<void> {
+    if (this.isRefreshing) return;
+    this.isRefreshing = true;
+
+    try {
+      await refreshCurrentView('pull-to-refresh');
+      haptics.trigger('success');
+    } catch {
+      haptics.trigger('error');
+    } finally {
+      this.isRefreshing = false;
     }
   }
 
@@ -153,30 +171,20 @@ class PullToRefreshComponent extends Component {
   // ── Haptics ───────────────────────────────────────────────────────────────
 
   /**
-   * Trigger multi-step haptic feedback scaled by pull step.
-   * More steps = more impulses in the pattern.
+   * Trigger discrete haptics during pull progression.
+   * Keeps haptics brief and semantic for mobile UX.
    */
   private vibrate(step: number): void {
     if (step === 0) return;
 
     try {
-      const baseIntensity = Math.min(0.3 + step * 0.08, 0.9);
-      const pattern: Array<{ duration: number; delay?: number }> = [];
-
-      // Add impulses based on step count (1 impulse per step, up to 5)
-      const impulseCount = Math.min(step, 5);
-      for (let i = 0; i < impulseCount; i++) {
-        if (i === 0) {
-          // First impulse, no delay
-          pattern.push({ duration: 40 });
-        } else {
-          // Subsequent impulses with delay between them
-          pattern.push({ delay: 40, duration: 40 });
-        }
+      if (step === 99) {
+        // Threshold reached: refresh is armed.
+        haptics.trigger('medium');
+      } else {
+        // Step detents while dragging.
+        haptics.trigger('selection');
       }
-
-      // Intensity goes in the second parameter (options)
-      haptics.trigger(pattern, { intensity: baseIntensity });
     } catch {
       // not supported
     }

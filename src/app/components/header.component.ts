@@ -7,8 +7,8 @@
  */
 
 import gsap from 'gsap';
-import { getPlayerById } from '../../services/player.service';
 import { LobbyService } from '../../services/lobby.service';
+import { getPlayerById } from '../../services/player.service';
 import { refreshIcons } from '../icons';
 import { router } from '../router';
 import { appState } from '../state';
