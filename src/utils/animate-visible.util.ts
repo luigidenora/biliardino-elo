@@ -46,7 +46,7 @@ export function animateVisible(opts: AnimateVisibleOptions): () => void {
         const el = entry.target as HTMLElement;
         gsap.from(el, {
           ...cleanVars,
-          delay: (cleanVars.delay as number ?? 0) + batchIndex * stagger,
+          delay: (cleanVars.delay as number ?? 0) + batchIndex * stagger
         });
         batchIndex++;
       }
