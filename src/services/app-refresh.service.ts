@@ -1,4 +1,3 @@
-import { router } from '@/app/router';
 import { appState } from '@/app/state';
 import { LobbyService } from './lobby.service';
 import { loadAllMatches } from './match.service';
@@ -62,14 +61,17 @@ export async function refreshCurrentView(source = 'pull-to-refresh'): Promise<vo
 }
 
 async function fallbackRefresh(path: string): Promise<void> {
+  // Lobby and matchmaking have their own refresh logic
   if (path === '/lobby' || path === '/matchmaking') {
     await LobbyService.refresh();
     return;
   }
 
+  // For other pages without a registered handler, simply reload the page.
+  // The service worker will serve cached assets quickly.
+  // Before reloading, load fresh data so it's available when the page reloads.
   if (path === '/' || path === '/stats' || path.startsWith('/profile/')) {
     await refreshCoreData();
+    window.location.reload();
   }
-
-  router.navigate(path);
 }
