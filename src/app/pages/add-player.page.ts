@@ -60,7 +60,7 @@ class AddPlayerPage extends Component {
     this.cleanupObserver = animateVisible({
       selector: '.player-row',
       vars: { x: -10, duration: 0.25, ease: 'power2.out', delay: 0.2 },
-      stagger: 0.03,
+      stagger: 0.03
     });
   }
 
