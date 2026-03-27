@@ -7,7 +7,7 @@
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>CAlcio biliardino — Shark Season</title>
   <meta name="description" content="CAlcio biliardino Rating System — Shark Season">
-  <meta name="theme-color" content="#0F2A20">
+  <meta name="theme-color" content="#0a1912">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
@@ -98,7 +98,7 @@
 <style>
   :root {
     color-scheme: dark;
-    --boot-bg: #0F2A20;
+    --boot-bg: #091912;
     --boot-surface: rgba(255, 255, 255, 0.03);
     --boot-border: rgba(255, 215, 0, 0.14);
     --boot-strong: rgba(255, 255, 255, 0.2);
@@ -109,12 +109,19 @@
     /* matches --header-height (h-14) */
   }
 
+  html {
+    background-color: #0a1912;
+  }
+
   html,
   body {
     margin: 0;
     min-height: 100%;
-    background: radial-gradient(circle at 50% 20%, rgba(20, 70, 53, 0.85) 0%, var(--boot-bg) 55%);
     color: #fff;
+  }
+
+  body {
+    background: var(--boot-bg);
   }
 
   body {

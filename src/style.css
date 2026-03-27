@@ -40,6 +40,10 @@
   }
 }
 
+html {
+  background-color: #0a1912;
+}
+
 body {
   margin: 5px 5px 0 0;
   margin: env(safe-area-inset-top, 5px) env(safe-area-inset-right, 5px) env(safe-area-inset-bottom) env(safe-area-inset-left);

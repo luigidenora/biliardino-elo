@@ -1,6 +1,7 @@
 import { getPlayerById } from '@/services/player.service';
 import gsap from 'gsap';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
+import { Component } from '../components/component.base';
 import { html, rawHtml } from '../utils/html-template.util';
 import cardTemplate from './match-history-card.component.html?raw';
 import historyTemplate from './match-history.component.html?raw';
