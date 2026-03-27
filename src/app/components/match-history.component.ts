@@ -55,6 +55,8 @@ interface MatchCardData {
   leftWon: boolean;
 }
 
+// ── Stateless render functions ─────────────────────────────────
+
 export function renderMatchHistory(options: MatchHistoryOptions): string {
   const {
     matches: rawMatches,
@@ -73,16 +75,10 @@ export function renderMatchHistory(options: MatchHistoryOptions): string {
 
   const buckets = splitTodayAndOlder(matches);
   const todayCards = buckets.today
-    .map(m => renderMatchCard(m, selectedPlayerId, {
-      expanded: false,
-      expandable
-    }))
+    .map(m => renderMatchCard(m, selectedPlayerId, { expanded: false, expandable }))
     .join('');
   const olderCards = buckets.older
-    .map(m => renderMatchCard(m, selectedPlayerId, {
-      expanded: false,
-      expandable
-    }))
+    .map(m => renderMatchCard(m, selectedPlayerId, { expanded: false, expandable }))
     .join('');
 
   let body = '';
@@ -203,6 +199,21 @@ export function renderMatchCard(
   });
 }
 
+export function renderMatchPlayerAvatar(player: IPlayer | undefined): string {
+  if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
+
+  const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
+  return renderPlayerAvatar({
+    initials: getInitials(player.name),
+    color,
+    size: 'sm',
+    playerId: player.id,
+    playerClass: player.class
+  });
+}
+
+// ── Private render helpers ─────────────────────────────────────
+
 function buildMatchCardDetails(data: MatchCardData): string {
   return `
     <div class="rounded-[10px] flex items-center justify-center gap-3 m-3"
@@ -232,52 +243,6 @@ function buildMatchCardDetails(data: MatchCardData): string {
   `;
 }
 
-export function attachMatchHistoryInteractions(root: HTMLElement): () => void {
-  const onClick = (event: Event): void => {
-    const target = event.target as HTMLElement | null;
-
-    const toggle = target?.closest('[data-match-toggle]') as HTMLElement | null;
-    if (!toggle) return;
-
-    const card = toggle.closest('[data-match-card]') as HTMLElement | null;
-    if (!card) return;
-    if (card.dataset.expandable !== 'true') return;
-
-    event.preventDefault();
-
-    const container = card.closest('[data-match-history]') as HTMLElement | null;
-    const alreadyExpanded = card.dataset.expanded === 'true';
-
-    if (container) {
-      const cards = container.querySelectorAll<HTMLElement>('[data-match-card]');
-      cards.forEach((otherCard) => {
-        setCardExpanded(otherCard, false);
-      });
-    }
-
-    setCardExpanded(card, !alreadyExpanded);
-  };
-
-  root.addEventListener('click', onClick);
-
-  return () => {
-    root.removeEventListener('click', onClick);
-  };
-}
-
-export function renderMatchPlayerAvatar(player: IPlayer | undefined): string {
-  if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
-
-  const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
-  return renderPlayerAvatar({
-    initials: getInitials(player.name),
-    color,
-    size: 'sm',
-    playerId: player.id,
-    playerClass: player.class
-  });
-}
-
 interface TeamAvatarOptions { side: 'left' | 'right' }
 
 function renderTeamAvatars(
@@ -305,6 +270,19 @@ function renderTeamAvatars(
         ${renderProfileAvatarLink(p1)}
       </div>
     </div>
+  `;
+}
+
+function renderProfileAvatarLink(player: IPlayer | undefined): string {
+  if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
+
+  return `
+    <a href="/profile/${player.id}" data-player-link="${player.id}" data-floating-avatar="${player.id}" class="block relative"
+       style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px;transition:translate 220ms ease"
+       onmouseenter="this.style.translate='0 -2px'"
+       onmouseleave="this.style.translate='0 0'">
+      ${renderMatchPlayerAvatar(player)}
+    </a>
   `;
 }
 
@@ -424,145 +402,229 @@ function getMatchId(match: IMatch): string {
   return `${match.createdAt}-${match.teamA.defence}-${match.teamA.attack}-${match.teamB.defence}-${match.teamB.attack}`;
 }
 
-function setCardExpanded(card: HTMLElement, expanded: boolean): void {
-  card.dataset.expanded = expanded ? 'true' : 'false';
-
-  const toggle = card.querySelector<HTMLElement>('[data-match-toggle]');
-  if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-
-  const chevron = card.querySelector<HTMLElement>('[data-lucide="chevron-down"]');
-  if (chevron) {
-    chevron.classList.toggle('rotate-180', expanded);
-    gsap.to(chevron, {
-      rotate: expanded ? 180 : 0,
-      duration: expanded ? 0.34 : 0.28,
-      ease: 'power3.out',
-      overwrite: true
-    });
-  }
-
-  animateCardTransition(card, expanded);
-}
-
-function renderProfileAvatarLink(player: IPlayer | undefined): string {
-  if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
-
-  return `
-    <a href="/profile/${player.id}" data-player-link="${player.id}" data-floating-avatar="${player.id}" class="block relative"
-       style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px;transition:translate 220ms ease"
-       onmouseenter="this.style.translate='0 -2px'"
-       onmouseleave="this.style.translate='0 0'">
-      ${renderMatchPlayerAvatar(player)}
-    </a>
-  `;
-}
+// ── Interactive Component ──────────────────────────────────────
 
 interface MatchHistoryAnimatedCard extends HTMLElement {
   _matchHistoryTimeline?: gsap.core.Timeline;
 }
 
-function animateCardTransition(card: HTMLElement, expanded: boolean): void {
-  const details = card.querySelector<HTMLElement>('[data-match-details]');
-  const topAvatars = Array.from(card.querySelectorAll<HTMLElement>('[data-floating-avatar]'));
-  const detailAvatars = Array.from(card.querySelectorAll<HTMLElement>('[data-detail-avatar]'))
-    .sort((a, b) => Number(a.dataset.avatarIndex) - Number(b.dataset.avatarIndex));
-  const animatedCard = card as MatchHistoryAnimatedCard;
+/**
+ * Standalone stateful component that manages click interactions and GSAP
+ * animations for a rendered match history section.
+ *
+ * Usage:
+ *   const html = renderMatchHistory(options);          // stateless render
+ *   const component = new MatchHistoryComponent();
+ *   component.mount(rootElement);                       // attach interactivity
+ *   // ...
+ *   component.destroy();                                // full cleanup
+ */
+export class MatchHistoryComponent {
+  private el: HTMLElement | null = null;
+  private clickHandler: ((e: Event) => void) | null = null;
+  private activeTimelines = new Set<gsap.core.Timeline>();
 
-  animatedCard._matchHistoryTimeline?.kill();
-  gsap.killTweensOf([details, ...topAvatars, ...detailAvatars].filter(Boolean));
+  mount(root: HTMLElement): void {
+    this.el = root;
 
-  if (!details) return;
+    this.clickHandler = (event: Event): void => {
+      const target = event.target as HTMLElement | null;
 
-  if (expanded) {
-    details.style.display = 'block';
-    gsap.set(details, { height: 'auto' });
+      // Let navigation links pass through — don't intercept avatar/player clicks
+      if (target?.closest('a[href]')) return;
 
-    gsap.set(details, { height: 0, opacity: 0, y: -8, overflow: 'hidden' });
-    gsap.set(detailAvatars, { scale: 0.88, opacity: 0, y: 8 });
+      const toggle = target?.closest('[data-match-toggle]') as HTMLElement | null;
+      if (!toggle) return;
+
+      const card = toggle.closest('[data-match-card]') as HTMLElement | null;
+      if (!card) return;
+      if (card.dataset.expandable !== 'true') return;
+
+      event.preventDefault();
+
+      const container = card.closest('[data-match-history]') as HTMLElement | null;
+      const alreadyExpanded = card.dataset.expanded === 'true';
+
+      if (container) {
+        container.querySelectorAll<HTMLElement>('[data-match-card]').forEach((otherCard) => {
+          if (otherCard !== card) this.collapseCard(otherCard);
+        });
+      }
+
+      this.setCardExpanded(card, !alreadyExpanded);
+    };
+
+    root.addEventListener('click', this.clickHandler);
+  }
+
+  destroy(): void {
+    // Kill all tracked GSAP timelines
+    for (const tl of this.activeTimelines) tl.kill();
+    this.activeTimelines.clear();
+
+    // Also sweep any timelines still referenced on card elements
+    if (this.el) {
+      this.el.querySelectorAll<HTMLElement>('[data-match-card]').forEach((card) => {
+        const c = card as MatchHistoryAnimatedCard;
+        if (c._matchHistoryTimeline) {
+          c._matchHistoryTimeline.kill();
+          c._matchHistoryTimeline = undefined;
+        }
+      });
+    }
+
+    if (this.el && this.clickHandler) {
+      this.el.removeEventListener('click', this.clickHandler);
+    }
+
+    this.el = null;
+    this.clickHandler = null;
+  }
+
+  private collapseCard(card: HTMLElement): void {
+    if (card.dataset.expanded !== 'true') return;
+    this.setCardExpanded(card, false);
+  }
+
+  private setCardExpanded(card: HTMLElement, expanded: boolean): void {
+    card.dataset.expanded = expanded ? 'true' : 'false';
+
+    const toggle = card.querySelector<HTMLElement>('[data-match-toggle]');
+    if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+    const chevron = card.querySelector<HTMLElement>('[data-lucide="chevron-down"]');
+    if (chevron) {
+      chevron.classList.toggle('rotate-180', expanded);
+      gsap.to(chevron, {
+        rotate: expanded ? 180 : 0,
+        duration: expanded ? 0.34 : 0.28,
+        ease: 'power3.out',
+        overwrite: true
+      });
+    }
+
+    this.animateCardTransition(card, expanded);
+  }
+
+  private animateCardTransition(card: HTMLElement, expanded: boolean): void {
+    const details = card.querySelector<HTMLElement>('[data-match-details]');
+    const topAvatars = Array.from(card.querySelectorAll<HTMLElement>('[data-floating-avatar]'));
+    const detailAvatars = Array.from(card.querySelectorAll<HTMLElement>('[data-detail-avatar]'))
+      .sort((a, b) => Number(a.dataset.avatarIndex) - Number(b.dataset.avatarIndex));
+    const animatedCard = card as MatchHistoryAnimatedCard;
+
+    // Kill and deregister any running timeline for this card
+    if (animatedCard._matchHistoryTimeline) {
+      this.activeTimelines.delete(animatedCard._matchHistoryTimeline);
+      animatedCard._matchHistoryTimeline.kill();
+      animatedCard._matchHistoryTimeline = undefined;
+    }
+    gsap.killTweensOf([details, ...topAvatars, ...detailAvatars].filter(Boolean));
+
+    if (!details) return;
+
+    if (expanded) {
+      details.style.display = 'block';
+      gsap.set(details, { height: 'auto' });
+
+      gsap.set(details, { height: 0, opacity: 0, y: -8, overflow: 'hidden' });
+      gsap.set(detailAvatars, { scale: 0.88, opacity: 0, y: 8 });
+
+      const timeline = gsap.timeline({
+        defaults: { overwrite: true },
+        onComplete: () => {
+          details.style.height = 'auto';
+          details.style.overflow = 'visible';
+          details.style.transform = '';
+          animatedCard._matchHistoryTimeline = undefined;
+          this.activeTimelines.delete(timeline);
+        }
+      });
+
+      timeline
+        .to(topAvatars, {
+          scale: 0,
+          opacity: 0,
+          duration: 0.22,
+          ease: 'power2.inOut',
+          stagger: 0.025
+        }, 0)
+        .to(details, {
+          height: 'auto',
+          opacity: 1,
+          y: 0,
+          duration: 0.44,
+          ease: 'power3.out'
+        }, 0.03)
+        .to(detailAvatars, {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+          duration: 0.34,
+          ease: 'power3.out',
+          stagger: 0.05
+        }, 0.14);
+
+      animatedCard._matchHistoryTimeline = timeline;
+      this.activeTimelines.add(timeline);
+      return;
+    }
+
+    const startHeight = details.offsetHeight;
+    if (startHeight === 0) {
+      details.style.display = 'none';
+      gsap.set(topAvatars, { scale: 1, opacity: 1 });
+      gsap.set(detailAvatars, { scale: 0.88, opacity: 0, y: 8 });
+      return;
+    }
+
+    gsap.set(details, { height: startHeight, opacity: 1, y: 0, overflow: 'hidden' });
 
     const timeline = gsap.timeline({
       defaults: { overwrite: true },
       onComplete: () => {
-        details.style.height = 'auto';
-        details.style.overflow = 'visible';
+        details.style.display = 'none';
+        details.style.height = '';
+        details.style.opacity = '';
+        details.style.overflow = '';
         details.style.transform = '';
+        gsap.set(detailAvatars, { scale: 0.88, opacity: 0, y: 8 });
         animatedCard._matchHistoryTimeline = undefined;
+        this.activeTimelines.delete(timeline);
       }
     });
 
     timeline
-      .to(topAvatars, {
-        scale: 0,
+      .to(detailAvatars, {
+        scale: 0.9,
         opacity: 0,
-        duration: 0.22,
-        ease: 'power2.inOut',
-        stagger: 0.025
+        y: 4,
+        duration: 0.16,
+        ease: 'power1.out',
+        stagger: { each: 0.02, from: 'end' }
       }, 0)
       .to(details, {
-        height: 'auto',
-        opacity: 1,
-        y: 0,
-        duration: 0.44,
-        ease: 'power3.out'
+        height: 0,
+        opacity: 0,
+        duration: 0.32,
+        ease: 'power3.inOut'
       }, 0.03)
-      .to(detailAvatars, {
+      .to(topAvatars, {
         scale: 1,
         opacity: 1,
-        y: 0,
-        duration: 0.34,
+        duration: 0.22,
         ease: 'power3.out',
-        stagger: 0.05
-      }, 0.14);
+        stagger: 0.025
+      }, 0.1);
 
     animatedCard._matchHistoryTimeline = timeline;
-    return;
+    this.activeTimelines.add(timeline);
   }
+}
 
-  const startHeight = details.offsetHeight;
-  if (startHeight === 0) {
-    details.style.display = 'none';
-    gsap.set(topAvatars, { scale: 1, opacity: 1 });
-    gsap.set(detailAvatars, { scale: 0.88, opacity: 0, y: 8 });
-    return;
-  }
-
-  gsap.set(details, { height: startHeight, opacity: 1, y: 0, overflow: 'hidden' });
-
-  const timeline = gsap.timeline({
-    defaults: { overwrite: true },
-    onComplete: () => {
-      details.style.display = 'none';
-      details.style.height = '';
-      details.style.opacity = '';
-      details.style.overflow = '';
-      details.style.transform = '';
-      gsap.set(detailAvatars, { scale: 0.88, opacity: 0, y: 8 });
-      animatedCard._matchHistoryTimeline = undefined;
-    }
-  });
-
-  timeline
-    .to(detailAvatars, {
-      scale: 0.9,
-      opacity: 0,
-      y: 4,
-      duration: 0.16,
-      ease: 'power1.out',
-      stagger: { each: 0.02, from: 'end' }
-    }, 0)
-    .to(details, {
-      height: 0,
-      opacity: 0,
-      duration: 0.32,
-      ease: 'power3.inOut'
-    }, 0.03)
-    .to(topAvatars, {
-      scale: 1,
-      opacity: 1,
-      duration: 0.22,
-      ease: 'power3.out',
-      stagger: 0.025
-    }, 0.1);
-
-  animatedCard._matchHistoryTimeline = timeline;
+/** @deprecated Use MatchHistoryComponent class for explicit lifecycle control */
+export function attachMatchHistoryInteractions(root: HTMLElement): () => void {
+  const component = new MatchHistoryComponent();
+  component.mount(root);
+  return () => component.destroy();
 }

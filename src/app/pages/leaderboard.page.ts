@@ -9,7 +9,7 @@
  * Route: / (default, public)
  */
 
-import { attachMatchHistoryInteractions, renderMatchHistory } from '@/app/components/match-history.component';
+import { MatchHistoryComponent, renderMatchHistory } from '@/app/components/match-history.component';
 import { refreshCoreData, registerAppRefreshHandler } from '@/services/app-refresh.service';
 import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
@@ -61,7 +61,7 @@ const RECENT_MATCHES_COUNT = 30;
 class LeaderboardPage extends Component {
   private sortKey: SortKey = 'rank';
   private sortAsc = false;
-  private matchHistoryCleanup: (() => void) | null = null;
+  private matchHistory: MatchHistoryComponent | null = null;
   private unregisterRefreshHandler: (() => void) | null = null;
   private isDestroyed = false;
   private heroContent: 'podium' | 'live-match' = 'podium';
@@ -105,7 +105,8 @@ class LeaderboardPage extends Component {
 
     const root = this.$('#leaderboard-page') ?? this.el;
     if (root) {
-      this.matchHistoryCleanup = attachMatchHistoryInteractions(root);
+      this.matchHistory = new MatchHistoryComponent();
+      this.matchHistory.mount(root);
     }
     this.unregisterRefreshHandler = registerAppRefreshHandler(() => this.handlePullRefresh());
 
@@ -174,9 +175,9 @@ class LeaderboardPage extends Component {
 
   override destroy(): void {
     this.isDestroyed = true;
-    if (this.matchHistoryCleanup) {
-      this.matchHistoryCleanup();
-      this.matchHistoryCleanup = null;
+    if (this.matchHistory) {
+      this.matchHistory.destroy();
+      this.matchHistory = null;
     }
     if (this.unregisterRefreshHandler) {
       this.unregisterRefreshHandler();
@@ -999,16 +1000,17 @@ class LeaderboardPage extends Component {
     const historySlot = this.$('#leaderboard-history-slot');
     if (!historySlot) return;
 
-    if (this.matchHistoryCleanup) {
-      this.matchHistoryCleanup();
-      this.matchHistoryCleanup = null;
+    if (this.matchHistory) {
+      this.matchHistory.destroy();
+      this.matchHistory = null;
     }
 
     historySlot.innerHTML = this.renderRecentMatches();
 
     const root = this.$('#leaderboard-page') ?? this.el;
     if (root) {
-      this.matchHistoryCleanup = attachMatchHistoryInteractions(root);
+      this.matchHistory = new MatchHistoryComponent();
+      this.matchHistory.mount(root);
     }
 
     refreshIcons();
