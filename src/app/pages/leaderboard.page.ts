@@ -103,11 +103,6 @@ class LeaderboardPage extends Component {
     const todayRankDeltas = this.getTodayRankDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
 
-    const root = this.$('#leaderboard-page') ?? this.el;
-    if (root) {
-      this.matchHistory = new MatchHistoryComponent();
-      this.matchHistory.mount(root);
-    }
     this.unregisterRefreshHandler = registerAppRefreshHandler(() => this.handlePullRefresh());
 
     // GSAP animations — fast initial animations for header + podium
@@ -160,6 +155,10 @@ class LeaderboardPage extends Component {
           limit: RECENT_MATCHES_COUNT,
           selectedPlayerId
         });
+        if (this.matchHistory) {
+          this.matchHistory.destroy();
+          this.matchHistory = null;
+        }
         this.matchHistory = new MatchHistoryComponent();
         this.matchHistory.mount(historySlot);
         refreshIcons();
