@@ -13,6 +13,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
  */
 function devModePlugin(): Plugin {
   let isDevMode = false;
+  let dbProvider: 'firebase' | 'supabase' | 'mock' = 'firebase';
 
   return {
     name: 'dev-mode',
@@ -25,13 +26,25 @@ function devModePlugin(): Plugin {
       // Attiva dev mode solo se VITE_DEV_MODE=true è esplicitamente impostato
       isDevMode = env.VITE_DEV_MODE === 'true';
 
+      // Se dev mode è attivo il provider è sempre 'mock' (retrocompatibile).
+      // Altrimenti usa VITE_DB, con fallback a 'firebase'.
+      const rawDb = env.VITE_DB as string | undefined;
+      if (isDevMode) {
+        dbProvider = 'mock';
+      } else if (rawDb === 'supabase' || rawDb === 'mock' || rawDb === 'firebase') {
+        dbProvider = rawDb;
+      } else {
+        dbProvider = 'firebase';
+      }
+
       if (mode !== 'production') {
-        console.log(`[dev-mode] mode=${mode}, VITE_DEV_MODE=${isDevMode ? 'true' : 'false'}`);
+        console.log(`[dev-mode] mode=${mode}, VITE_DEV_MODE=${isDevMode}, VITE_DB=${env.VITE_DB ?? 'unset'} → __DB_PROVIDER__=${dbProvider}`);
       }
 
       return {
         define: {
-          __DEV_MODE__: isDevMode
+          __DEV_MODE__: isDevMode,
+          __DB_PROVIDER__: JSON.stringify(dbProvider)
         }
       };
     }

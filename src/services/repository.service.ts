@@ -1,8 +1,12 @@
-// Import condizionale: in produzione (__DEV_MODE__ = false) il mock non viene mai importato
-// e Rollup lo elimina completamente dal bundle.
-const repo = __DEV_MODE__
-  ? await import('./repository.mock')
-  : await import('./repository.firebase.js');
+// Import condizionale basato su __DB_PROVIDER__ (compile-time constant).
+// Rollup elimina dal bundle le implementazioni non usate (dead-code elimination):
+//   'mock'     → solo repository.mock     (dev locale, nessuna chiamata DB reale)
+//   'supabase' → solo repository.supabase (PostgreSQL via Supabase)
+//   'firebase' → solo repository.firebase (Firestore, default produzione)
+const repo =
+  __DB_PROVIDER__ === 'mock'     ? await import('./repository.mock') :
+  __DB_PROVIDER__ === 'supabase' ? await import('./repository.supabase.js') :
+                                   await import('./repository.firebase.js');
 
 export const updatePlayersHash = repo.updatePlayersHash;
 export const updateMatchesHash = repo.updateMatchesHash;
