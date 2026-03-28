@@ -2,7 +2,6 @@ import { IMessage, IMessagesResponse } from '@/models/message.interface';
 import { LobbyService } from './lobby.service';
 import { API_BASE_URL } from '@/config/env.config';
 
-
 export class MessageService {
   /**
    * Invia un messaggio durante il confirmation

@@ -1,6 +1,4 @@
-import { router } from '@/app/router';
 import { appState } from '@/app/state';
-import { LobbyService } from './lobby.service';
 import { loadAllMatches } from './match.service';
 import { loadPlayers } from './player.service';
 
@@ -12,16 +10,17 @@ export interface AppRefreshEventPayload {
 
 type RefreshHandler = () => Promise<void> | void;
 
-let activeRefreshHandler: RefreshHandler | null = null;
 let refreshInFlight: Promise<void> | null = null;
 
-export function registerAppRefreshHandler(handler: RefreshHandler): () => void {
-  activeRefreshHandler = handler;
-
+/**
+ * Registers a custom refresh handler.
+ * Note: This is kept for backward compatibility but is no longer used.
+ * Pull-to-refresh always reloads the window.
+ */
+export function registerAppRefreshHandler(_handler: RefreshHandler): () => void {
+  // No-op: we always reload the window now
   return () => {
-    if (activeRefreshHandler === handler) {
-      activeRefreshHandler = null;
-    }
+    // No-op cleanup
   };
 }
 
@@ -35,20 +34,15 @@ export async function refreshCurrentView(source = 'pull-to-refresh'): Promise<vo
     return refreshInFlight;
   }
 
-  const path = router.getCurrentPath();
+  const path = window.location.pathname || '/';
   const payload: AppRefreshEventPayload = { path, source };
 
   refreshInFlight = (async () => {
     appState.emit('app-refresh:start', payload);
 
     try {
-      if (activeRefreshHandler) {
-        await activeRefreshHandler();
-      } else {
-        await fallbackRefresh(path);
-      }
-
-      appState.emit('app-refresh:success', payload);
+      // Always reload the window for pull-to-refresh
+      window.location.reload();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       appState.emit('app-refresh:error', { ...payload, error: message });
@@ -59,17 +53,4 @@ export async function refreshCurrentView(source = 'pull-to-refresh'): Promise<vo
   })();
 
   return refreshInFlight;
-}
-
-async function fallbackRefresh(path: string): Promise<void> {
-  if (path === '/lobby' || path === '/matchmaking') {
-    await LobbyService.refresh();
-    return;
-  }
-
-  if (path === '/' || path === '/stats' || path.startsWith('/profile/')) {
-    await refreshCoreData();
-  }
-
-  router.navigate(path);
 }
