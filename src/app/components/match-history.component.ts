@@ -434,10 +434,7 @@ export class MatchHistoryComponent {
       // Let navigation links pass through — don't intercept avatar/player clicks
       if (target?.closest('a[href]')) return;
 
-      const toggle = target?.closest('[data-match-toggle]') as HTMLElement | null;
-      if (!toggle) return;
-
-      const card = toggle.closest('[data-match-card]') as HTMLElement | null;
+      const card = target?.closest('[data-match-card]') as HTMLElement | null;
       if (!card) return;
       if (card.dataset.expandable !== 'true') return;
 
@@ -554,17 +551,17 @@ export class MatchHistoryComponent {
           height: 'auto',
           opacity: 1,
           y: 0,
-          duration: 0.44,
+          duration: 0.28,
           ease: 'power3.out'
         }, 0.03)
         .to(detailAvatars, {
           scale: 1,
           opacity: 1,
           y: 0,
-          duration: 0.34,
+          duration: 0.28,
           ease: 'power3.out',
-          stagger: 0.05
-        }, 0.14);
+          stagger: 0.03
+        }, 0.1);
 
       animatedCard._matchHistoryTimeline = timeline;
       this.activeTimelines.add(timeline);
