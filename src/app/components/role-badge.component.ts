@@ -98,16 +98,11 @@ const SIZE_CONFIG = {
  * Render a role badge as an HTML string.
  */
 export function renderRoleBadge(opts: RoleBadgeOptions): string {
-  const { style, pct } = resolveRole(opts);
+  const { style } = resolveRole(opts);
   const size = opts.size ?? 'base';
   const cfg = SIZE_CONFIG[size];
 
-  const showPct = opts.showPct ?? (size === 'base');
   const showLabel = opts.showLabel ?? (size === 'lg');
-
-  const pctHtml = showPct && pct
-    ? `<span style="font-family:var(--font-ui);font-size:${cfg.font}px;color:${style.color};font-weight:700">${pct}</span>`
-    : '';
 
   const labelHtml = showLabel
     ? `<span class="font-ui" style="font-size:${cfg.font}px;letter-spacing:0.1em;color:${style.color}">${style.label}</span>`
@@ -115,5 +110,5 @@ export function renderRoleBadge(opts: RoleBadgeOptions): string {
 
   const border = size === 'lg' ? `border:1px solid ${style.border};` : '';
 
-  return `<span class="inline-flex items-center ${cfg.gap} ${cfg.rounded} ${cfg.px} ${cfg.py}" style="background:${style.bg};${border}"><i data-lucide="${style.icon}" style="width:${cfg.icon}px;height:${cfg.icon}px;color:${style.color};flex-shrink:0"></i>${labelHtml}${pctHtml}</span>`;
+  return `<span class="inline-flex items-center ${cfg.gap} ${cfg.rounded} ${cfg.px} ${cfg.py}" style="background:${style.bg};${border}"><i data-lucide="${style.icon}" style="width:${cfg.icon}px;height:${cfg.icon}px;color:${style.color};flex-shrink:0"></i>${labelHtml}</span>`;
 }

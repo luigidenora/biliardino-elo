@@ -74,7 +74,10 @@ class MobileDrawerComponent {
     });
 
     this.drawerEl?.querySelectorAll<HTMLElement>('[data-drawer-link]').forEach((link) => {
-      link.addEventListener('click', () => haptics.trigger('selection'));
+      link.addEventListener('click', () => {
+        haptics.trigger('selection');
+        this.close();
+      });
     });
 
     this.handleRouteChange = () => {
