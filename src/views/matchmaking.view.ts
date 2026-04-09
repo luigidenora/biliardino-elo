@@ -22,6 +22,7 @@ type PlayerState = 0 | 1 | 2;
 export class MatchmakingView {
   private static readonly playerStates: Map<string, PlayerState> = new Map();
   private static currentMatch: IMatchProposal | null = null;
+  private static allowMaxDiff2 = false;
 
   // Conferme real-time
   private static pollingIntervalId: number | null = null;
@@ -35,6 +36,7 @@ export class MatchmakingView {
    */
   public static async init(): Promise<void> {
     MatchmakingView.renderPlayersList();
+    MatchmakingView.renderGenerationOptions();
     MatchmakingView.setupEventListeners();
     MatchmakingView.renderDisclaimer();
 
@@ -48,6 +50,39 @@ export class MatchmakingView {
     window.addEventListener('beforeunload', () => {
       MatchmakingView.stopConfirmationsPolling();
     });
+  }
+
+  /**
+   * Render global generation options near the generate button.
+   */
+  private static renderGenerationOptions(): void {
+    const generateButton = document.getElementById('generate-match-btn');
+    if (!generateButton || generateButton.parentElement?.querySelector('#max-diff-toggle')) return;
+
+    const wrapper = document.createElement('label');
+    wrapper.id = 'max-diff-toggle';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '0.5rem';
+    wrapper.style.marginTop = '0.75rem';
+    wrapper.style.fontSize = '0.95rem';
+    wrapper.style.color = '#334155';
+    wrapper.title = 'Se attivo, la generazione consente differenza massima di classe pari a 2 invece di 1';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'max-diff-2-checkbox';
+    checkbox.checked = MatchmakingView.allowMaxDiff2;
+    checkbox.addEventListener('change', () => {
+      MatchmakingView.allowMaxDiff2 = checkbox.checked;
+    });
+
+    const text = document.createElement('span');
+    text.textContent = 'Max diff classi: 2';
+
+    wrapper.appendChild(checkbox);
+    wrapper.appendChild(text);
+    generateButton.after(wrapper);
   }
 
   /**
@@ -373,7 +408,8 @@ export class MatchmakingView {
       return;
     }
 
-    const match = findBestMatch(selectedPlayerIds, priorityPlayerIds);
+    const maxClassDiff = MatchmakingView.allowMaxDiff2 ? 2 : 1;
+    const match = findBestMatch(selectedPlayerIds, priorityPlayerIds, maxClassDiff);
 
     if (!match) {
       alert('Impossibile generare partite con i giocatori selezionati.');
