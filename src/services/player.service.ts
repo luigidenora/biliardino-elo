@@ -1,10 +1,9 @@
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { FinalK, MatchesToRank, MatchesToTransition, StartK } from './elo.service';
+import { DerankTreshold, FinalK, MatchesToRank, MatchesToTransition, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
 
 const playersMap = new Map<number, IPlayer>();
-const derankTreshold = Math.round(100 * 0.3);
 let playersArray: IPlayer[] = [];
 let rankOutdated = true;
 
@@ -30,7 +29,7 @@ export function getRank(id: number): number {
   return getPlayerById(id)?.rank ?? -1;
 }
 
-export function createPlayerDTO(name: string, elo: number, defence: number): IPlayerDTO {
+export function createPlayerDTO(name: string, elo: number, role: -1 | 0 | 1): IPlayerDTO {
   const lastId = Math.max(...playersArray.map(p => p.id));
   const id = Number.isFinite(lastId) ? lastId + 1 : 1;
 
@@ -38,7 +37,7 @@ export function createPlayerDTO(name: string, elo: number, defence: number): IPl
     id,
     name,
     elo,
-    defence
+    role
   };
 
   return newPlayer;
@@ -103,19 +102,19 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 
 export function getClass(elo: number): number {
   elo = Math.round(elo);
-  if (elo >= 1200) return 0;
-  if (elo >= 1100) return 1;
-  if (elo >= 1000) return 2;
-  if (elo >= 900) return 3;
-  return 4;
+  if (elo >= 1250) return 0; // megalodonte virtual rank
+  if (elo >= 1150) return 1; // squalo virtual rank
+  if (elo >= 1050) return 2; // barracuda
+  if (elo >= 950) return 3; // tonno
+  return 4; // sogliola
 }
 
 export function checkDerankThreshold(elo: number): boolean {
   elo = Math.round(elo);
-  if (elo >= 1100) return elo >= 1200 - derankTreshold;
-  if (elo >= 1000) return elo >= 1100 - derankTreshold;
-  if (elo >= 900) return elo >= 1000 - derankTreshold;
-  if (elo < 900) return elo >= 900 - derankTreshold;
+  if (elo >= 1150) return elo >= 1250 - DerankTreshold; // derank megalodonte -> squalo
+  if (elo >= 1050) return elo >= 1150 - DerankTreshold; // derank squalo -> barracuda
+  if (elo >= 950) return elo >= 1050 - DerankTreshold; // derank barracuda -> tonno
+  if (elo < 950) return elo >= 950 - DerankTreshold; // derank tonno -> sogliola
   return false;
 }
 

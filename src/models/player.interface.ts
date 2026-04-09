@@ -2,7 +2,7 @@ export interface IPlayerDTO {
   id: number;
   name: string;
   elo: number;
-  defence: number;
+  role: -1 | 0 | 1;
 }
 
 export interface IPlayer extends IPlayerDTO {

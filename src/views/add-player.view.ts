@@ -103,7 +103,7 @@ export class AddPlayerView {
     row.innerHTML = `
       <td>${player.name}</td>
       <td>${player.elo}</td>
-      <td>${player.defence * 100}</td>
+      <td>${player.role * 100}</td>
     `;
 
     return row;

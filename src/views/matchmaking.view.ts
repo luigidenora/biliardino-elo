@@ -1,7 +1,7 @@
 import { IConfirmationsResponse } from '@/models/confirmation.interface';
 import { IRunningMatchDTO } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
+import { expectedScore } from '@/services/elo.service';
 import { addMatch } from '@/services/match.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { availabilityList } from '@/utils/availability.util';
@@ -373,7 +373,7 @@ export class MatchmakingView {
       return;
     }
 
-    const match = findBestMatch(selectedPlayerIds, priorityPlayerIds);
+    const match = findBestMatch(selectedPlayerIds, priorityPlayerIds, 0);
 
     if (!match) {
       alert('Impossibile generare partite con i giocatori selezionati.');
@@ -451,8 +451,8 @@ export class MatchmakingView {
     const matchContent = document.createElement('div');
     matchContent.className = 'match-content';
 
-    const avgEloTeamA = (getMatchPlayerElo(match.teamA.defence, true) + getMatchPlayerElo(match.teamA.attack, false)) / 2;
-    const avgEloTeamB = (getMatchPlayerElo(match.teamB.defence, true) + getMatchPlayerElo(match.teamB.attack, false)) / 2;
+    const avgEloTeamA = (match.teamA.defence.elo + match.teamA.attack.elo) / 2;
+    const avgEloTeamB = (match.teamB.defence.elo + match.teamB.attack.elo) / 2;
 
     // Teams container con VS e form al centro
     const teamsContainer = document.createElement('div');
@@ -544,9 +544,9 @@ export class MatchmakingView {
             <span class="heuristic-label">🎰 Casualità</span>
             <span class="heuristic-value">${match.heuristicData.randomness.score.toFixed(2)} / ${match.heuristicData.randomness.max.toFixed(2)}</span>
           </div>
-          <div class="heuristic-item" title="Bilanciamento classi tra i team">
-            <span class="heuristic-label">🏆 Class Bonus</span>
-            <span class="heuristic-value">${match.heuristicData.classBalance.score.toFixed(2)} / ${match.heuristicData.classBalance.max.toFixed(2)}</span>
+          <div class="heuristic-item" title="Bilanciamento giocatori">
+            <span class="heuristic-label">⚖️ Bilanciamento giocatori</span>
+            <span class="heuristic-value">${match.heuristicData.playersDifference.score.toFixed(2)} / ${match.heuristicData.playersDifference.max.toFixed(2)}</span>
           </div>
           <div class="heuristic-item heuristic-total" title="Punteggio totale della partita">
             <span class="heuristic-label">🏆 Totale</span>
@@ -581,9 +581,9 @@ export class MatchmakingView {
     teamCard.dataset.team = teamName;
 
     // Usa la property defence per calcolare la percentuale del ruolo
-    const defPercP1 = Math.round(player1.defence * 100);
+    const defPercP1 = Math.round(player1.role * 100);
     const attPercP1 = 100 - defPercP1;
-    const defPercP2 = Math.round(player2.defence * 100);
+    const defPercP2 = Math.round(player2.role * 100);
     const attPercP2 = 100 - defPercP2;
 
     const fallbackAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlMGUwZTA7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjVmNWY1O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0idXJsKCNncmFkKSIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMTUiIHI9IjciIGZpbGw9IiM3OTdhYjEiLz48cGF0aCBkPSJNIDEwIDMwIEMgMTAgMjQgMTYgMjAgMjQgMjAgQyAzMiAyMCAzOCAyNCAzOCAzMCBDIDM4IDM4IDMyIDQyIDI0IDQyIEMgMTYgNDIgMTAgMzggMTAgMzAiIGZpbGw9IiM3OTdhYjEiLz48L3N2Zz4=';
@@ -615,7 +615,7 @@ export class MatchmakingView {
             <div class="match-player-name"><span class="player-name">${roleIcon1} ${player1.name}</span><span class="player-rank" style="font-size:0.85em;opacity:0.75;"> ${getRank(player1.id)}°</span></div>
             <div class="match-player-meta">
               <span class="role-badge ${roleBadgeClass1}" title="Percentuale partite nel ruolo assegnato">${roleLabel1}</span>
-              <span class="player-elo">${Math.round(getMatchPlayerElo(player1, role1 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player1)})</span></span>
+              <span class="player-elo">${Math.round(player1.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player1)})</span></span>
               ${player1.class !== -1 ? `<img src="/class/${player1.class}.webp" alt="Class ${player1.class}" style="width:24px;height:24px;object-fit:contain;" />` : ''}
             </div>
           </div>
@@ -633,7 +633,7 @@ export class MatchmakingView {
             <div class="match-player-name"><span class="player-name">${roleIcon2} ${player2.name}</span><span class="player-rank" style="font-size:0.85em;opacity:0.75;"> ${getRank(player2.id)}°</span></div>
             <div class="match-player-meta">
               <span class="role-badge ${roleBadgeClass2}" title="Percentuale partite nel ruolo assegnato">${roleLabel2}</span>
-              <span class="player-elo">${Math.round(getMatchPlayerElo(player2, role2 === 'defence'))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player2)})</span></span>
+              <span class="player-elo">${Math.round(player2.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(player2)})</span></span>
               ${player2.class !== -1 ? `<img src="/class/${player2.class}.webp" alt="Class ${player2.class}" style="width:24px;height:24px;object-fit:contain;" />` : ''}
             </div>
           </div>

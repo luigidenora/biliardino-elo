@@ -93,7 +93,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       name: data.name,
       elo: 1000,
       startElo: 1000,
-      defence: data.defence / 100,
+      role: data.role,
       matches: 0,
       bestElo: -1,
       goalsAgainst: 0,
@@ -181,7 +181,7 @@ export async function savePlayer(player: IPlayerDTO): Promise<void> {
   const playerDTO = {
     name: player.name,
     elo: player.elo,
-    defence: player.defence
+    role: player.role
   };
   await setDoc(ref, playerDTO, { merge: true });
   await updatePlayersHash();

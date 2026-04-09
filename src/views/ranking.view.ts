@@ -1,5 +1,5 @@
 import { IPlayer } from '@/models/player.interface';
-import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
+import { expectedScore } from '@/services/elo.service';
 import { getBonusK } from '@/services/player.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
@@ -324,7 +324,7 @@ export class RankingView {
 
       // Mostra sempre il ruolo prevalente (ATT o DIF) e la percentuale (max 50%)
       let role = '';
-      let defenceValue = player.defence * 100;
+      let defenceValue = player.role * 100;
       let label = '🛡️';
       let color = '#0077cc';
       if (defenceValue === 50) {
@@ -806,14 +806,14 @@ export class RankingView {
       const rankDefB = getRank(runningMatch.teamB.defence);
       const rankAttB = getRank(runningMatch.teamB.attack);
 
-      const avgEloA = Math.round((getMatchPlayerElo(defA, true) + getMatchPlayerElo(attA, false)) / 2);
-      const avgEloB = Math.round((getMatchPlayerElo(defB, true) + getMatchPlayerElo(attB, false)) / 2);
+      const avgEloA = Math.round((defA.elo + attA.elo) / 2);
+      const avgEloB = Math.round((defB.elo + attB.elo) / 2);
 
       // Calcola percentuali dei ruoli
-      const defPercA = Math.round(defA.defence * 100);
-      const attPercA = 100 - Math.round(attA.defence * 100);
-      const defPercB = Math.round(defB.defence * 100);
-      const attPercB = 100 - Math.round(attB.defence * 100);
+      const defPercA = Math.round(defA.role * 100);
+      const attPercA = 100 - Math.round(attA.role * 100);
+      const defPercB = Math.round(defB.role * 100);
+      const attPercB = 100 - Math.round(attB.role * 100);
 
       // Calcola probabilità di vittoria
       const winProbA = expectedScore(avgEloA, avgEloB);
@@ -855,7 +855,7 @@ export class RankingView {
                       <span class="live-player-name">🛡️ ${defA.name} ${defA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefA)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercA}%</span>
-                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(defA, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
+                        <span class="live-player-elo">${Math.round(defA.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -870,7 +870,7 @@ export class RankingView {
                       <span class="live-player-name">⚔️ ${attA.name} ${attA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttA)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercA}%</span>
-                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(attA, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
+                        <span class="live-player-elo">${Math.round(attA.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -895,7 +895,7 @@ export class RankingView {
                       <span class="live-player-name">🛡️ ${defB.name} ${defB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefB)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercB}%</span>
-                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(defB, true))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
+                        <span class="live-player-elo">${Math.round(defB.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -910,7 +910,7 @@ export class RankingView {
                       <span class="live-player-name">⚔️ ${attB.name} ${attB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttB)})</span>` : ''}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercB}%</span>
-                        <span class="live-player-elo">${Math.round(getMatchPlayerElo(attB, false))} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
+                        <span class="live-player-elo">${Math.round(attB.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
                       </div>
                     </div>
                   </a>
