@@ -8,7 +8,7 @@ export const MatchesToTransition = 1; // Numero di partite dopo le quali il molt
 export const RankTreshold = 100;
 export const DerankTreshold = Math.round(RankTreshold * 0.2); // 20 punti
 export const MaxEloDiff = RankTreshold + DerankTreshold - 1;
-const EloScalingFactorFormula = 200;
+const EloScalingFactorFormula = 150;
 
 export function updateMatch(match: IMatch): void {
   const teamAP1 = getPlayerById(match.teamA.defence);
