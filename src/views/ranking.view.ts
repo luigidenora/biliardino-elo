@@ -35,13 +35,13 @@ export class RankingView {
   /**
    * Helper per ottenere il display del ruolo (etichetta, colore e tipo)
    */
-  private static getRoleDisplay(role: -1 | 0 | 1): { label: string; color: string; roleType: string } {
+  private static getRoleDisplay(role: -1 | 0 | 1): { label: string; color: string } {
     if (role === -1) {
-      return { label: '🛡️', color: '#0077cc', roleType: 'DIF 100%' };
+      return { label: '🛡️', color: '#0077cc' };
     } else if (role === 0) {
-      return { label: '⚖️', color: '#6c757d', roleType: 'BAL 50%' };
+      return { label: '⚖️', color: '#6c757d' };
     } else {
-      return { label: '⚔️', color: '#dc3545', roleType: 'ATT 100%' };
+      return { label: '⚔️', color: '#dc3545' };
     }
   }
 
@@ -355,7 +355,7 @@ export class RankingView {
 
       // Mostra il ruolo prevalente (ATT, BAL o DIF) e la percentuale
       const roleDisplay = RankingView.getRoleDisplay(player.role);
-      const role = `<span style="font-size:0.9em;color:${roleDisplay.color};">${roleDisplay.label} ${roleDisplay.roleType}</span>`;
+      const role = `<span style="font-size:0.9em;color:${roleDisplay.color};">${roleDisplay.label}</span>`;
 
       // Usa matchesDelta precalcolato per ultimi 5 risultati e Elo guadagnato
       const matchesDelta = player.matchesDelta || [];
