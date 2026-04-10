@@ -1,6 +1,6 @@
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { DerankTreshold, FinalK, MatchesToRank, MatchesToTransition, StartK } from './elo.service';
+import { DerankTreshold, FinalK, FirstRankUp, MatchesToRank, MatchesToTransition, RankTreshold, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
 
 const playersMap = new Map<number, IPlayer>();
@@ -102,19 +102,19 @@ export function updatePlayerClass(player: IPlayer, win: boolean): void {
 
 export function getClass(elo: number): number {
   elo = Math.round(elo);
-  if (elo >= 1250) return 0; // megalodonte virtual rank
-  if (elo >= 1150) return 1; // squalo virtual rank
-  if (elo >= 1050) return 2; // barracuda
-  if (elo >= 950) return 3; // tonno
+  if (elo >= FirstRankUp + RankTreshold * 3) return 0; // megalodonte virtual rank
+  if (elo >= FirstRankUp + RankTreshold * 2) return 1; // squalo virtual rank
+  if (elo >= FirstRankUp + RankTreshold) return 2; // barracuda
+  if (elo >= FirstRankUp) return 3; // tonno
   return 4; // sogliola
 }
 
 export function checkDerankThreshold(elo: number): boolean {
   elo = Math.round(elo);
-  if (elo >= 1150) return elo >= 1250 - DerankTreshold; // derank megalodonte -> squalo
-  if (elo >= 1050) return elo >= 1150 - DerankTreshold; // derank squalo -> barracuda
-  if (elo >= 950) return elo >= 1050 - DerankTreshold; // derank barracuda -> tonno
-  if (elo < 950) return elo >= 950 - DerankTreshold; // derank tonno -> sogliola
+  if (elo >= FirstRankUp + RankTreshold * 2) return elo >= FirstRankUp + RankTreshold * 3 - DerankTreshold; // derank megalodonte -> squalo
+  if (elo >= FirstRankUp + RankTreshold) return elo >= FirstRankUp + RankTreshold * 2 - DerankTreshold; // derank squalo -> barracuda
+  if (elo >= FirstRankUp) return elo >= FirstRankUp + RankTreshold - DerankTreshold; // derank barracuda -> tonno
+  if (elo < FirstRankUp) return elo >= FirstRankUp - DerankTreshold; // derank tonno -> sogliola
   return false;
 }
 

@@ -56,9 +56,9 @@ type Diversity = { teamDef: DiversityMap; teamAtt: DiversityMap; opponent: Diver
 
 const config: IMatchmakingConfig = {
   matchBalanceWeight: 0.15,
-  playersDifferenceWeight: 0.3,
+  playersDifferenceWeight: 0.25,
   priorityWeight: 0.15,
-  diversityTeamWeight: 0.2,
+  diversityTeamWeight: 0.25,
   diversityOpponentWeight: 0.15,
   randomness: 0.05
 };
