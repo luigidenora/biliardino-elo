@@ -92,6 +92,7 @@ export class RankingView {
     const playersWithMatches = allPlayers.filter(player => player.matches > 0);
     const players = [...playersWithMatches];
     const todayDeltas = RankingView.getTodayEloDeltas();
+    console.log(allPlayers);
 
     // Sorting logic
     const { sortKey, sortAsc } = RankingView;

@@ -270,14 +270,14 @@ export function updatePlayerRecords(playerId: number, role: number): void {
       player.bestOpponentCount[role].value = stats.matches;
     }
 
-    if (stats.delta > player.bestOpponent[role].value) {
-      player.bestOpponent[role].player = Number(idOpponent);
-      player.bestOpponent[role].value = stats.delta;
-    }
-
-    if (stats.delta < player.worstOpponent[role].value) {
+    if (stats.delta > player.worstOpponent[role].value) {
       player.worstOpponent[role].player = Number(idOpponent);
       player.worstOpponent[role].value = stats.delta;
+    }
+
+    if (stats.delta < player.bestOpponent[role].value) {
+      player.bestOpponent[role].player = Number(idOpponent);
+      player.bestOpponent[role].value = stats.delta;
     }
   }
 }
