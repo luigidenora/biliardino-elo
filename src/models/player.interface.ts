@@ -1,23 +1,47 @@
+import { IMatch } from './match.interface';
+
 export interface IPlayerDTO {
   id: number;
   name: string;
-  elo: number;
-  role: -1 | 0 | 1;
+  role: -1 | 0 | 1; // 0 defender, 1 attacker, -1 both
 }
 
+export type MatchPlayerStats = { matches: number; wins: number; delta: number };
+export type PlayerStats = { player: IPlayer; value: number };
+export type MatchStats = { match: IMatch; value: number };
+
 export interface IPlayer extends IPlayerDTO {
-  startElo: number;
-  matches: number;
-  matchesAsDefender: number;
-  matchesAsAttacker: number;
-  wins: number;
+  elo: [number, number]; // [defenderElo, attackerElo]
+  matches: [number, number];
+  wins: [number, number];
+  goalsFor: [number, number];
+  goalsAgainst: [number, number];
+  rank: number; // using the max of two elo
+  class: [number, number];
+
+  teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
+  opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
+  history: IMatch[];
   matchesDelta: number[];
-  goalsFor: number;
-  goalsAgainst: number;
-  bestElo: number;
-  rank: number;
-  class: number;
-  teammatesDelta?: Map<number, number>;
-  teammatesMatchCount?: Map<number, number>;
-  opponentsMatchCount?: Map<number, number>;
+
+  avgTeamElo: [number, number];
+  avgOpponentElo: [number, number];
+  bestTeammateCount: [PlayerStats | null, PlayerStats | null]; // by matches
+  bestTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo gain
+  worstTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo loss
+  bestOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo gain
+  worstOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo loss
+
+  bestElo: [number, number];
+  worstElo: [number, number];
+  bestClass: [number, number];
+  bestWinStreak: [number, number];
+  worstLossStreak: [number, number];
+  bestVictoryByElo: [MatchStats | null, MatchStats | null];
+  bestVictoryByScore: [MatchStats | null, MatchStats | null];
+  bestVictoryByPercentage: [MatchStats | null, MatchStats | null];
+  worstDefeatByElo: [MatchStats | null, MatchStats | null];
+  worstDefeatByScore: [MatchStats | null, MatchStats | null];
+  worstDefeatByPercentage: [MatchStats | null, MatchStats | null];
+  // TODO add match with highest elo too?
 }

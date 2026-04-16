@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "declaration": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "lib": ["ESNext", "DOM"],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noErrorTruncation": true,
@@ -14,7 +16,9 @@
     "noImplicitAny": false,
     "noImplicitReturns": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
     "preserveWatchOutput": true,
     "skipLibCheck": true,

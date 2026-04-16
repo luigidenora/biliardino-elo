@@ -1,5 +1,5 @@
+import { IMatch } from '@/models/match.interface';
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
-import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { DerankTreshold, FinalK, FirstRankUp, MatchesToRank, MatchesToTransition, RankTreshold, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
 
@@ -36,68 +36,133 @@ export function createPlayerDTO(name: string, elo: number, role: -1 | 0 | 1): IP
   const newPlayer: IPlayerDTO = {
     id,
     name,
-    elo,
     role
   };
 
   return newPlayer;
 }
 
-export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppoB: number, delta: number, isDefender: boolean, goalsFor: number, goalsAgainst: number): void {
+export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppoB: number, delta: number, role: number, goalsFor: number, goalsAgainst: number, match: IMatch): void {
   const player = getPlayerById(id);
   if (!player) return;
 
-  player.elo += delta * getBonusK(player.matches);
-  player.bestElo = Math.max(player.bestElo ?? player.elo, player.elo);
-  player.matches++;
-  player.wins += delta > 0 ? 1 : 0;
-  player.goalsFor += goalsFor;
-  player.goalsAgainst += goalsAgainst;
-  player.matchesAsDefender += isDefender ? 1 : 0;
-  player.matchesAsAttacker += isDefender ? 0 : 1;
+  const won = delta > 0 ? 1 : 0;
 
-  if (id > idMate) { // to avoid to calculate twice the same teammate delta
-    if (!player.teammatesMatchCount) {
-      player.teammatesDelta = new Map<number, number>();
-      player.teammatesMatchCount = new Map<number, number>();
-    }
-
-    player.teammatesDelta!.set(idMate, (player.teammatesDelta!.get(idMate) ?? 0) + delta);
-    player.teammatesMatchCount.set(idMate, (player.teammatesMatchCount.get(idMate) ?? 0) + 1);
-  }
-
-  if (id > idOppoA) { // to avoid to calculate twice the same teammate delta
-    player.opponentsMatchCount ??= new Map<number, number>();
-    player.opponentsMatchCount.set(idOppoA, (player.opponentsMatchCount.get(idOppoA) ?? 0) + 1);
-  }
-
-  if (id > idOppoB) { // to avoid to calculate twice the same teammate delta
-    player.opponentsMatchCount ??= new Map<number, number>();
-    player.opponentsMatchCount.set(idOppoB, (player.opponentsMatchCount.get(idOppoB) ?? 0) + 1);
-  }
-
-  updatePlayerClass(player, delta > 0);
+  player.elo[role] += delta * getBonusK(player.matches[role]);
+  player.matches[role]++;
+  player.wins[role] += won;
+  player.goalsFor[role] += goalsFor;
+  player.goalsAgainst[role] += goalsAgainst;
 
   player.matchesDelta.push(delta);
+  player.history.push(match);
+
+  if (player.matches[role] >= MatchesToRank) {
+    player.bestElo[role] = Math.max(player.bestElo[role], player.elo[role]);
+    player.worstElo[role] = Math.min(player.worstElo[role], player.elo[role]);
+  }
+
+  updatePlayerClass(player, won, role);
+  updatePlayersOccurency(player, idMate, idOppoA, idOppoB, won, role, delta);
+  updateMatchesRecord(player, match, role);
+
+  // player.avgTeamElo[role] = updateAverage(player.avgTeamElo[role], player.matches[role], delta);
+  // player.avgOpponentElo[role] = updateAverage(player.avgOpponentElo[role], player.matches[role], -delta);
+
+  // bestClass: [number, number];
+  // bestWinStreak: [number, number];
+  // worstLossStreak: [number, number];
+
+  // bestTeammateCount: [PlayerStats | null, PlayerStats | null]; // by matches
+  // bestTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo gain
+  // worstTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo loss
+  // bestOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo gain
+  // worstOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo loss
 
   rankOutdated = true;
 }
 
-export function updatePlayerClass(player: IPlayer, win: boolean): void {
-  if (player.matches < MatchesToRank) return;
+export function updatePlayerClass(player: IPlayer, won: number, role: number): void {
+  if (player.matches[role] < MatchesToRank) return;
 
-  const currentClass = player.class;
-  let newClass = getClass(player.elo);
+  const currentClass = player.class[role];
+  let newClass = getClass(player.elo[role]);
 
   if (currentClass === newClass) return;
 
-  if (win) {
+  if (won === 1) { // win
     newClass = Math.min(newClass, currentClass === -1 ? Infinity : currentClass); // to avoid to derank after win if in the treshold
-  } else if (currentClass !== -1 && checkDerankThreshold(player.elo)) {
+  } else if (currentClass !== -1 && checkDerankThreshold(player.elo[role])) {
     newClass--;
   }
 
-  player.class = newClass;
+  player.class[role] = newClass;
+}
+
+export function updatePlayersOccurency(player: IPlayer, idMate: number, idOppoA: number, idOppoB: number, won: number, role: number, delta: number): void {
+  player.teammatesStats[role][idMate] ??= { delta: 0, matches: 0, wins: 0 };
+  player.teammatesStats[role][idMate].delta += delta;
+  player.teammatesStats[role][idMate].matches++;
+  player.teammatesStats[role][idMate].wins += won;
+
+  player.opponentsStats[role][idOppoA] ??= { delta: 0, matches: 0, wins: 0 };
+  player.opponentsStats[role][idOppoA].delta += delta;
+  player.opponentsStats[role][idOppoA].matches++;
+  player.opponentsStats[role][idOppoA].wins += won;
+
+  player.opponentsStats[role][idOppoB] ??= { delta: 0, matches: 0, wins: 0 };
+  player.opponentsStats[role][idOppoB].delta += delta;
+  player.opponentsStats[role][idOppoB].matches++;
+  player.opponentsStats[role][idOppoB].wins += won;
+}
+
+function updateMatchesRecord(player: IPlayer, match: IMatch, role: number): void {
+  const teamId = match.teamA.defence === player.id || match.teamA.attack === player.id ? 0 : 1;
+  const won = match.deltaELO[teamId] > 0 ? 1 : 0;
+
+  if (won) {
+    player.bestVictoryByElo[role] ??= { match, value: match.deltaELO[teamId] };
+    player.bestVictoryByScore[role] ??= { match, value: match.score[teamId] };
+    player.bestVictoryByPercentage[role] ??= { match, value: match.expectedScore[teamId] };
+
+    if (match.deltaELO[teamId] > player.bestVictoryByElo[role].value) {
+      player.bestVictoryByElo[role].match = match;
+      player.bestVictoryByElo[role].value = match.deltaELO[teamId];
+    }
+
+    const scoreDifference = match.score[teamId] - match.score[teamId ^ 1];
+    if (scoreDifference > player.bestVictoryByScore[role].value) {
+      player.bestVictoryByScore[role].match = match;
+      player.bestVictoryByScore[role].value = scoreDifference;
+    }
+
+    if (match.expectedScore[teamId] < player.bestVictoryByPercentage[role].value) {
+      player.bestVictoryByPercentage[role].match = match;
+      player.bestVictoryByPercentage[role].value = match.expectedScore[teamId];
+    }
+
+    return;
+  }
+
+  player.worstDefeatByElo[role] ??= { match, value: match.deltaELO[teamId] };
+  player.worstDefeatByScore[role] ??= { match, value: match.score[teamId] };
+  player.worstDefeatByPercentage[role] ??= { match, value: match.expectedScore[teamId] };
+
+  if (match.deltaELO[teamId] < player.worstDefeatByElo[role].value) {
+    player.worstDefeatByElo[role].match = match;
+    player.worstDefeatByElo[role].value = match.deltaELO[teamId];
+  }
+
+  const scoreDifference = match.score[teamId ^ 1] - match.score[teamId];
+  if (scoreDifference > player.worstDefeatByScore[role].value) {
+    player.worstDefeatByScore[role].match = match;
+    player.worstDefeatByScore[role].value = scoreDifference;
+  }
+
+  if (match.expectedScore[teamId] > player.worstDefeatByPercentage[role].value) {
+    player.worstDefeatByPercentage[role].match = match;
+    player.worstDefeatByPercentage[role].value = match.expectedScore[teamId];
+  }
 }
 
 export function getClass(elo: number): number {
@@ -126,11 +191,11 @@ export async function loadPlayers(): Promise<void> {
   }
 }
 
-function computeRanks(): void {
+function computeRanks(): void { // TODO refactor
   const players = playersArray.toSorted((a, b) => {
-    const classA = a.class == -1 ? Infinity : a.class;
-    const classB = b.class == -1 ? Infinity : b.class;
-    return classA - classB || b.elo - a.elo;
+    const classA = Math.min(a.class[0], a.class[1]) == -1 ? Infinity : Math.min(a.class[0], a.class[1]);
+    const classB = Math.min(b.class[0], b.class[1]) == -1 ? Infinity : Math.min(b.class[0], b.class[1]);
+    return classA - classB || Math.max(b.elo[0], b.elo[1]) - Math.max(a.elo[0], a.elo[1]);
   });
 
   let rank = 0;
@@ -139,15 +204,16 @@ function computeRanks(): void {
   let count = 0;
 
   for (const player of players) {
-    if (player.matches < 1) continue; // TODO customize it
+    if (Math.max(player.matches[0], player.matches[1]) < 1) continue; // TODO customize it
 
     count++;
-    const elo = getDisplayElo(player);
+    const elo = Math.max(player.elo[0], player.elo[1]);
+    const playerClass = Math.min(player.class[0], player.class[1]);
 
-    if (elo !== previousElo || player.class !== previousClass) {
+    if (elo !== previousElo || playerClass !== previousClass) {
       rank = count;
       previousElo = elo;
-      previousClass = player.class;
+      previousClass = playerClass;
     }
 
     player.rank = rank;
@@ -159,4 +225,8 @@ function computeRanks(): void {
 export function getBonusK(matches: number): number {
   const alpha = MatchesToTransition / Math.log(StartK / FinalK);
   return Math.max(FinalK, StartK * Math.exp(-matches / alpha)) / FinalK;
+}
+
+export function updateAverage(average: number, count: number, value: number): number {
+  return (average * count + value) / (count + 1);
 }

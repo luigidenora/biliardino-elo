@@ -10,8 +10,8 @@ export function computeMatch(match: IMatch): void {
   const [deltaA, deltaB] = match.deltaELO;
   const [scoreA, scoreB] = match.score;
 
-  updatePlayer(teamA.defence, teamA.attack, teamB.defence, teamB.attack, deltaA, true, scoreA, scoreB);
-  updatePlayer(teamA.attack, teamA.defence, teamB.defence, teamB.attack, deltaA, false, scoreA, scoreB);
-  updatePlayer(teamB.defence, teamB.attack, teamA.defence, teamA.attack, deltaB, true, scoreB, scoreA);
-  updatePlayer(teamB.attack, teamB.defence, teamA.defence, teamA.attack, deltaB, false, scoreB, scoreA);
+  updatePlayer(teamA.defence, teamA.attack, teamB.defence, teamB.attack, deltaA, 0, scoreA, scoreB, match);
+  updatePlayer(teamA.attack, teamA.defence, teamB.defence, teamB.attack, deltaA, 1, scoreA, scoreB, match);
+  updatePlayer(teamB.defence, teamB.attack, teamA.defence, teamA.attack, deltaB, 0, scoreB, scoreA, match);
+  updatePlayer(teamB.attack, teamB.defence, teamA.defence, teamA.attack, deltaB, 1, scoreB, scoreA, match);
 }
