@@ -7,7 +7,7 @@ export interface IPlayerDTO {
 }
 
 export type MatchPlayerStats = { matches: number; wins: number; delta: number };
-export type PlayerStats = { player: IPlayer; value: number };
+export type PlayerStats = { player: number; value: number };
 export type MatchStats = { match: IMatch; value: number };
 
 export interface IPlayer extends IPlayerDTO {
@@ -29,6 +29,7 @@ export interface IPlayer extends IPlayerDTO {
   bestTeammateCount: [PlayerStats | null, PlayerStats | null]; // by matches
   bestTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo gain
   worstTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo loss
+  bestOpponentCount: [PlayerStats | null, PlayerStats | null]; // by matches
   bestOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo gain
   worstOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo loss
 

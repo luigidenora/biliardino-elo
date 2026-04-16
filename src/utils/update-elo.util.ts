@@ -1,17 +1,19 @@
 import { IMatch } from '@/models/match.interface';
 import { updateMatch } from '@/services/elo.service';
-import { updatePlayer } from '@/services/player.service';
+import { updatePlayer, updatePlayerRecords } from '@/services/player.service';
 
-export function computeMatch(match: IMatch): void {
+export function computeMatch(match: IMatch, computeStats: boolean): void {
   updateMatch(match);
 
-  const teamA = match.teamA;
-  const teamB = match.teamB;
-  const [deltaA, deltaB] = match.deltaELO;
-  const [scoreA, scoreB] = match.score;
+  updatePlayer(match.teamA.defence, match.teamA.attack, match.teamB, 0, match);
+  updatePlayer(match.teamA.attack, match.teamA.defence, match.teamB, 1, match);
+  updatePlayer(match.teamB.defence, match.teamB.attack, match.teamA, 0, match);
+  updatePlayer(match.teamB.attack, match.teamB.defence, match.teamA, 1, match);
 
-  updatePlayer(teamA.defence, teamA.attack, teamB.defence, teamB.attack, deltaA, 0, scoreA, scoreB, match);
-  updatePlayer(teamA.attack, teamA.defence, teamB.defence, teamB.attack, deltaA, 1, scoreA, scoreB, match);
-  updatePlayer(teamB.defence, teamB.attack, teamA.defence, teamA.attack, deltaB, 0, scoreB, scoreA, match);
-  updatePlayer(teamB.attack, teamB.defence, teamA.defence, teamA.attack, deltaB, 1, scoreB, scoreA, match);
+  if (computeStats) {
+    updatePlayerRecords(match.teamA.defence, 0);
+    updatePlayerRecords(match.teamA.attack, 1);
+    updatePlayerRecords(match.teamB.defence, 0);
+    updatePlayerRecords(match.teamB.attack, 1);
+  }
 }

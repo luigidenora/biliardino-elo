@@ -110,6 +110,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       bestTeammateCount: [null, null],
       bestTeammate: [null, null],
       worstTeammate: [null, null],
+      bestOpponentCount: [null, null],
       bestOpponent: [null, null],
       worstOpponent: [null, null],
 

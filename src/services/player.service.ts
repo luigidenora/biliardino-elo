@@ -1,4 +1,4 @@
-import { IMatch } from '@/models/match.interface';
+import { IMatch, ITeam } from '@/models/match.interface';
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 import { DerankTreshold, FinalK, FirstRankUp, MatchesToRank, MatchesToTransition, RankTreshold, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
@@ -42,10 +42,16 @@ export function createPlayerDTO(name: string, elo: number, role: -1 | 0 | 1): IP
   return newPlayer;
 }
 
-export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppoB: number, delta: number, role: number, goalsFor: number, goalsAgainst: number, match: IMatch): void {
+export function updatePlayer(id: number, idMate: number, opponentTeam: ITeam, role: number, match: IMatch): void {
   const player = getPlayerById(id);
   if (!player) return;
 
+  const teamId = match.teamA.defence === player.id || match.teamA.attack === player.id ? 0 : 1;
+  const idOppoA = opponentTeam.defence;
+  const idOppoB = opponentTeam.attack;
+  const delta = match.deltaELO[teamId];
+  const goalsFor = match.score[teamId];
+  const goalsAgainst = match.score[teamId ^ 1];
   const won = delta > 0 ? 1 : 0;
 
   player.elo[role] += delta * getBonusK(player.matches[role]);
@@ -57,27 +63,21 @@ export function updatePlayer(id: number, idMate: number, idOppoA: number, idOppo
   player.matchesDelta.push(delta);
   player.history.push(match);
 
+  updatePlayerClass(player, won, role);
+  updatePlayersOccurency(player, idMate, idOppoA, idOppoB, won, role, delta);
+  updateMatchesRecord(player, match, role, teamId, won);
+
+  player.avgTeamElo[role] = updateAverage(player.avgTeamElo[role], player.matches[role], match.teamELO[teamId]); // TODO consider only the mate instead of both?
+  player.avgOpponentElo[role] = updateAverage(player.avgOpponentElo[role], player.matches[role], match.teamELO[teamId ^ 1]);
+
   if (player.matches[role] >= MatchesToRank) {
     player.bestElo[role] = Math.max(player.bestElo[role], player.elo[role]);
     player.worstElo[role] = Math.min(player.worstElo[role], player.elo[role]);
+    player.bestClass[role] = Math.min(player.bestClass[role], player.class[role]);
   }
 
-  updatePlayerClass(player, won, role);
-  updatePlayersOccurency(player, idMate, idOppoA, idOppoB, won, role, delta);
-  updateMatchesRecord(player, match, role);
-
-  // player.avgTeamElo[role] = updateAverage(player.avgTeamElo[role], player.matches[role], delta);
-  // player.avgOpponentElo[role] = updateAverage(player.avgOpponentElo[role], player.matches[role], -delta);
-
-  // bestClass: [number, number];
   // bestWinStreak: [number, number];
   // worstLossStreak: [number, number];
-
-  // bestTeammateCount: [PlayerStats | null, PlayerStats | null]; // by matches
-  // bestTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo gain
-  // worstTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo loss
-  // bestOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo gain
-  // worstOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo loss
 
   rankOutdated = true;
 }
@@ -116,10 +116,7 @@ export function updatePlayersOccurency(player: IPlayer, idMate: number, idOppoA:
   player.opponentsStats[role][idOppoB].wins += won;
 }
 
-function updateMatchesRecord(player: IPlayer, match: IMatch, role: number): void {
-  const teamId = match.teamA.defence === player.id || match.teamA.attack === player.id ? 0 : 1;
-  const won = match.deltaELO[teamId] > 0 ? 1 : 0;
-
+function updateMatchesRecord(player: IPlayer, match: IMatch, role: number, teamId: number, won: number): void {
   if (won) {
     player.bestVictoryByElo[role] ??= { match, value: match.deltaELO[teamId] };
     player.bestVictoryByScore[role] ??= { match, value: match.score[teamId] };
@@ -229,4 +226,65 @@ export function getBonusK(matches: number): number {
 
 export function updateAverage(average: number, count: number, value: number): number {
   return (average * count + value) / (count + 1);
+}
+
+export function updatePlayerRecords(playerId: number, role: number): void {
+  const player = getPlayerById(playerId);
+
+  if (!player) throw new Error('Player not found when updating records.');
+
+  const teammatesStats = player.teammatesStats[role];
+  for (const idMate in teammatesStats) {
+    const stats = teammatesStats[idMate];
+
+    player.bestTeammateCount[role] ??= { player: -1, value: 0 };
+    player.bestTeammate[role] ??= { player: -1, value: -Infinity };
+    player.worstTeammate[role] ??= { player: -1, value: Infinity };
+
+    if (stats.matches > player.bestTeammateCount[role].value) {
+      player.bestTeammateCount[role].player = Number(idMate);
+      player.bestTeammateCount[role].value = stats.matches;
+    }
+
+    if (stats.delta > player.bestTeammate[role].value) {
+      player.bestTeammate[role].player = Number(idMate);
+      player.bestTeammate[role].value = stats.delta;
+    }
+
+    if (stats.delta < player.worstTeammate[role].value) {
+      player.worstTeammate[role].player = Number(idMate);
+      player.worstTeammate[role].value = stats.delta;
+    }
+  }
+
+  const opponentsStats = player.opponentsStats[role];
+  for (const idOpponent in opponentsStats) {
+    const stats = opponentsStats[idOpponent];
+
+    player.bestOpponentCount[role] ??= { player: -1, value: 0 };
+    player.bestOpponent[role] ??= { player: -1, value: -Infinity };
+    player.worstOpponent[role] ??= { player: -1, value: Infinity };
+
+    if (stats.matches > player.bestOpponentCount[role].value) {
+      player.bestOpponentCount[role].player = Number(idOpponent);
+      player.bestOpponentCount[role].value = stats.matches;
+    }
+
+    if (stats.delta > player.bestOpponent[role].value) {
+      player.bestOpponent[role].player = Number(idOpponent);
+      player.bestOpponent[role].value = stats.delta;
+    }
+
+    if (stats.delta < player.worstOpponent[role].value) {
+      player.worstOpponent[role].player = Number(idOpponent);
+      player.worstOpponent[role].value = stats.delta;
+    }
+  }
+}
+
+export function updateAllPlayerRecords(): void {
+  for (const player of playersArray) {
+    updatePlayerRecords(player.id, 0);
+    updatePlayerRecords(player.id, 1);
+  }
 }

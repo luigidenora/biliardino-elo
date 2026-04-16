@@ -1,5 +1,6 @@
 import { computeMatch } from '@/utils/update-elo.util';
 import { IMatch, IMatchDTO, ITeam } from '../models/match.interface';
+import { updateAllPlayerRecords } from './player.service';
 import { fetchMatches, parseMatchDTO } from './repository.service';
 
 let matches: IMatch[] = [];
@@ -24,7 +25,7 @@ export function addMatch(teamA: ITeam, teamB: ITeam, score: [number, number]): I
 
   matches.push(match);
 
-  computeMatch(match);
+  computeMatch(match, true);
 
   return matchDTO;
 }
@@ -45,6 +46,8 @@ export function editMatch(id: number, teamA: ITeam, teamB: ITeam, score: [number
 
 function computeMatches(): void {
   for (const match of matches) {
-    computeMatch(match);
+    computeMatch(match, false);
   }
+
+  updateAllPlayerRecords();
 }
