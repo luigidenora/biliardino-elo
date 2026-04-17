@@ -45,10 +45,12 @@ export function editMatch(id: number, teamA: ITeam, teamB: ITeam, score: [number
 }
 
 function computeMatches(): void {
+  console.time('computeMatches');
   for (const match of matches) {
     computeMatch(match, false);
   }
 
   updateAllPlayerRecords();
   computeRanks();
+  console.timeEnd('computeMatches');
 }
