@@ -16,8 +16,10 @@ export interface IPlayer extends IPlayerDTO {
   wins: [number, number];
   goalsFor: [number, number];
   goalsAgainst: [number, number];
-  rank: number; // using the max of two elo
+  rank: [number, number, number]; // [rankDefender, rankAttacker, rankOverall]
   class: [number, number];
+  streak: [number, number];
+  bestRole: number; // 0 defender, 1 attacker
 
   teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
   opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
@@ -27,11 +29,11 @@ export interface IPlayer extends IPlayerDTO {
   avgTeamElo: [number, number];
   avgOpponentElo: [number, number];
   bestTeammateCount: [PlayerStats | null, PlayerStats | null]; // by matches
-  bestTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo gain
-  worstTeammate: [PlayerStats | null, PlayerStats | null]; // by Elo loss
+  bestTeammate: [PlayerStats | null, PlayerStats | null]; // by elo gain
+  worstTeammate: [PlayerStats | null, PlayerStats | null]; // by elo loss
   bestOpponentCount: [PlayerStats | null, PlayerStats | null]; // by matches
-  bestOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo gain
-  worstOpponent: [PlayerStats | null, PlayerStats | null]; // by Elo loss
+  bestOpponent: [PlayerStats | null, PlayerStats | null]; // by elo gain
+  worstOpponent: [PlayerStats | null, PlayerStats | null]; // by elo loss
 
   bestElo: [number, number];
   worstElo: [number, number];

@@ -1,6 +1,6 @@
 import { IMatch } from '@/models/match.interface';
 import { updateMatch } from '@/services/elo.service';
-import { updatePlayer, updatePlayerRecords } from '@/services/player.service';
+import { computeRanks, updatePlayer, updatePlayerRecords } from '@/services/player.service';
 
 export function computeMatch(match: IMatch, computeStats: boolean): void {
   updateMatch(match);
@@ -15,5 +15,7 @@ export function computeMatch(match: IMatch, computeStats: boolean): void {
     updatePlayerRecords(match.teamA.attack, 1);
     updatePlayerRecords(match.teamB.defence, 0);
     updatePlayerRecords(match.teamB.attack, 1);
+
+    computeRanks();
   }
 }

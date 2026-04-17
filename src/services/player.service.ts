@@ -5,7 +5,6 @@ import { fetchPlayers } from './repository.service';
 
 const playersMap = new Map<number, IPlayer>();
 let playersArray: IPlayer[] = [];
-let rankOutdated = true;
 
 await loadPlayers();
 
@@ -22,11 +21,6 @@ export function getPlayerByName(name: string): IPlayer | undefined {
 
 export function getAllPlayers(): IPlayer[] {
   return playersArray;
-}
-
-export function getRank(id: number): number {
-  if (rankOutdated) computeRanks();
-  return getPlayerById(id)?.rank ?? -1;
 }
 
 export function createPlayerDTO(name: string, elo: number, role: -1 | 0 | 1): IPlayerDTO {
@@ -73,13 +67,24 @@ export function updatePlayer(id: number, idMate: number, opponentTeam: ITeam, ro
   if (player.matches[role] >= MatchesToRank) {
     player.bestElo[role] = Math.max(player.bestElo[role], player.elo[role]);
     player.worstElo[role] = Math.min(player.worstElo[role], player.elo[role]);
-    player.bestClass[role] = Math.min(player.bestClass[role], player.class[role]);
+    player.bestClass[role] = Math.max(player.bestClass[role], player.class[role]);
   }
 
-  // bestWinStreak: [number, number];
-  // worstLossStreak: [number, number];
+  if (won) {
+    player.streak[role] = player.streak[role] > 0 ? player.streak[role] + 1 : 1;
+  } else {
+    player.streak[role] = player.streak[role] < 0 ? player.streak[role] - 1 : -1;
+  }
 
-  rankOutdated = true;
+  if (player.streak[role] > player.bestWinStreak[role]) {
+    player.bestWinStreak[role] = player.streak[role];
+  }
+
+  if (Math.abs(player.streak[role]) > Math.abs(player.worstLossStreak[role])) {
+    player.worstLossStreak[role] = player.streak[role];
+  }
+
+  player.bestRole = Number(player.class[0] === player.class[1] ? player.elo[1] > player.elo[0] : player.class[1] > player.class[0]);
 }
 
 export function updatePlayerClass(player: IPlayer, won: number, role: number): void {
@@ -91,9 +96,9 @@ export function updatePlayerClass(player: IPlayer, won: number, role: number): v
   if (currentClass === newClass) return;
 
   if (won === 1) { // win
-    newClass = Math.min(newClass, currentClass === -1 ? Infinity : currentClass); // to avoid to derank after win if in the treshold
+    newClass = Math.max(newClass, currentClass); // to avoid to derank after win if in the treshold
   } else if (currentClass !== -1 && checkDerankThreshold(player.elo[role])) {
-    newClass--;
+    newClass++;
   }
 
   player.class[role] = newClass;
@@ -164,11 +169,12 @@ function updateMatchesRecord(player: IPlayer, match: IMatch, role: number, teamI
 
 export function getClass(elo: number): number {
   elo = Math.round(elo);
-  if (elo >= FirstRankUp + RankTreshold * 3) return 0; // megalodonte virtual rank
-  if (elo >= FirstRankUp + RankTreshold * 2) return 1; // squalo virtual rank
-  if (elo >= FirstRankUp + RankTreshold) return 2; // barracuda
-  if (elo >= FirstRankUp) return 3; // tonno
-  return 4; // sogliola
+  if (elo >= FirstRankUp + RankTreshold * 3) return 5; // megalodonte virtual rank
+  if (elo >= FirstRankUp + RankTreshold * 2) return 4; // squalo virtual rank
+  if (elo >= FirstRankUp + RankTreshold) return 3; // barracuda
+  if (elo >= FirstRankUp) return 2; // tonno
+  if (elo >= FirstRankUp - RankTreshold) return 1; // spigola
+  return 0; // sogliola
 }
 
 export function checkDerankThreshold(elo: number): boolean {
@@ -176,7 +182,8 @@ export function checkDerankThreshold(elo: number): boolean {
   if (elo >= FirstRankUp + RankTreshold * 2) return elo >= FirstRankUp + RankTreshold * 3 - DerankTreshold; // derank megalodonte -> squalo
   if (elo >= FirstRankUp + RankTreshold) return elo >= FirstRankUp + RankTreshold * 2 - DerankTreshold; // derank squalo -> barracuda
   if (elo >= FirstRankUp) return elo >= FirstRankUp + RankTreshold - DerankTreshold; // derank barracuda -> tonno
-  if (elo < FirstRankUp) return elo >= FirstRankUp - DerankTreshold; // derank tonno -> sogliola
+  if (elo >= FirstRankUp - RankTreshold) return elo >= FirstRankUp - DerankTreshold; // derank tonno -> spigola
+  if (elo < FirstRankUp - RankTreshold) return elo >= FirstRankUp - RankTreshold - DerankTreshold; // derank spigola -> sogliola
   return false;
 }
 
@@ -186,37 +193,6 @@ export async function loadPlayers(): Promise<void> {
   for (const player of playersArray) {
     playersMap.set(player.id, player);
   }
-}
-
-function computeRanks(): void { // TODO refactor
-  const players = playersArray.toSorted((a, b) => {
-    const classA = Math.min(a.class[0], a.class[1]) == -1 ? Infinity : Math.min(a.class[0], a.class[1]);
-    const classB = Math.min(b.class[0], b.class[1]) == -1 ? Infinity : Math.min(b.class[0], b.class[1]);
-    return classA - classB || Math.max(b.elo[0], b.elo[1]) - Math.max(a.elo[0], a.elo[1]);
-  });
-
-  let rank = 0;
-  let previousElo = -1;
-  let previousClass = -1;
-  let count = 0;
-
-  for (const player of players) {
-    if (Math.max(player.matches[0], player.matches[1]) < 1) continue; // TODO customize it
-
-    count++;
-    const elo = Math.max(player.elo[0], player.elo[1]);
-    const playerClass = Math.min(player.class[0], player.class[1]);
-
-    if (elo !== previousElo || playerClass !== previousClass) {
-      rank = count;
-      previousElo = elo;
-      previousClass = playerClass;
-    }
-
-    player.rank = rank;
-  }
-
-  rankOutdated = false;
 }
 
 export function getBonusK(matches: number): number {
@@ -230,7 +206,6 @@ export function updateAverage(average: number, count: number, value: number): nu
 
 export function updatePlayerRecords(playerId: number, role: number): void {
   const player = getPlayerById(playerId);
-
   if (!player) throw new Error('Player not found when updating records.');
 
   const teammatesStats = player.teammatesStats[role];
@@ -286,5 +261,49 @@ export function updateAllPlayerRecords(): void {
   for (const player of playersArray) {
     updatePlayerRecords(player.id, 0);
     updatePlayerRecords(player.id, 1);
+  }
+}
+
+export function computeRanks(): void {
+  computeRanksRole(0);
+  computeRanksRole(1);
+  computeRanksRole(2);
+}
+
+function computeRanksRole(role: number): void {
+  let comparer: (a: IPlayer, b: IPlayer) => number;
+
+  if (role === 2) {
+    comparer = (a, b) => {
+      return (b.class[b.bestRole] - a.class[a.bestRole]) || (b.elo[b.bestRole] - a.elo[a.bestRole]);
+    };
+  } else {
+    comparer = (a, b) => {
+      return (b.class[role] - a.class[role]) || (b.elo[role] - a.elo[role]);
+    };
+  }
+
+  const players = playersArray.toSorted(comparer);
+
+  let rank = 0;
+  let previousElo = -1;
+  let previousClass = -1;
+  let count = 0;
+
+  for (const player of players) {
+    const roleToCheck = role === 2 ? player.bestRole : role;
+    if (player.matches[roleToCheck] < 1) continue; // at least one game to be viewed in the scoreboard
+
+    count++;
+    const elo = player.elo[roleToCheck];
+    const playerClass = player.class[roleToCheck];
+
+    if (elo !== previousElo || playerClass !== previousClass) {
+      rank = count;
+      previousElo = elo;
+      previousClass = playerClass;
+    }
+
+    player.rank[role] = rank;
   }
 }

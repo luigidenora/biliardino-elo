@@ -97,8 +97,10 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       wins: [0, 0],
       goalsFor: [0, 0],
       goalsAgainst: [0, 0],
-      rank: -1,
+      rank: [-1, -1, -1],
+      bestRole: 0,
       class: [-1, -1],
+      streak: [0, 0],
 
       teammatesStats: [{}, {}],
       opponentsStats: [{}, {}],
@@ -116,7 +118,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 
       bestElo: [-Infinity, -Infinity],
       worstElo: [Infinity, Infinity],
-      bestClass: [Infinity, Infinity],
+      bestClass: [-1, -1],
       bestWinStreak: [0, 0],
       worstLossStreak: [0, 0],
       bestVictoryByElo: [null, null],
@@ -125,7 +127,6 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       worstDefeatByElo: [null, null],
       worstDefeatByScore: [null, null],
       worstDefeatByPercentage: [null, null]
-
     } satisfies IPlayer;
   });
 
