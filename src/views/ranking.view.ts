@@ -4,6 +4,7 @@ import { getBonusK } from '@/services/player.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
+import { getGoalRatioColor, getWinRateColor } from '@/utils/stats-thresholds.util';
 import { BASE_PATH } from '../config/env.config';
 import { getAllMatches } from '../services/match.service';
 import { getAllPlayers, getPlayerById } from '../services/player.service';
@@ -698,8 +699,15 @@ export class RankingView {
         }
 
         const roundedRatio = parseFloat(ratio.toFixed(2));
-        const color = roundedRatio <= 0.8 ? 'red' : roundedRatio >= 1.15 ? 'green' : 'inherit';
+        const color = getGoalRatioColor(roundedRatio);
         return `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
+      };
+
+      const renderWinRate = (roleIndex: 0 | 1): string => {
+        if (!hasMatchesByRole[roleIndex]) return '-';
+        const rate = winRateByRole[roleIndex];
+        const color = getWinRateColor(rate);
+        return `<span style="color:${color};">${rate}%</span>`;
       };
 
       // ELO display con ruoli fissi: difesa sopra, attacco sotto
@@ -767,8 +775,8 @@ export class RankingView {
       const recordSecondRoleLabel = secondRoleHasMatches
         ? `${winsByRole[secondRoleIndex]} / ${lossesByRole[secondRoleIndex]}`
         : '-';
-      const winRateFirstRoleLabel = firstRoleHasMatches ? `${winRateByRole[firstRoleIndex]}%` : '-';
-      const winRateSecondRoleLabel = secondRoleHasMatches ? `${winRateByRole[secondRoleIndex]}%` : '-';
+      const winRateFirstRoleLabel = renderWinRate(firstRoleIndex);
+      const winRateSecondRoleLabel = renderWinRate(secondRoleIndex);
       const goalsFirstRoleLabel = firstRoleHasMatches
         ? `${goalsForByRole[firstRoleIndex]} / ${goalsAgainstByRole[firstRoleIndex]}`
         : '-';

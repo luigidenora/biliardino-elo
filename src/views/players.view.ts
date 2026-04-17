@@ -5,6 +5,7 @@ import { getAllMatches } from '@/services/match.service';
 import { getBonusK, getPlayerById } from '@/services/player.service';
 import { formatRank } from '@/utils/format-rank.util';
 import { getClassName } from '@/utils/get-class-name.util';
+import { getGoalRatioColor, getWinRateColor } from '@/utils/stats-thresholds.util';
 
 type RoleScope = 'all' | 0 | 1;
 type ScopeSection = 'stats' | 'teammates' | 'opponents' | 'chart' | 'history';
@@ -104,6 +105,7 @@ export class PlayersView {
     chart: 0,
     history: 'all'
   };
+  private static scopeDefaultsAppliedForPlayer: number | null = null;
   private static statsSortKey: StatsSortKey = 'label';
   private static statsSortDirection: SortDirection = 'asc';
   private static teammatesSortKey: RelationSortKey = 'matches';
@@ -158,6 +160,19 @@ export class PlayersView {
 
     getAllMatches(); // Ensure matches are loaded before rendering stats
 
+    if (PlayersView.scopeDefaultsAppliedForPlayer !== player.id) {
+      const defaultChartScope: 0 | 1 = player.bestRole === 1 ? 1 : 0;
+      PlayersView.sectionScopes = {
+        stats: 'all',
+        teammates: 'all',
+        opponents: 'all',
+        chart: defaultChartScope,
+        history: 'all'
+      };
+
+      PlayersView.scopeDefaultsAppliedForPlayer = player.id;
+    }
+
     const statsScope = PlayersView.sectionScopes.stats;
     const teammatesScope = PlayersView.sectionScopes.teammates;
     const opponentsScope = PlayersView.sectionScopes.opponents;
@@ -205,148 +220,80 @@ export class PlayersView {
     const bestElo = PlayersView.roundValue(Math.max(player.bestElo[0], player.bestElo[1]));
     const worstElo = PlayersView.roundValue(Math.min(player.worstElo[0], player.worstElo[1]));
     const bestClass = Math.max(player.bestClass[0], player.bestClass[1]);
-
-    const statsRows: CompactStatRow[] = [
-      {
-        label: 'Partite Giocate',
-        hint: 'Numero totale di partite nel ruolo',
-        defence: defSummary.matches,
-        attack: attSummary.matches,
-        total: totalSummary.matches
-      },
-      {
-        label: 'Vittorie',
-        hint: 'Partite vinte',
-        defence: defSummary.wins,
-        attack: attSummary.wins,
-        total: totalSummary.wins
-      },
-      {
-        label: 'Sconfitte',
-        hint: 'Partite perse',
-        defence: defSummary.losses,
-        attack: attSummary.losses,
-        total: totalSummary.losses
-      },
-      {
-        label: 'Percentuale Vittorie',
-        hint: 'Vittorie / Partite',
-        defence: PlayersView.formatPercentage(defSummary.wins, defSummary.matches),
-        attack: PlayersView.formatPercentage(attSummary.wins, attSummary.matches),
-        total: PlayersView.formatPercentage(totalSummary.wins, totalSummary.matches)
-      },
-      {
-        label: 'Goal Fatti',
-        hint: 'Somma goal segnati',
-        defence: defSummary.totalGoalsFor,
-        attack: attSummary.totalGoalsFor,
-        total: totalSummary.totalGoalsFor
-      },
-      {
-        label: 'Goal Subiti',
-        hint: 'Somma goal incassati',
-        defence: defSummary.totalGoalsAgainst,
-        attack: attSummary.totalGoalsAgainst,
-        total: totalSummary.totalGoalsAgainst
-      },
-      {
-        label: 'Media Goal Fatti',
-        hint: 'Goal fatti per partita',
-        defence: PlayersView.formatAverage(defSummary.totalGoalsFor, defSummary.matches),
-        attack: PlayersView.formatAverage(attSummary.totalGoalsFor, attSummary.matches),
-        total: PlayersView.formatAverage(totalSummary.totalGoalsFor, totalSummary.matches)
-      },
-      {
-        label: 'Media Goal Subiti',
-        hint: 'Goal subiti per partita',
-        defence: PlayersView.formatAverage(defSummary.totalGoalsAgainst, defSummary.matches),
-        attack: PlayersView.formatAverage(attSummary.totalGoalsAgainst, attSummary.matches),
-        total: PlayersView.formatAverage(totalSummary.totalGoalsAgainst, totalSummary.matches)
-      },
-      {
-        label: 'ELO Attuale',
-        hint: 'ELO corrente nel ruolo',
-        defence: PlayersView.roundValue(player.elo[0]),
-        attack: PlayersView.roundValue(player.elo[1]),
-        total: PlayersView.roundValue(player.elo[player.bestRole === 1 ? 1 : 0])
-      },
-      {
-        label: 'Miglior ELO',
-        hint: 'Picco storico raggiunto',
-        defence: PlayersView.roundValue(player.bestElo[0]),
-        attack: PlayersView.roundValue(player.bestElo[1]),
-        total: PlayersView.roundValue(Math.max(player.bestElo[0], player.bestElo[1]))
-      },
-      {
-        label: 'Peggior ELO',
-        hint: 'Valore minimo storico',
-        defence: PlayersView.roundValue(player.worstElo[0]),
-        attack: PlayersView.roundValue(player.worstElo[1]),
-        total: PlayersView.roundValue(Math.min(player.worstElo[0], player.worstElo[1]))
-      },
-      {
-        label: 'Rank',
-        hint: 'Posizione classifica',
-        defence: formatRank(player.rank[0]),
-        attack: formatRank(player.rank[1]),
-        total: formatRank(player.rank[2])
-      },
-      {
-        label: 'Classe',
-        hint: 'Classe pesce nel ruolo',
-        defence: player.class[0] === -1 ? 'TBD' : getClassName(player.class[0]),
-        attack: player.class[1] === -1 ? 'TBD' : getClassName(player.class[1]),
-        total: bestClass === -1 ? 'TBD' : getClassName(bestClass)
-      },
-      {
-        label: 'Miglior Striscia Vittorie',
-        hint: 'Massimo consecutivo di vittorie',
-        defence: player.bestWinStreak[0],
-        attack: player.bestWinStreak[1],
-        total: Math.max(player.bestWinStreak[0], player.bestWinStreak[1])
-      },
-      {
-        label: 'Peggior Striscia Sconfitte',
-        hint: 'Massimo consecutivo di sconfitte',
-        defence: Math.abs(player.worstLossStreak[0]),
-        attack: Math.abs(player.worstLossStreak[1]),
-        total: Math.max(Math.abs(player.worstLossStreak[0]), Math.abs(player.worstLossStreak[1]))
-      },
-      {
-        label: 'ELO Medio Team',
-        hint: 'Media ELO della tua squadra',
-        defence: PlayersView.roundValue(player.avgTeamElo[0]),
-        attack: PlayersView.roundValue(player.avgTeamElo[1]),
-        total: PlayersView.roundValue(PlayersView.weightedAverageByScope(player.avgTeamElo, player.matches, 'all'))
-      },
-      {
-        label: 'ELO Medio Avversari',
-        hint: 'Media ELO degli avversari',
-        defence: PlayersView.roundValue(player.avgOpponentElo[0]),
-        attack: PlayersView.roundValue(player.avgOpponentElo[1]),
-        total: PlayersView.roundValue(PlayersView.weightedAverageByScope(player.avgOpponentElo, player.matches, 'all'))
+    const roleStatValue = (role: 0 | 1, value: string | number): string | number => {
+      if (role === 0 && defSummary.matches <= 0) return '-';
+      if (role === 1 && attSummary.matches <= 0) return '-';
+      return value;
+    };
+    const colorizeStatValue = (value: string | number, color: string): string | number => {
+      if (value === '-') return value;
+      return `<span style="color:${color};">${value}</span>`;
+    };
+    const formatWinRateStyled = (wins: number, matches: number): string => {
+      if (matches <= 0) return '-';
+      const rate = Math.round((wins / matches) * 100);
+      const color = getWinRateColor(rate);
+      return `<span style="color:${color};">${rate}%</span>`;
+    };
+    const formatGoalRatioStyled = (goalsFor: number, goalsAgainst: number, matches: number): string => {
+      if (matches <= 0) return '-';
+      const ratio = goalsAgainst > 0 ? goalsFor / goalsAgainst : (goalsFor > 0 ? Infinity : 0);
+      if (ratio === Infinity) {
+        return '<span style="color:green;">∞</span>';
       }
-    ];
-
-    const sortedStatsRows = PlayersView.sortCompactStatRows(statsRows);
+      if (ratio <= 0) return '-';
+      const roundedRatio = Number.parseFloat(ratio.toFixed(2));
+      const color = getGoalRatioColor(roundedRatio);
+      return `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
+    };
 
     const compactStatsHtml = `
       <section class="player-card stats-list-card">
         <details class="card-collapsible" open>
-        <summary>Statistiche Compatte (per ruolo)</summary>
-        ${PlayersView.renderRoleFilters(statsScope, 'stats')}
-        <p class="stats-help">Clicca le intestazioni per ordinare. Ogni riga mostra valore in Difesa, Attacco e Totale.</p>
-        <div class="stats-table">
-          <button class="stats-table-head js-sort-stats ${PlayersView.statsSortKey === 'label' ? 'is-active-sort' : ''}" data-key="label">Metrica ${PlayersView.renderSortIcon(PlayersView.statsSortKey, 'label', PlayersView.statsSortDirection)}</button>
-          <button class="stats-table-head js-sort-stats ${PlayersView.statsSortKey === 'defence' ? 'is-active-sort' : ''}" data-key="defence">Difesa ${PlayersView.renderSortIcon(PlayersView.statsSortKey, 'defence', PlayersView.statsSortDirection)}</button>
-          <button class="stats-table-head js-sort-stats ${PlayersView.statsSortKey === 'attack' ? 'is-active-sort' : ''}" data-key="attack">Attacco ${PlayersView.renderSortIcon(PlayersView.statsSortKey, 'attack', PlayersView.statsSortDirection)}</button>
-          <button class="stats-table-head js-sort-stats ${PlayersView.statsSortKey === 'total' ? 'is-active-sort' : ''}" data-key="total">Totale ${PlayersView.renderSortIcon(PlayersView.statsSortKey, 'total', PlayersView.statsSortDirection)}</button>
-          ${sortedStatsRows.map(row => `
-            <div class="stats-row-label ${PlayersView.statsSortKey === 'label' ? 'is-active-col' : ''}"><strong>${row.label}</strong><small>${row.hint}</small></div>
-            <div class="stats-row-value ${PlayersView.statsSortKey === 'defence' ? 'is-active-col' : ''}">${row.defence}</div>
-            <div class="stats-row-value ${PlayersView.statsSortKey === 'attack' ? 'is-active-col' : ''}">${row.attack}</div>
-            <div class="stats-row-value ${PlayersView.statsSortKey === 'total' ? 'is-active-col' : ''}">${row.total}</div>
-          `).join('')}
+        <summary>Statistiche Principali</summary>
+        <div class="stats-groups">
+          <div class="stats-group-card">
+            <h3 class="stats-group-title">Partite ⚽</h3>
+            <div class="stats-group-rows">
+              <div class="stats-group-header"><span></span><span>🛡️</span><span>⚔️</span><span>Totale</span></div>
+              <div class="stats-group-row"><span>Giocate</span><span>${roleStatValue(0, defSummary.matches)}</span><span>${roleStatValue(1, attSummary.matches)}</span><span>${totalSummary.matches}</span></div>
+              <div class="stats-group-row"><span>Vittorie</span><span>${roleStatValue(0, defSummary.wins)}</span><span>${roleStatValue(1, attSummary.wins)}</span><span>${totalSummary.wins}</span></div>
+              <div class="stats-group-row"><span>Sconfitte</span><span>${roleStatValue(0, defSummary.losses)}</span><span>${roleStatValue(1, attSummary.losses)}</span><span>${totalSummary.losses}</span></div>
+              <div class="stats-group-row"><span>Win%</span><span>${roleStatValue(0, formatWinRateStyled(defSummary.wins, defSummary.matches))}</span><span>${roleStatValue(1, formatWinRateStyled(attSummary.wins, attSummary.matches))}</span><span>${formatWinRateStyled(totalSummary.wins, totalSummary.matches)}</span></div>
+            </div>
+          </div>
+          <div class="stats-group-card">
+            <h3 class="stats-group-title">Goal 🎯</h3>
+            <div class="stats-group-rows">
+              <div class="stats-group-header"><span></span><span>🛡️</span><span>⚔️</span><span>Totale</span></div>
+              <div class="stats-group-row"><span>Fatti</span><span>${roleStatValue(0, defSummary.totalGoalsFor)}</span><span>${roleStatValue(1, attSummary.totalGoalsFor)}</span><span>${totalSummary.totalGoalsFor}</span></div>
+              <div class="stats-group-row"><span>Subiti</span><span>${roleStatValue(0, defSummary.totalGoalsAgainst)}</span><span>${roleStatValue(1, attSummary.totalGoalsAgainst)}</span><span>${totalSummary.totalGoalsAgainst}</span></div>
+              <div class="stats-group-row"><span>Goal Ratio</span><span>${roleStatValue(0, formatGoalRatioStyled(defSummary.totalGoalsFor, defSummary.totalGoalsAgainst, defSummary.matches))}</span><span>${roleStatValue(1, formatGoalRatioStyled(attSummary.totalGoalsFor, attSummary.totalGoalsAgainst, attSummary.matches))}</span><span>${formatGoalRatioStyled(totalSummary.totalGoalsFor, totalSummary.totalGoalsAgainst, totalSummary.matches)}</span></div>
+              <div class="stats-group-row"><span>Media Fatti</span><span>${roleStatValue(0, PlayersView.formatAverage(defSummary.totalGoalsFor, defSummary.matches))}</span><span>${roleStatValue(1, PlayersView.formatAverage(attSummary.totalGoalsFor, attSummary.matches))}</span><span>${PlayersView.formatAverage(totalSummary.totalGoalsFor, totalSummary.matches)}</span></div>
+              <div class="stats-group-row"><span>Media Subiti</span><span>${roleStatValue(0, PlayersView.formatAverage(defSummary.totalGoalsAgainst, defSummary.matches))}</span><span>${roleStatValue(1, PlayersView.formatAverage(attSummary.totalGoalsAgainst, attSummary.matches))}</span><span>${PlayersView.formatAverage(totalSummary.totalGoalsAgainst, totalSummary.matches)}</span></div>
+            </div>
+          </div>
+          <div class="stats-group-card">
+            <h3 class="stats-group-title">ELO 📈</h3>
+            <div class="stats-group-rows-three">
+              <div class="stats-group-header"><span></span><span>🛡️</span><span>⚔️</span></div>
+              <div class="stats-group-row"><span>Attuale</span><span><strong>${roleStatValue(0, PlayersView.roundValue(player.elo[0]))}</strong></span><span><strong>${roleStatValue(1, PlayersView.roundValue(player.elo[1]))}</strong></span></div>
+              <div class="stats-group-row"><span>Migliore</span><span>${colorizeStatValue(roleStatValue(0, PlayersView.roundValue(player.bestElo[0])), 'green')}</span><span>${colorizeStatValue(roleStatValue(1, PlayersView.roundValue(player.bestElo[1])), 'green')}</span></div>
+              <div class="stats-group-row"><span>Peggiore</span><span>${colorizeStatValue(roleStatValue(0, PlayersView.roundValue(player.worstElo[0])), 'red')}</span><span>${colorizeStatValue(roleStatValue(1, PlayersView.roundValue(player.worstElo[1])), 'red')}</span></div>
+              <div class="stats-group-row"><span>Media Team</span><span>${roleStatValue(0, PlayersView.roundValue(player.avgTeamElo[0]))}</span><span>${roleStatValue(1, PlayersView.roundValue(player.avgTeamElo[1]))}</span></div>
+              <div class="stats-group-row"><span>Media Avversari</span><span>${roleStatValue(0, PlayersView.roundValue(player.avgOpponentElo[0]))}</span><span>${roleStatValue(1, PlayersView.roundValue(player.avgOpponentElo[1]))}</span></div>
+            </div>
+          </div>
+          <div class="stats-group-card stats-group-card-classifica">
+            <h3 class="stats-group-title">Classifica 🏅</h3>
+            <div class="stats-group-rows">
+              <div class="stats-group-header"><span></span><span>🛡️</span><span>⚔️</span><span>Totale</span></div>
+              <div class="stats-group-row"><span>Rank</span><span>${formatRank(player.rank[0])}</span><span>${formatRank(player.rank[1])}</span><span>${formatRank(player.rank[2])}</span></div>
+              <div class="stats-group-row stats-group-row-class"><span class="stats-class-row-span">Classe</span><span class="stats-class-row-span">${roleStatValue(0, player.class[0] === -1 ? '-' : `<img src="/class/${player.class[0]}.webp" alt="Class ${player.class[0]}" title="${getClassName(player.class[0])}" class="stats-class-badge" />`)}</span><span class="stats-class-row-span">${roleStatValue(1, player.class[1] === -1 ? '-' : `<img src="/class/${player.class[1]}.webp" alt="Class ${player.class[1]}" title="${getClassName(player.class[1])}" class="stats-class-badge" />`)}</span><span class="stats-class-row-span"></span></div>
+              <div class="stats-group-row"><span>Win Streak</span><span>${roleStatValue(0, player.bestWinStreak[0])}</span><span>${roleStatValue(1, player.bestWinStreak[1])}</span><span></span></div>
+              <div class="stats-group-row"><span>Loss Streak</span><span>${roleStatValue(0, Math.abs(player.worstLossStreak[0]))}</span><span>${roleStatValue(1, Math.abs(player.worstLossStreak[1]))}</span><span></span></div>
+            </div>
+          </div>
         </div>
         </details>
       </section>
@@ -610,8 +557,17 @@ export class PlayersView {
   }
 
   private static formatAverage(value: number, total: number): string {
-    if (total <= 0) return 'TBD';
+    if (total <= 0) return '-';
     return (value / total).toFixed(2);
+  }
+
+  private static formatGoalRatio(goalsFor: number, goalsAgainst: number): string {
+    if (goalsAgainst <= 0) {
+      if (goalsFor <= 0) return '-';
+      return 'INF';
+    }
+
+    return (goalsFor / goalsAgainst).toFixed(2);
   }
 
   private static parseSortableValue(value: string | number): number {
@@ -734,7 +690,7 @@ export class PlayersView {
   }
 
   private static roundValue(value: number): number | string {
-    if (value === -Infinity || value === Infinity || Number.isNaN(value)) return 'TBD';
+    if (value === -Infinity || value === Infinity || Number.isNaN(value)) return '-';
     if (!Number.isFinite(value)) return 'N/A';
     return Math.round(value);
   }
@@ -961,12 +917,12 @@ export class PlayersView {
   }
 
   private static formatPlayerResult(result: MatchResultRef): string {
-    if (!result?.player) return 'TBD';
+    if (!result?.player) return '-';
     return `${result.player.name} (${result.score > 0 ? '+' : ''}${result.score.toFixed(0)})`;
   }
 
   private static formatMatchScore(match: IMatch | null, playerId: number): string {
-    if (!match) return 'TBD';
+    if (!match) return '-';
     const isTeamA = match.teamA.attack === playerId || match.teamA.defence === playerId;
     const score = isTeamA
       ? `${match.score[0]}-${match.score[1]}`
@@ -1079,10 +1035,6 @@ export class PlayersView {
     const roleIndex = isAttack ? 1 : 0;
     const playerEloBefore = isTeamA ? (roleIndex === 0 ? teamAELO[0] : teamAELO[1]) : (roleIndex === 0 ? teamBELO[0] : teamBELO[1]);
     const eloWithMalus = playerEloBefore === undefined ? '?' : Math.round(playerEloBefore);
-
-    const defencePref = player.role === -1 ? 100 : (player.role === 0 ? 50 : 0);
-    const malus = roleIndex === 0 ? defencePref : (100 - defencePref);
-    const realElo = playerEloBefore === undefined ? '?' : Math.round(playerEloBefore + malus);
 
     const delta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
     const multiplier = getBonusK(matchesPlayedInRole);

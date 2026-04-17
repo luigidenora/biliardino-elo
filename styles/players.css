@@ -1426,6 +1426,91 @@ a.nav-link:hover {
   margin: 0 0 0.85rem;
 }
 
+.stats-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.stats-group-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.stats-group-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #374151;
+  background: #e5e7eb;
+  padding: 0.5rem 0.85rem;
+  margin: 0;
+}
+
+.stats-group-rows {
+  display: grid;
+  grid-template-columns: 1fr repeat(3, minmax(52px, auto));
+}
+
+.stats-group-rows-three {
+  display: grid;
+  grid-template-columns: 1fr repeat(2, minmax(52px, auto));
+}
+
+.stats-group-header,
+.stats-group-row {
+  display: contents;
+}
+
+.stats-group-header>span,
+.stats-group-row>span {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.86rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.stats-group-header>span {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.stats-group-header>span:first-child {
+  text-align: left;
+}
+
+.stats-group-row>span:first-child {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.stats-group-row>span:not(:first-child) {
+  text-align: center;
+  color: #111827;
+}
+
+.stats-group-card-classifica .stats-group-header>span,
+.stats-group-card-classifica .stats-group-row>span:not(:first-child) {
+  text-align: left;
+}
+
+.stats-group-card-classifica .stats-group-row-class>.stats-class-row-span {
+  grid-row: span 2;
+  display: flex;
+  align-items: center;
+}
+
+.stats-class-badge {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
 .relation-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
