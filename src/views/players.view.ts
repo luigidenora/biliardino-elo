@@ -1,4 +1,4 @@
-import { BASE_PATH } from '@/config/env.config';
+﻿import { BASE_PATH } from '@/config/env.config';
 import { IMatch } from '@/models/match.interface';
 import { IPlayer, MatchPlayerStats, PlayerStats as PlayerRefStats } from '@/models/player.interface';
 import { getAllMatches } from '@/services/match.service';
@@ -107,6 +107,7 @@ export class PlayersView {
     chart: 0,
     history: 'all'
   };
+
   private static scopeDefaultsAppliedForPlayer: number | null = null;
   private static statsSortKey: StatsSortKey = 'label';
   private static statsSortDirection: SortDirection = 'asc';
@@ -191,8 +192,6 @@ export class PlayersView {
     const totalSummary = PlayersView.buildMatchSummary(player, 'all');
 
     const scopeExtremes = PlayersView.buildExtremes(player, statsScope);
-    const highlightTeammateRows = PlayersView.buildRelationshipRows(player, statsScope, 'teammates');
-    const highlightOpponentRows = PlayersView.buildRelationshipRows(player, statsScope, 'opponents');
 
     const historyByScope = PlayersView.getHistoryByScope(player, historyScope);
     const chartHistoryByScope = PlayersView.getHistoryByScope(player, chartScope);
@@ -228,21 +227,47 @@ export class PlayersView {
       const color = getGoalRatioColor(roundedRatio);
       return `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
     };
-    const pickDeltaRow = (rows: RelationshipRow[], direction: 'max' | 'min'): RelationshipRow | null => {
-      if (rows.length === 0) return null;
+    const pickPlayerStatByScope = (
+      values: [PlayerRefStats | null, PlayerRefStats | null],
+      currentScope: RoleScope,
+      direction: 'max' | 'min'
+    ): PlayerRefStats | null => {
+      if (currentScope === 0 || currentScope === 1) {
+        return values[currentScope];
+      }
 
-      return rows.reduce((best, current) => {
-        if (!best) return current;
-        if (direction === 'max') {
-          if (current.delta > best.delta) return current;
-          if (current.delta === best.delta && current.matches > best.matches) return current;
-          return best;
-        }
+      const [defenceValue, attackValue] = values;
+      if (!defenceValue) return attackValue;
+      if (!attackValue) return defenceValue;
 
-        if (current.delta < best.delta) return current;
-        if (current.delta === best.delta && current.matches > best.matches) return current;
-        return best;
-      }, null as RelationshipRow | null);
+      if (direction === 'max') {
+        return defenceValue.value >= attackValue.value ? defenceValue : attackValue;
+      }
+
+      return defenceValue.value <= attackValue.value ? defenceValue : attackValue;
+    };
+    const resolveHighlightRow = (selected: PlayerRefStats | null, target: 'teammates' | 'opponents'): RelationshipRow | null => {
+      if (!selected || selected.player < 0) return null;
+
+      const related = getPlayerById(selected.player);
+      if (!related) return null;
+
+      const roleMaps = target === 'teammates' ? player.teammatesStats : player.opponentsStats;
+      const merged = PlayersView.mergeStatsByScope(roleMaps, statsScope);
+      const stats = merged.get(selected.player);
+      const matches = stats?.matches ?? 0;
+      const wins = stats?.wins ?? 0;
+
+      return {
+        id: selected.player,
+        avatar: `${BASE_PATH}avatars/${selected.player}.webp`,
+        name: related.name,
+        matches,
+        wins,
+        losses: Math.max(matches - wins, 0),
+        winRate: PlayersView.formatPercentage(wins, matches),
+        delta: Math.round(selected.value)
+      };
     };
     const formatRelationshipHighlight = (row: RelationshipRow | null): string => {
       if (!row) return '-';
@@ -265,6 +290,30 @@ export class PlayersView {
               <span style="color:${winRateColor};">Win Rate: ${winRateNum}%</span>
               <span class="highlight-player-stat-sep">·</span>
               <strong class="${deltaClass}">${deltaSign}${row.delta} ELO</strong>
+            </span>
+          </span>
+        </span>
+      `;
+    };
+    const formatRelationshipCountHighlight = (row: RelationshipRow | null): string => {
+      if (!row) return '-';
+      const winRateNum = row.matches > 0 ? Math.round((row.wins / row.matches) * 100) : 0;
+      const winRateColor = getWinRateColor(winRateNum);
+      return `
+        <span class="highlight-player-ref">
+          <img
+            src="${row.avatar}"
+            alt="${row.name}"
+            title="${row.name}"
+            class="highlight-player-avatar"
+            onerror="this.src='${PlayersView.fallbackAvatar()}'"
+          />
+          <span class="highlight-player-info">
+            <span class="highlight-player-name">${row.name}</span>
+            <span class="highlight-player-stats">
+              <span style="color:${winRateColor};">Win Rate: ${winRateNum}%</span>
+              <span class="highlight-player-stat-sep">·</span>
+              <span><strong>${row.matches}</strong> partite</span>
             </span>
           </span>
         </span>
@@ -333,10 +382,30 @@ export class PlayersView {
       return isTeamA ? Math.round(match.deltaELO[0]) : Math.round(match.deltaELO[1]);
     };
 
-    const bestTeammateByDelta = pickDeltaRow(highlightTeammateRows, 'max');
-    const worstTeammateByDelta = pickDeltaRow(highlightTeammateRows, 'min');
-    const bestOpponentByDelta = pickDeltaRow(highlightOpponentRows, 'min');
-    const worstOpponentByDelta = pickDeltaRow(highlightOpponentRows, 'max');
+    const bestTeammateByDelta = resolveHighlightRow(
+      pickPlayerStatByScope(player.bestTeammate, statsScope, 'max'),
+      'teammates'
+    );
+    const worstTeammateByDelta = resolveHighlightRow(
+      pickPlayerStatByScope(player.worstTeammate, statsScope, 'min'),
+      'teammates'
+    );
+    const bestTeammateByCount = resolveHighlightRow(
+      pickPlayerStatByScope(player.bestTeammateCount, statsScope, 'max'),
+      'teammates'
+    );
+    const bestOpponentByDelta = resolveHighlightRow(
+      pickPlayerStatByScope(player.bestOpponent, statsScope, 'max'),
+      'opponents'
+    );
+    const worstOpponentByDelta = resolveHighlightRow(
+      pickPlayerStatByScope(player.worstOpponent, statsScope, 'min'),
+      'opponents'
+    );
+    const bestOpponentByCount = resolveHighlightRow(
+      pickPlayerStatByScope(player.bestOpponentCount, statsScope, 'max'),
+      'opponents'
+    );
 
     const compactStatsHtml = `
       <section class="player-card stats-list-card">
@@ -427,22 +496,38 @@ export class PlayersView {
         ${PlayersView.renderRoleFilters(statsScope, 'stats')}
         <div class="highlights-columns">
           <div class="highlights-column highlights-column-players">
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">Miglior Compagno</span>
-                <span class="stat-value">${formatRelationshipHighlight(bestTeammateByDelta)}</span>
+            <div class="highlights-relations-columns">
+              <div class="highlights-relations-column">
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">Miglior Compagno</span>
+                    <span class="stat-value">${formatRelationshipHighlight(bestTeammateByDelta)}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Compagno Più Frequente</span>
+                    <span class="stat-value">${formatRelationshipCountHighlight(bestTeammateByCount)}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Peggior Compagno</span>
+                    <span class="stat-value">${formatRelationshipHighlight(worstTeammateByDelta)}</span>
+                  </div>
+                </div>
               </div>
-              <div class="stat-item">
-                <span class="stat-label">Peggior Compagno</span>
-                <span class="stat-value">${formatRelationshipHighlight(worstTeammateByDelta)}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Miglior Avversario</span>
-                <span class="stat-value">${formatRelationshipHighlight(bestOpponentByDelta)}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Peggior Avversario</span>
-                <span class="stat-value">${formatRelationshipHighlight(worstOpponentByDelta)}</span>
+              <div class="highlights-relations-column">
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">Miglior Avversario</span>
+                    <span class="stat-value">${formatRelationshipHighlight(bestOpponentByDelta)}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avversario Più Frequente</span>
+                    <span class="stat-value">${formatRelationshipCountHighlight(bestOpponentByCount)}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Peggior Avversario</span>
+                    <span class="stat-value">${formatRelationshipHighlight(worstOpponentByDelta)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -941,117 +1026,34 @@ export class PlayersView {
     };
   }
 
-  private static updateBestExtreme(
-    currentValue: number,
-    currentMatch: IMatch | null,
-    candidateValue: number,
-    candidateMatch: IMatch | null
-  ): { value: number; match: IMatch | null } {
-    if (!candidateMatch || !Number.isFinite(candidateValue) || candidateValue <= currentValue) {
-      return { value: currentValue, match: currentMatch };
-    }
-
-    return { value: candidateValue, match: candidateMatch };
-  }
-
-  private static updateWorstExtreme(
-    currentValue: number,
-    currentMatch: IMatch | null,
-    candidateValue: number,
-    candidateMatch: IMatch | null
-  ): { value: number; match: IMatch | null } {
-    if (!candidateMatch || !Number.isFinite(candidateValue) || candidateValue >= currentValue) {
-      return { value: currentValue, match: currentMatch };
-    }
-
-    return { value: candidateValue, match: candidateMatch };
-  }
-
   private static buildExtremes(player: IPlayer, scope: RoleScope): ExtremesSummary {
-    const history = PlayersView.getHistoryByScope(player, scope);
+    type MS = import('@/models/player.interface').MatchStats | null;
+    const pick = (a: MS, b: MS, direction: 'max' | 'min'): IMatch | null => {
+      if (!a) return b?.match ?? null;
+      if (!b) return a.match;
+      return direction === 'max'
+        ? (a.value >= b.value ? a.match : b.match)
+        : (a.value <= b.value ? a.match : b.match);
+    };
 
-    let bestVictoryByElo: IMatch | null = null;
-    let bestVictoryByScore: IMatch | null = null;
-    let worstDefeatByElo: IMatch | null = null;
-    let worstDefeatByScore: IMatch | null = null;
-    let bestByExpected: IMatch | null = null;
-    let worstByExpected: IMatch | null = null;
-
-    let bestEloValue = -Infinity;
-    let bestScoreValue = -Infinity;
-    let worstEloValue = Infinity;
-    let worstScoreValue = Infinity;
-    let bestExpectedValue = -Infinity;
-    let worstExpectedValue = Infinity;
-
-    for (let i = 0; i < history.length; i++) {
-      const match = history[i];
-      const context = PlayersView.getTeamContext(history, i, player.id);
-      const scoreDiff = context.myScore - context.opponentScore;
-      const myExpected = context.teamId === 0 ? match.expectedScore[0] : match.expectedScore[1];
-
-      const bestEloExtreme = PlayersView.updateBestExtreme(
-        bestEloValue,
-        bestVictoryByElo,
-        context.myDelta > 0 ? context.myDelta : -Infinity,
-        match
-      );
-      bestEloValue = bestEloExtreme.value;
-      bestVictoryByElo = bestEloExtreme.match;
-
-      const bestScoreExtreme = PlayersView.updateBestExtreme(
-        bestScoreValue,
-        bestVictoryByScore,
-        scoreDiff > 0 ? scoreDiff : -Infinity,
-        match
-      );
-      bestScoreValue = bestScoreExtreme.value;
-      bestVictoryByScore = bestScoreExtreme.match;
-
-      const worstEloExtreme = PlayersView.updateWorstExtreme(
-        worstEloValue,
-        worstDefeatByElo,
-        context.myDelta < 0 ? context.myDelta : Infinity,
-        match
-      );
-      worstEloValue = worstEloExtreme.value;
-      worstDefeatByElo = worstEloExtreme.match;
-
-      const worstScoreExtreme = PlayersView.updateWorstExtreme(
-        worstScoreValue,
-        worstDefeatByScore,
-        scoreDiff < 0 ? scoreDiff : Infinity,
-        match
-      );
-      worstScoreValue = worstScoreExtreme.value;
-      worstDefeatByScore = worstScoreExtreme.match;
-
-      const bestExpectedExtreme = PlayersView.updateBestExtreme(
-        bestExpectedValue,
-        bestByExpected,
-        myExpected,
-        match
-      );
-      bestExpectedValue = bestExpectedExtreme.value;
-      bestByExpected = bestExpectedExtreme.match;
-
-      const worstExpectedExtreme = PlayersView.updateWorstExtreme(
-        worstExpectedValue,
-        worstByExpected,
-        myExpected,
-        match
-      );
-      worstExpectedValue = worstExpectedExtreme.value;
-      worstByExpected = worstExpectedExtreme.match;
+    if (scope === 0 || scope === 1) {
+      return {
+        bestVictoryByElo: player.bestVictoryByElo[scope]?.match ?? null,
+        worstDefeatByElo: player.worstDefeatByElo[scope]?.match ?? null,
+        bestVictoryByScore: player.bestVictoryByScore[scope]?.match ?? null,
+        worstDefeatByScore: player.worstDefeatByScore[scope]?.match ?? null,
+        bestByExpected: player.bestVictoryByPercentage[scope]?.match ?? null,
+        worstByExpected: player.worstDefeatByPercentage[scope]?.match ?? null
+      };
     }
 
     return {
-      bestVictoryByElo,
-      bestVictoryByScore,
-      worstDefeatByElo,
-      worstDefeatByScore,
-      bestByExpected,
-      worstByExpected
+      bestVictoryByElo: pick(player.bestVictoryByElo[0], player.bestVictoryByElo[1], 'max'),
+      worstDefeatByElo: pick(player.worstDefeatByElo[0], player.worstDefeatByElo[1], 'min'),
+      bestVictoryByScore: pick(player.bestVictoryByScore[0], player.bestVictoryByScore[1], 'max'),
+      worstDefeatByScore: pick(player.worstDefeatByScore[0], player.worstDefeatByScore[1], 'min'),
+      bestByExpected: pick(player.bestVictoryByPercentage[0], player.bestVictoryByPercentage[1], 'min'),
+      worstByExpected: pick(player.worstDefeatByPercentage[0], player.worstDefeatByPercentage[1], 'max')
     };
   }
 

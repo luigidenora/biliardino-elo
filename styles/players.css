@@ -1355,6 +1355,24 @@ a.nav-link:hover {
   min-width: 0;
 }
 
+.highlights-list-card .highlights-relations-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.highlights-list-card .highlights-relations-column {
+  min-width: 0;
+}
+
+.highlights-list-card .highlights-relations-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #374151;
+}
+
 .highlights-list-card .stats-grid {
   gap: 0.7rem;
 }
@@ -1420,6 +1438,12 @@ a.nav-link:hover {
 
 .highlights-list-card .highlights-column-matches .stats-grid {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+@media (max-width: 900px) {
+  .highlights-list-card .highlights-relations-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 .highlights-list-card .highlight-match-ref {
