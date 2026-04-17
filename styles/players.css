@@ -875,37 +875,44 @@ a.nav-link:hover {
    PP (Player Profile)
    ========================================================= */
 
-/* wrapper: mobile centrato, desktop full-width */
+/* wrapper centrato */
 .pp-row {
   grid-column: 1 / -1;
   display: flex;
   justify-content: center;
   width: 100%;
+  padding: 0 0 0.5rem;
 }
 
-/* card (default = mobile/tablet come ora) */
 .player-card.pp-card {
-  width: min(520px, 100%);
+  width: min(640px, 100%);
   margin: 0;
-  /* centraggio gestito da .pp-row */
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.875rem;
-  padding: 0.75rem 1.25rem;
+  gap: 0.9rem;
+  padding: 0.9rem 1.05rem;
   text-align: left;
   transition: none;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
 }
 
-/* avatar tondo garantito */
 .pp-card .pp-avatar {
-  width: 128px;
-  height: 128px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   overflow: hidden;
-  flex: 0 0 128px;
+  flex: 0 0 96px;
   background: #fff;
   flex-shrink: 0;
+  padding: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .pp-card .pp-avatar-img {
@@ -915,7 +922,14 @@ a.nav-link:hover {
   border-radius: 50%;
 }
 
-/* header */
+.pp-card .pp-content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .pp-card .pp-header {
   display: flex;
   flex-direction: row;
@@ -923,38 +937,46 @@ a.nav-link:hover {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .pp-card .pp-name {
   margin: 0;
   padding: 0;
   border-left: none;
-  font-size: clamp(1rem, 1vw + 0.8rem, 1.4rem);
+  font-size: clamp(1.1rem, 1vw + 0.9rem, 1.55rem);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .pp-card .pp-badges {
   display: flex;
   flex-direction: row;
-  gap: 0.5rem;
+  gap: 0.45rem;
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .pp-card .pp-rank-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(93, 109, 226, 0.15);
-  color: #5d6de2;
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 0.35rem 0.65rem;
-  border-radius: 8px;
-  min-width: 45px;
+  background: rgba(241, 245, 249, 0.96);
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.38rem 0.66rem;
+  border-radius: 999px;
+  min-width: 50px;
   text-align: center;
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .pp-card .pp-winrate-badge {
@@ -986,11 +1008,31 @@ a.nav-link:hover {
   color: #6b7280;
 }
 
-/* Name wrapper con class icon */
+.pp-card .pp-bestrole-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(219, 234, 254, 0.75);
+  color: #1e293b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.38rem 0.66rem;
+  border-radius: 999px;
+  min-width: 148px;
+  text-align: center;
+  border: 1px solid rgba(59, 130, 246, 0.12);
+}
+
+.pp-card .pp-bestrole-badge.pp-bestrole-badge-attack {
+  background: rgba(254, 226, 226, 0.82);
+  color: #991b1b;
+  border-color: rgba(239, 68, 68, 0.16);
+}
+
 .pp-card .pp-name-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  min-width: 0;
 }
 
 .pp-card .pp-class-icon {
@@ -1085,41 +1127,33 @@ a.nav-link:hover {
   color: #a40b0b !important;
 }
 
-/* =========================================================
-   DESKTOP: card full-width, avatar a sinistra, layout ottimizzato
-   ========================================================= */
 @media (min-width: 1024px) {
   .pp-row {
-    justify-content: stretch;
-    /* la card può diventare larga quanto la pagina */
+    justify-content: center;
   }
 
   .player-card.pp-card {
-    width: 100%;
-    max-width: none;
-    /* rimuove il limite 520px */
+    width: min(620px, 100%);
     flex-direction: row;
-    /* avatar a sinistra */
     align-items: center;
     text-align: left;
-    gap: 1.25rem;
-    padding: 0.875rem 1.75rem;
+    gap: 0.95rem;
+    padding: 0.95rem 1.1rem;
   }
 
   .pp-card .pp-avatar {
-    width: 128px;
-    height: 128px;
-    flex: 0 0 128px;
+    width: 100px;
+    height: 100px;
+    flex: 0 0 100px;
   }
 
-  /* serve che .pp-content esista nel markup (ce l'hai già) */
   .pp-card .pp-content {
     width: 100%;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    align-items: flex-start;
+    gap: 0.2rem;
+    align-items: stretch;
     flex: 1;
   }
 
@@ -1128,31 +1162,15 @@ a.nav-link:hover {
     flex-direction: row;
     gap: 1rem;
     align-items: center;
-    justify-content: flex-start;
-    margin-bottom: 10px;
+    justify-content: space-between;
   }
 
   .pp-card .pp-name {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
   }
 
   .pp-card .pp-badges {
-    gap: 0.75rem;
-  }
-
-  .pp-card .pp-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.875rem;
-    width: 100%;
-  }
-
-  .pp-card .pp-stats .stat-item {
-    padding: 0.6rem;
-  }
-
-  .pp-card .pp-stats .stat-label {
-    font-size: 0.95rem;
+    gap: 0.5rem;
   }
 }
 
@@ -1169,9 +1187,9 @@ a.nav-link:hover {
   }
 
   .pp-card .pp-avatar {
-    width: 128px;
-    height: 128px;
-    flex: 0 0 128px;
+    width: 96px;
+    height: 96px;
+    flex: 0 0 96px;
     margin-bottom: 0.5rem;
   }
 
@@ -1192,6 +1210,11 @@ a.nav-link:hover {
     flex-wrap: wrap;
   }
 
+  .pp-card .pp-badges {
+    justify-content: center;
+  }
+
+
   .pp-card .pp-name {
     font-size: 1rem;
     margin: 0;
@@ -1210,7 +1233,8 @@ a.nav-link:hover {
   }
 
   .pp-card .pp-rank-badge,
-  .pp-card .pp-winrate-badge {
+  .pp-card .pp-winrate-badge,
+  .pp-card .pp-bestrole-badge {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
     min-width: auto;
@@ -1498,10 +1522,32 @@ a.nav-link:hover {
   text-align: left;
 }
 
+.stats-group-card-classifica .stats-group-rows {
+  grid-template-rows: auto repeat(5, minmax(2.2rem, auto));
+}
+
+.stats-group-card-classifica .stats-group-header>span {
+  grid-row: 1;
+}
+
+.stats-group-card-classifica .stats-group-row-rank>span {
+  grid-row: 2;
+}
+
 .stats-group-card-classifica .stats-group-row-class>.stats-class-row-span {
-  grid-row: span 2;
+  grid-row: 3 / 5;
   display: flex;
   align-items: center;
+  align-self: stretch;
+}
+
+.stats-group-card-classifica .stats-group-row-win-streak>span {
+  grid-row: 5;
+}
+
+.stats-group-card-classifica .stats-group-row-loss-streak>span {
+  grid-row: 6;
+  border-bottom: none;
 }
 
 .stats-class-badge {
