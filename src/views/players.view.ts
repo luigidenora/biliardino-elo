@@ -64,6 +64,8 @@ type ExtremesSummary = {
   worstDefeatByElo: IMatch | null;
   bestVictoryByScore: IMatch | null;
   worstDefeatByScore: IMatch | null;
+  bestByExpected: IMatch | null;
+  worstByExpected: IMatch | null;
 };
 
 type ChartTooltipPlayer = {
@@ -179,7 +181,6 @@ export class PlayersView {
     const chartScope = PlayersView.sectionScopes.chart;
     const historyScope = PlayersView.sectionScopes.history;
 
-    const statsScopeLabel = PlayersView.getScopeLabel(statsScope);
     const teammatesScopeLabel = PlayersView.getScopeLabel(teammatesScope);
     const opponentsScopeLabel = PlayersView.getScopeLabel(opponentsScope);
     const chartScopeLabel = PlayersView.getScopeLabel(chartScope);
@@ -189,9 +190,9 @@ export class PlayersView {
     const attSummary = PlayersView.buildMatchSummary(player, 1);
     const totalSummary = PlayersView.buildMatchSummary(player, 'all');
 
-    const highlightsHistory = PlayersView.getHistoryByScope(player, statsScope);
-    const streakByScope = PlayersView.buildStreakSummary(highlightsHistory, player.id);
     const scopeExtremes = PlayersView.buildExtremes(player, statsScope);
+    const highlightTeammateRows = PlayersView.buildRelationshipRows(player, statsScope, 'teammates');
+    const highlightOpponentRows = PlayersView.buildRelationshipRows(player, statsScope, 'opponents');
 
     const historyByScope = PlayersView.getHistoryByScope(player, historyScope);
     const chartHistoryByScope = PlayersView.getHistoryByScope(player, chartScope);
@@ -227,6 +228,115 @@ export class PlayersView {
       const color = getGoalRatioColor(roundedRatio);
       return `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
     };
+    const pickDeltaRow = (rows: RelationshipRow[], direction: 'max' | 'min'): RelationshipRow | null => {
+      if (rows.length === 0) return null;
+
+      return rows.reduce((best, current) => {
+        if (!best) return current;
+        if (direction === 'max') {
+          if (current.delta > best.delta) return current;
+          if (current.delta === best.delta && current.matches > best.matches) return current;
+          return best;
+        }
+
+        if (current.delta < best.delta) return current;
+        if (current.delta === best.delta && current.matches > best.matches) return current;
+        return best;
+      }, null as RelationshipRow | null);
+    };
+    const formatRelationshipHighlight = (row: RelationshipRow | null): string => {
+      if (!row) return '-';
+      const deltaSign = row.delta >= 0 ? '+' : '';
+      const deltaClass = row.delta >= 0 ? 'positive' : 'negative';
+      const winRateNum = row.matches > 0 ? Math.round((row.wins / row.matches) * 100) : 0;
+      const winRateColor = getWinRateColor(winRateNum);
+      return `
+        <span class="highlight-player-ref">
+          <img
+            src="${row.avatar}"
+            alt="${row.name}"
+            title="${row.name}"
+            class="highlight-player-avatar"
+            onerror="this.src='${PlayersView.fallbackAvatar()}'"
+          />
+          <span class="highlight-player-info">
+            <span class="highlight-player-name">${row.name}</span>
+            <span class="highlight-player-stats">
+              <span style="color:${winRateColor};">Win Rate: ${winRateNum}%</span>
+              <span class="highlight-player-stat-sep">·</span>
+              <strong class="${deltaClass}">${deltaSign}${row.delta} ELO</strong>
+            </span>
+          </span>
+        </span>
+      `;
+    };
+    const formatHighlightMatch = (match: IMatch | null): string => {
+      if (!match) return '-';
+
+      const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
+      const myTeam = isTeamA ? match.teamA : match.teamB;
+      const opponentTeam = isTeamA ? match.teamB : match.teamA;
+      const myDefence = getPlayerById(myTeam.defence);
+      const myAttack = getPlayerById(myTeam.attack);
+      const oppDefence = getPlayerById(opponentTeam.defence);
+      const oppAttack = getPlayerById(opponentTeam.attack);
+      const myScore = isTeamA ? match.score[0] : match.score[1];
+      const oppScore = isTeamA ? match.score[1] : match.score[0];
+
+      const renderRoleAvatar = (target: IPlayer | null | undefined): string => `
+        <span class="highlight-match-role-slot ${target?.id === player.id ? 'is-self' : ''}">
+          <img
+            src="${target ? `${BASE_PATH}avatars/${target.id}.webp` : PlayersView.fallbackAvatar()}"
+            alt="${target?.name || '?'}"
+            title="${target?.name || '?'}"
+            class="highlight-match-avatar"
+            onerror="this.src='${PlayersView.fallbackAvatar()}'"
+          />
+        </span>
+      `;
+
+      const delta = getMatchDelta(match);
+      const deltaSign = delta === null || delta < 0 ? '' : '+';
+      const deltaClass = delta === null || delta < 0 ? 'negative' : 'positive';
+      const deltaHtml = delta === null
+        ? ''
+        : `<span class="highlight-match-delta ${deltaClass}">${deltaSign}${delta} ELO</span>`;
+      const myWinPct = Math.round((isTeamA ? match.expectedScore[0] : match.expectedScore[1]) * 100);
+      const oppWinPct = 100 - myWinPct;
+      const myTeamElo = Math.round(isTeamA ? match.teamELO[0] : match.teamELO[1]);
+      const oppTeamElo = Math.round(isTeamA ? match.teamELO[1] : match.teamELO[0]);
+
+      return `
+        <div class="highlight-match-ref">
+          <div class="highlight-match-line">
+            <span class="highlight-match-team">
+              ${renderRoleAvatar(myDefence)}
+              ${renderRoleAvatar(myAttack)}
+            </span>
+            <span class="highlight-match-score"><strong>${myScore}-${oppScore}</strong></span>
+            <span class="highlight-match-team">
+              ${renderRoleAvatar(oppDefence)}
+              ${renderRoleAvatar(oppAttack)}
+            </span>
+          </div>
+          <div class="highlight-match-footer">
+            <span class="highlight-match-pct">${myWinPct}% <span class="highlight-match-elo">(${myTeamElo})</span></span>
+            ${deltaHtml}
+            <span class="highlight-match-pct">${oppWinPct}% <span class="highlight-match-elo">(${oppTeamElo})</span></span>
+          </div>
+        </div>
+      `;
+    };
+    const getMatchDelta = (match: IMatch | null): number | null => {
+      if (!match) return null;
+      const isTeamA = match.teamA.attack === player.id || match.teamA.defence === player.id;
+      return isTeamA ? Math.round(match.deltaELO[0]) : Math.round(match.deltaELO[1]);
+    };
+
+    const bestTeammateByDelta = pickDeltaRow(highlightTeammateRows, 'max');
+    const worstTeammateByDelta = pickDeltaRow(highlightTeammateRows, 'min');
+    const bestOpponentByDelta = pickDeltaRow(highlightOpponentRows, 'min');
+    const worstOpponentByDelta = pickDeltaRow(highlightOpponentRows, 'max');
 
     const compactStatsHtml = `
       <section class="player-card stats-list-card">
@@ -313,23 +423,56 @@ export class PlayersView {
 
       <section class="player-card highlights-list-card">
         <details class="card-collapsible" open>
-        <summary>Highlights (${statsScopeLabel})</summary>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Migliore Striscia Vittorie</span>
-            <span class="stat-value positive">${streakByScope.bestWinStreak}</span>
+        <summary>Highlights</summary>
+        ${PlayersView.renderRoleFilters(statsScope, 'stats')}
+        <div class="highlights-columns">
+          <div class="highlights-column highlights-column-players">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">Miglior Compagno</span>
+                <span class="stat-value">${formatRelationshipHighlight(bestTeammateByDelta)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Peggior Compagno</span>
+                <span class="stat-value">${formatRelationshipHighlight(worstTeammateByDelta)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Miglior Avversario</span>
+                <span class="stat-value">${formatRelationshipHighlight(bestOpponentByDelta)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Peggior Avversario</span>
+                <span class="stat-value">${formatRelationshipHighlight(worstOpponentByDelta)}</span>
+              </div>
+            </div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Peggiore Striscia Sconfitte</span>
-            <span class="stat-value negative">${Math.abs(streakByScope.worstLossStreak)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Migliore Vittoria (ELO)</span>
-            <span class="stat-value">${PlayersView.formatMatchScore(scopeExtremes.bestVictoryByElo, player.id)}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Peggiore Sconfitta (ELO)</span>
-            <span class="stat-value">${PlayersView.formatMatchScore(scopeExtremes.worstDefeatByElo, player.id)}</span>
+          <div class="highlights-column highlights-column-matches">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">Migliore Partita (ELO)</span>
+                <span class="stat-value">${formatHighlightMatch(scopeExtremes.bestVictoryByElo)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Peggiore Partita (ELO)</span>
+                <span class="stat-value">${formatHighlightMatch(scopeExtremes.worstDefeatByElo)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Migliore Partita (Scarto)</span>
+                <span class="stat-value">${formatHighlightMatch(scopeExtremes.bestVictoryByScore)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Peggiore Partita (Scarto)</span>
+                <span class="stat-value">${formatHighlightMatch(scopeExtremes.worstDefeatByScore)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Migliore Partita (Percentuale)</span>
+                <span class="stat-value">${formatHighlightMatch(scopeExtremes.bestByExpected)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Peggiore Partita (Percentuale)</span>
+                <span class="stat-value">${formatHighlightMatch(scopeExtremes.worstByExpected)}</span>
+              </div>
+            </div>
           </div>
         </div>
         </details>
@@ -624,7 +767,7 @@ export class PlayersView {
             <h3 class="relation-name">${row.name}</h3>
             <div class="relation-meta">
               <span><small>Match</small><strong>${row.matches}</strong></span>
-              <span><small>Win%</small><strong>${row.winRate}</strong></span>
+              <span><small>Win%</small><strong class="${(row.matches > 0 ? Math.round((row.wins / row.matches) * 100) : 0) >= 50 ? 'positive' : 'negative'}">${row.winRate}</strong></span>
               <span><small>ELO Δ</small><strong class="${row.delta >= 0 ? 'positive' : 'negative'}">${row.delta >= 0 ? '+' : ''}${row.delta}</strong></span>
             </div>
           </a>
@@ -798,6 +941,32 @@ export class PlayersView {
     };
   }
 
+  private static updateBestExtreme(
+    currentValue: number,
+    currentMatch: IMatch | null,
+    candidateValue: number,
+    candidateMatch: IMatch | null
+  ): { value: number; match: IMatch | null } {
+    if (!candidateMatch || !Number.isFinite(candidateValue) || candidateValue <= currentValue) {
+      return { value: currentValue, match: currentMatch };
+    }
+
+    return { value: candidateValue, match: candidateMatch };
+  }
+
+  private static updateWorstExtreme(
+    currentValue: number,
+    currentMatch: IMatch | null,
+    candidateValue: number,
+    candidateMatch: IMatch | null
+  ): { value: number; match: IMatch | null } {
+    if (!candidateMatch || !Number.isFinite(candidateValue) || candidateValue >= currentValue) {
+      return { value: currentValue, match: currentMatch };
+    }
+
+    return { value: candidateValue, match: candidateMatch };
+  }
+
   private static buildExtremes(player: IPlayer, scope: RoleScope): ExtremesSummary {
     const history = PlayersView.getHistoryByScope(player, scope);
 
@@ -805,43 +974,84 @@ export class PlayersView {
     let bestVictoryByScore: IMatch | null = null;
     let worstDefeatByElo: IMatch | null = null;
     let worstDefeatByScore: IMatch | null = null;
+    let bestByExpected: IMatch | null = null;
+    let worstByExpected: IMatch | null = null;
 
     let bestEloValue = -Infinity;
     let bestScoreValue = -Infinity;
     let worstEloValue = Infinity;
     let worstScoreValue = Infinity;
+    let bestExpectedValue = -Infinity;
+    let worstExpectedValue = Infinity;
 
     for (let i = 0; i < history.length; i++) {
       const match = history[i];
       const context = PlayersView.getTeamContext(history, i, player.id);
       const scoreDiff = context.myScore - context.opponentScore;
+      const myExpected = context.teamId === 0 ? match.expectedScore[0] : match.expectedScore[1];
 
-      if (context.myDelta > 0 && context.myDelta > bestEloValue) {
-        bestEloValue = context.myDelta;
-        bestVictoryByElo = match;
-      }
+      const bestEloExtreme = PlayersView.updateBestExtreme(
+        bestEloValue,
+        bestVictoryByElo,
+        context.myDelta > 0 ? context.myDelta : -Infinity,
+        match
+      );
+      bestEloValue = bestEloExtreme.value;
+      bestVictoryByElo = bestEloExtreme.match;
 
-      if (scoreDiff > 0 && scoreDiff > bestScoreValue) {
-        bestScoreValue = scoreDiff;
-        bestVictoryByScore = match;
-      }
+      const bestScoreExtreme = PlayersView.updateBestExtreme(
+        bestScoreValue,
+        bestVictoryByScore,
+        scoreDiff > 0 ? scoreDiff : -Infinity,
+        match
+      );
+      bestScoreValue = bestScoreExtreme.value;
+      bestVictoryByScore = bestScoreExtreme.match;
 
-      if (context.myDelta < 0 && context.myDelta < worstEloValue) {
-        worstEloValue = context.myDelta;
-        worstDefeatByElo = match;
-      }
+      const worstEloExtreme = PlayersView.updateWorstExtreme(
+        worstEloValue,
+        worstDefeatByElo,
+        context.myDelta < 0 ? context.myDelta : Infinity,
+        match
+      );
+      worstEloValue = worstEloExtreme.value;
+      worstDefeatByElo = worstEloExtreme.match;
 
-      if (scoreDiff < 0 && scoreDiff < worstScoreValue) {
-        worstScoreValue = scoreDiff;
-        worstDefeatByScore = match;
-      }
+      const worstScoreExtreme = PlayersView.updateWorstExtreme(
+        worstScoreValue,
+        worstDefeatByScore,
+        scoreDiff < 0 ? scoreDiff : Infinity,
+        match
+      );
+      worstScoreValue = worstScoreExtreme.value;
+      worstDefeatByScore = worstScoreExtreme.match;
+
+      const bestExpectedExtreme = PlayersView.updateBestExtreme(
+        bestExpectedValue,
+        bestByExpected,
+        myExpected,
+        match
+      );
+      bestExpectedValue = bestExpectedExtreme.value;
+      bestByExpected = bestExpectedExtreme.match;
+
+      const worstExpectedExtreme = PlayersView.updateWorstExtreme(
+        worstExpectedValue,
+        worstByExpected,
+        myExpected,
+        match
+      );
+      worstExpectedValue = worstExpectedExtreme.value;
+      worstByExpected = worstExpectedExtreme.match;
     }
 
     return {
       bestVictoryByElo,
       bestVictoryByScore,
       worstDefeatByElo,
-      worstDefeatByScore
+      worstDefeatByScore,
+      bestByExpected,
+      worstByExpected
     };
   }
 
