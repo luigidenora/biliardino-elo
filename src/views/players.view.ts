@@ -79,6 +79,7 @@ type ChartTooltipData = {
   opponentExpected: number | null;
   myTeamElo: number;
   opponentTeamElo: number;
+  playerElo: number;
   baseDelta: number;
   totalDelta: number;
   multiplier: number;
@@ -1094,11 +1095,11 @@ export class PlayersView {
 
     return `
       <tr class="${isWin ? 'match-win' : 'match-loss'}">
-        <td><strong>${eloWithMalus}</strong> <span style="font-size:0.85em;opacity:0.7;">(${realElo})</span></td>
-        <td><strong>${myTeamElo}</strong> ${myDeltaFormatted}</td>
+        <td><strong>${eloWithMalus}</strong> ${myDeltaFormatted}</td>
+        <td><strong>${myTeamElo}</strong></td>
         <td>${myRole}</td>
         <td>${teammateNames}</td>
-        <td><span style="color:${myExpColor};font-size:0.85em;">(${myExpectedPercent}%)</span> <strong>${myScore}-${oppScore}</strong> <span style="color:${oppExpColor};font-size:0.85em;">(${oppExpectedPercent}%)</span></td>
+        <td><span style="color:${myExpColor};font-size:0.85em;">${myExpectedPercent === '?' || (myExpectedPercent >= 40 && myExpectedPercent <= 60) ? `(${myExpectedPercent}%)` : `<strong>(${myExpectedPercent}%)</strong>`}</span> <strong>${myScore}-${oppScore}</strong> <span style="color:${oppExpColor};font-size:0.85em;">${oppExpectedPercent === '?' || (oppExpectedPercent >= 40 && oppExpectedPercent <= 60) ? `(${oppExpectedPercent}%)` : `<strong>(${oppExpectedPercent}%)</strong>`}</span></td>
         <td>${opponentsNames}</td>
         <td><strong>${oppTeamElo}</strong></td>
       </tr>
@@ -1164,9 +1165,7 @@ export class PlayersView {
       const ariaLabel = point.tooltip
         ? `Partita ${point.tooltip.matchNumber}: ${point.tooltip.myScore}-${point.tooltip.opponentScore}, ELO ${eloValue}`
         : `ELO iniziale ${eloValue}`;
-      return `<circle cx="${point.x}" cy="${point.y}" r="3" class="chart-point" data-elo="${eloValue}" data-index="${index}" tabindex="0" aria-label="${ariaLabel}">
-        <title>${ariaLabel}</title>
-      </circle>`;
+      return `<circle cx="${point.x}" cy="${point.y}" r="3" class="chart-point" data-elo="${eloValue}" data-index="${index}" tabindex="0" aria-label="${ariaLabel}"></circle>`;
     }).join('');
 
     chartContainer.innerHTML = `
@@ -1249,18 +1248,19 @@ export class PlayersView {
       const match = history[i];
       const isTeamA = player.id === match.teamA.attack || player.id === match.teamA.defence;
       const delta = isTeamA ? match.deltaELO[0] : match.deltaELO[1];
+      const eloBefore = elo;
       elo += delta * getBonusK(i);
       progression.push({
         value: elo,
         label: `${i + 1}`,
-        tooltip: PlayersView.buildEloTooltipData(match, player, i)
+        tooltip: PlayersView.buildEloTooltipData(match, player, i, Math.round(eloBefore))
       });
     }
 
     return progression;
   }
 
-  private static buildEloTooltipData(match: IMatch, player: IPlayer, roleMatchIndex: number): ChartTooltipData {
+  private static buildEloTooltipData(match: IMatch, player: IPlayer, roleMatchIndex: number, playerElo: number): ChartTooltipData {
     const isTeamA = player.id === match.teamA.attack || player.id === match.teamA.defence;
     const myTeam = isTeamA ? match.teamA : match.teamB;
     const opponentTeam = isTeamA ? match.teamB : match.teamA;
@@ -1294,6 +1294,7 @@ export class PlayersView {
       opponentExpected,
       myTeamElo,
       opponentTeamElo,
+      playerElo,
       baseDelta: Math.round(delta),
       totalDelta,
       multiplier,
@@ -1346,8 +1347,9 @@ export class PlayersView {
         </div>
       </div>
       <div class="chart-tooltip-grid">
+        <span>ELO personale</span><strong>${t.playerElo}</strong>
         <span>ELO squadre</span><strong>${t.myTeamElo} / ${t.opponentTeamElo}</strong>
-        <span>Expected</span><strong>${myExp} / ${oppExp}</strong>
+        <span>Percentuali</span><strong>${myExp} / ${oppExp}</strong>
         <span>Delta</span><strong class="${deltaClass}">${deltaLabel}${multiplierLabel}</strong>
       </div>
     `;
