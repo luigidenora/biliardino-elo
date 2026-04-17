@@ -104,8 +104,8 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 
       teammatesStats: [{}, {}],
       opponentsStats: [{}, {}],
-      history: [],
-      matchesDelta: [],
+      history: [[], []],
+      matchesDelta: [[], []],
 
       avgTeamElo: [0, 0],
       avgOpponentElo: [0, 0],

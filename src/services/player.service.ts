@@ -54,8 +54,8 @@ export function updatePlayer(id: number, idMate: number, opponentTeam: ITeam, ro
   player.goalsFor[role] += goalsFor;
   player.goalsAgainst[role] += goalsAgainst;
 
-  player.matchesDelta.push(delta);
-  player.history.push(match);
+  player.matchesDelta[role].push(delta);
+  player.history[role].push(match);
 
   updatePlayerClass(player, won, role);
   updatePlayersOccurency(player, idMate, idOppoA, idOppoB, won, role, delta);

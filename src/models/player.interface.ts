@@ -23,8 +23,8 @@ export interface IPlayer extends IPlayerDTO {
 
   teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
   opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
-  history: IMatch[];
-  matchesDelta: number[];
+  history: [IMatch[], IMatch[]];
+  matchesDelta: [number[], number[]];
 
   avgTeamElo: [number, number];
   avgOpponentElo: [number, number];
