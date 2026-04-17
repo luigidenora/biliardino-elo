@@ -6,15 +6,230 @@ import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { BASE_PATH } from '../config/env.config';
 import { getAllMatches } from '../services/match.service';
-import { getAllPlayers, getPlayerById, getRank } from '../services/player.service';
+import { getAllPlayers, getPlayerById } from '../services/player.service';
 import { fetchRunningMatch } from '../services/repository.service';
 
 /**
  * Renders and handles UI interactions for the ranking table.
  */
-type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate' | 'goaldiff' | 'form';
+type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate' | 'goaldiff';
+type PlayerRole = -1 | 0 | 1;
+type LeaderboardType = 'overall' | 'defence' | 'attack';
 
 export class RankingView {
+  private static readonly ROLE_ICONS: [string, string] = ['🛡️', '⚔️'];
+  private static currentLeaderboard: LeaderboardType = 'overall';
+
+  private static getBestElo(player: IPlayer): number {
+    const role = RankingView.getRankingRole(player);
+    return player.elo[role];
+  }
+
+  private static getRankingRole(player: IPlayer): 0 | 1 {
+    if (RankingView.currentLeaderboard === 'defence') return 0;
+    if (RankingView.currentLeaderboard === 'attack') return 1;
+    return player.bestRole === 1 ? 1 : 0;
+  }
+
+  private static getRankingClass(player: IPlayer): number {
+    return player.class[RankingView.getRankingRole(player)];
+  }
+
+  private static getPlayerRank(player: IPlayer): number {
+    if (RankingView.currentLeaderboard === 'defence') return player.rank[0];
+    if (RankingView.currentLeaderboard === 'attack') return player.rank[1];
+    return player.rank[2];
+  }
+
+  private static getPlayerRankByRole(playerId: number, role: 0 | 1): number {
+    const player = getPlayerById(playerId);
+    if (!player) return 0;
+    return player.rank[role];
+  }
+
+  private static getHighlightedEloRoles(player: IPlayer): [boolean, boolean] {
+    if (RankingView.currentLeaderboard === 'defence') return [true, false];
+    if (RankingView.currentLeaderboard === 'attack') return [false, true];
+    return player.bestRole === 1 ? [false, true] : [true, false];
+  }
+
+  private static getTodayDeltaForLeaderboard(
+    info: { delta: [number, number]; matches: [number, number] } | undefined
+  ): { delta: number; matches: number } {
+    if (!info) return { delta: 0, matches: 0 };
+    if (RankingView.currentLeaderboard === 'defence') {
+      return { delta: info.delta[0], matches: info.matches[0] };
+    }
+    if (RankingView.currentLeaderboard === 'attack') {
+      return { delta: info.delta[1], matches: info.matches[1] };
+    }
+    return {
+      delta: info.delta[0] + info.delta[1],
+      matches: info.matches[0] + info.matches[1]
+    };
+  }
+
+  private static initLeaderboardSelector(): void {
+    const table = RankingView.getTable();
+    const wrapper = table.closest('.table-wrapper');
+    if (!wrapper) return;
+
+    if (!document.getElementById('leaderboard-selector-style')) {
+      const style = document.createElement('style');
+      style.id = 'leaderboard-selector-style';
+      style.textContent = `
+        #leaderboard-selector {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 1.1rem;
+        }
+
+        #leaderboard-selector .leaderboard-selector-track {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.22rem;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(245, 247, 250, 0.92) 100%);
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          border-radius: 999px;
+          padding: 0.22rem;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.85),
+            0 8px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        #leaderboard-selector .leaderboard-pill {
+          border: none;
+          border-radius: 999px;
+          padding: 0.44rem 0.95rem;
+          min-width: 104px;
+          font-size: 0.88rem;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          color: #475569;
+          background: transparent;
+          cursor: pointer;
+          transition: background-color 160ms ease, color 160ms ease, box-shadow 200ms ease, transform 120ms ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        #leaderboard-selector .leaderboard-pill:hover {
+          background: rgba(148, 163, 184, 0.16);
+          color: #0f172a;
+        }
+
+        #leaderboard-selector .leaderboard-pill:active {
+          transform: scale(0.985);
+        }
+
+        #leaderboard-selector .leaderboard-pill:focus-visible {
+          outline: 2px solid rgba(10, 132, 255, 0.55);
+          outline-offset: 2px;
+        }
+
+        #leaderboard-selector .leaderboard-pill.active {
+          color: #ffffff;
+          background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.35),
+            0 6px 14px rgba(37, 99, 235, 0.35);
+        }
+
+        @media (max-width: 640px) {
+          #leaderboard-selector {
+            justify-content: stretch;
+          }
+
+          #leaderboard-selector .leaderboard-selector-track {
+            width: 100%;
+            justify-content: space-between;
+          }
+
+          #leaderboard-selector .leaderboard-pill {
+            min-width: 0;
+            flex: 1;
+            padding-inline: 0.55rem;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    let selector = document.getElementById('leaderboard-selector');
+    if (!selector) {
+      selector = document.createElement('div');
+      selector.id = 'leaderboard-selector';
+      wrapper.prepend(selector);
+    }
+
+    const options: Array<{ key: LeaderboardType; label: string }> = [
+      { key: 'overall', label: 'Overall' },
+      { key: 'defence', label: 'Difesa' },
+      { key: 'attack', label: 'Attacco' }
+    ];
+
+    selector.innerHTML = options
+      .map(({ key, label }) => {
+        const isActive = RankingView.currentLeaderboard === key;
+        return `
+          <button
+            type="button"
+            class="leaderboard-pill${isActive ? ' active' : ''}"
+            data-leaderboard="${key}"
+            aria-pressed="${isActive ? 'true' : 'false'}"
+          >${label}</button>
+        `;
+      })
+      .join('');
+
+    selector.innerHTML = `<div class="leaderboard-selector-track">${selector.innerHTML}</div>`;
+
+    selector.querySelectorAll<HTMLButtonElement>('button[data-leaderboard]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.leaderboard as LeaderboardType | undefined;
+        if (!mode || RankingView.currentLeaderboard === mode) return;
+        RankingView.currentLeaderboard = mode;
+        RankingView.sortKey = 'rank';
+        RankingView.sortAsc = false;
+        RankingView.initLeaderboardSelector();
+        RankingView.render();
+        RankingView.updateSortIndicators();
+      });
+    });
+  }
+
+  private static getTotalMatches(player: IPlayer): number {
+    return player.matches[0] + player.matches[1];
+  }
+
+  private static getTotalWins(player: IPlayer): number {
+    return player.wins[0] + player.wins[1];
+  }
+
+  private static getTotalGoalsFor(player: IPlayer): number {
+    return player.goalsFor[0] + player.goalsFor[1];
+  }
+
+  private static getTotalGoalsAgainst(player: IPlayer): number {
+    return player.goalsAgainst[0] + player.goalsAgainst[1];
+  }
+
+  private static getBestClass(player: IPlayer): number {
+    const classes = player.class.filter(c => c !== -1);
+    if (!classes.length) return -1;
+    return Math.min(...classes);
+  }
+
+  private static renderStackedCell(lines: [string, string]): string {
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <span style="font-size:0.9em;display:flex;align-items:center;gap:4px;">${lines[0]}</span>
+        <span style="font-size:0.9em;display:flex;align-items:center;gap:4px;">${lines[1]}</span>
+      </div>
+    `;
+  }
+
   // Finestre orarie in cui la partita è LIVE (orario locale)
   private static readonly LIVE_WINDOWS: Array<{ start: number; end: number }> = [
     { start: 11 * 60, end: 11 * 60 + 15 }, // 11:00 - 11:15
@@ -35,7 +250,7 @@ export class RankingView {
   /**
    * Helper per ottenere il display del ruolo (etichetta, colore e tipo)
    */
-  private static getRoleDisplay(role: -1 | 0 | 1): { label: string; color: string } {
+  private static getRoleDisplay(role: PlayerRole): { label: string; color: string } {
     if (role === -1) {
       return { label: '🛡️', color: '#0077cc' };
     } else if (role === 0) {
@@ -48,7 +263,7 @@ export class RankingView {
   /**
    * Helper per ottenere la percentuale di difesa
    */
-  private static getDefencePercentage(role: -1 | 0 | 1): number {
+  private static getDefencePercentage(role: PlayerRole): number {
     if (role === -1) return 100;
     if (role === 0) return 50;
     return 0;
@@ -57,7 +272,7 @@ export class RankingView {
   /**
    * Helper per ottenere la percentuale di attacco
    */
-  private static getAttackPercentage(role: -1 | 0 | 1): number {
+  private static getAttackPercentage(role: PlayerRole): number {
     if (role === -1) return 0;
     if (role === 0) return 50;
     return 100;
@@ -65,9 +280,9 @@ export class RankingView {
 
   private static sortKey: SortKey = 'rank';
   private static sortAsc: boolean = false;
-  // Indici colonne: 0=#, 1=Classe, 2=Nome, 3=Elo, 4=Ruolo, 5=Match, 6=V/S, 7=%Win, 8=Goal F/S, 9=Forma
+  // Indici colonne: 0=#, 1=Classe, 2=Nome, 3=Elo, 4=Ruolo, 5=Match, 6=V/S, 7=%Win, 8=Goal, 9=Goal F/S
   private static readonly sortKeys: (SortKey | null)[] = [
-    'rank', null, 'name', 'elo', null, 'matches', null, 'winrate', 'goaldiff', 'form'
+    'rank', null, 'name', 'elo', null, 'matches', null, 'winrate', null, 'goaldiff'
   ];
 
   /**
@@ -76,6 +291,7 @@ export class RankingView {
    * Renders the initial table.
    */
   public static async init(): Promise<void> {
+    RankingView.initLeaderboardSelector();
     RankingView.render();
     RankingView.makeHeadersSortable();
     await RankingView.renderLiveMatch();
@@ -89,45 +305,67 @@ export class RankingView {
    */
   private static render(): void {
     const allPlayers = getAllPlayers();
-    const playersWithMatches = allPlayers.filter(player => player.matches > 0);
+    const playersWithMatches = allPlayers.filter((player) => {
+      if (RankingView.currentLeaderboard === 'defence') {
+        return player.matches[0] > 0;
+      }
+      if (RankingView.currentLeaderboard === 'attack') {
+        return player.matches[1] > 0;
+      }
+      return RankingView.getTotalMatches(player) > 0;
+    });
     const players = [...playersWithMatches];
     const todayDeltas = RankingView.getTodayEloDeltas();
     console.log(allPlayers);
 
     // Sorting logic
     const { sortKey, sortAsc } = RankingView;
+    const leaderboardRole = RankingView.currentLeaderboard === 'defence'
+      ? 0
+      : RankingView.currentLeaderboard === 'attack'
+        ? 1
+        : null;
     players.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
-        case 'rank':
-          cmp = getRank(a.id) - getRank(b.id);
+        case 'rank': {
+          const aRank = RankingView.getPlayerRank(a);
+          const bRank = RankingView.getPlayerRank(b);
+          const aRankSort = aRank > 0 ? aRank : Number.POSITIVE_INFINITY;
+          const bRankSort = bRank > 0 ? bRank : Number.POSITIVE_INFINITY;
+          cmp = aRankSort - bRankSort;
+          if (cmp === 0) cmp = RankingView.getBestElo(b) - RankingView.getBestElo(a);
           break;
+        }
         case 'name':
           cmp = a.name.localeCompare(b.name);
           break;
         case 'elo':
-          cmp = b.elo - a.elo;
+          cmp = RankingView.getBestElo(b) - RankingView.getBestElo(a);
           break;
         case 'matches':
-          cmp = b.matches - a.matches;
+          cmp = leaderboardRole === null
+            ? RankingView.getTotalMatches(b) - RankingView.getTotalMatches(a)
+            : b.matches[leaderboardRole] - a.matches[leaderboardRole];
           break;
         case 'winrate': {
-          const aRate = a.matches > 0 ? (a.wins || 0) / a.matches : 0;
-          const bRate = b.matches > 0 ? (b.wins || 0) / b.matches : 0;
+          const aMatches = leaderboardRole === null ? RankingView.getTotalMatches(a) : a.matches[leaderboardRole];
+          const bMatches = leaderboardRole === null ? RankingView.getTotalMatches(b) : b.matches[leaderboardRole];
+          const aWins = leaderboardRole === null ? RankingView.getTotalWins(a) : a.wins[leaderboardRole];
+          const bWins = leaderboardRole === null ? RankingView.getTotalWins(b) : b.wins[leaderboardRole];
+          const aRate = aMatches > 0 ? aWins / aMatches : 0;
+          const bRate = bMatches > 0 ? bWins / bMatches : 0;
           cmp = bRate - aRate;
           break;
         }
         case 'goaldiff': {
-          const aRatio = (a.goalsAgainst || 0) > 0 ? (a.goalsFor || 0) / a.goalsAgainst : ((a.goalsFor || 0) > 0 ? Infinity : 0);
-          const bRatio = (b.goalsAgainst || 0) > 0 ? (b.goalsFor || 0) / b.goalsAgainst : ((b.goalsFor || 0) > 0 ? Infinity : 0);
+          const aGoalsFor = leaderboardRole === null ? RankingView.getTotalGoalsFor(a) : a.goalsFor[leaderboardRole];
+          const bGoalsFor = leaderboardRole === null ? RankingView.getTotalGoalsFor(b) : b.goalsFor[leaderboardRole];
+          const aGoalsAgainst = leaderboardRole === null ? RankingView.getTotalGoalsAgainst(a) : a.goalsAgainst[leaderboardRole];
+          const bGoalsAgainst = leaderboardRole === null ? RankingView.getTotalGoalsAgainst(b) : b.goalsAgainst[leaderboardRole];
+          const aRatio = aGoalsAgainst > 0 ? aGoalsFor / aGoalsAgainst : (aGoalsFor > 0 ? Infinity : 0);
+          const bRatio = bGoalsAgainst > 0 ? bGoalsFor / bGoalsAgainst : (bGoalsFor > 0 ? Infinity : 0);
           cmp = bRatio - aRatio;
-          break;
-        }
-        case 'form': {
-          // Elo guadagnato nelle ultime 5 partite
-          const aDelta = (a.matchesDelta || []).slice(-5).reduce((sum, d) => sum + d, 0);
-          const bDelta = (b.matchesDelta || []).slice(-5).reduce((sum, d) => sum + d, 0);
-          cmp = bDelta - aDelta;
           break;
         }
       }
@@ -140,29 +378,31 @@ export class RankingView {
   }
 
   /**
-   * Gets the Elo deltas for players from matches played today.
+   * Gets the Elo deltas for players from matches played today, separated by role.
    *
-   * @returns A map of player IDs to their Elo delta and number of matches played today.
+   * @returns A map of player IDs to their Elo delta per role [defence, attack] and number of matches played today.
    */
-  private static getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
+  private static getTodayEloDeltas(): Map<number, { delta: [number, number]; matches: [number, number] }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const deltas = new Map<number, { delta: number; matches: number }>();
-    const playerMatchCounts = new Map<number, number>();
+    const deltas = new Map<number, { delta: [number, number]; matches: [number, number] }>();
+    const playerMatchCounts = new Map<number, [number, number]>();
 
-    const addDelta = (playerId: number, delta: number): void => {
+    const addDelta = (playerId: number, delta: number, role: number): void => {
       if (!Number.isFinite(delta)) return;
-      const matchesPlayed = playerMatchCounts.get(playerId) ?? 0;
+      const matchCounts = playerMatchCounts.get(playerId) ?? [0, 0];
+      const matchesPlayed = matchCounts[role];
       const bonusMultiplier = getBonusK(matchesPlayed);
       const adjustedDelta = delta * bonusMultiplier;
 
-      const entry = deltas.get(playerId) ?? { delta: 0, matches: 0 };
-      entry.delta += adjustedDelta;
-      entry.matches += 1;
+      const entry = deltas.get(playerId) ?? { delta: [0, 0], matches: [0, 0] };
+      entry.delta[role] += adjustedDelta;
+      entry.matches[role] += 1;
       deltas.set(playerId, entry);
 
-      playerMatchCounts.set(playerId, matchesPlayed + 1);
+      matchCounts[role] += 1;
+      playerMatchCounts.set(playerId, matchCounts);
     };
 
     // Ordina le partite per data per calcolare correttamente i moltiplicatori
@@ -173,16 +413,22 @@ export class RankingView {
       matchDate.setHours(0, 0, 0, 0);
 
       if (matchDate.getTime() === today.getTime()) {
-        addDelta(match.teamA.defence, match.deltaELO[0]);
-        addDelta(match.teamA.attack, match.deltaELO[0]);
-        addDelta(match.teamB.defence, match.deltaELO[1]);
-        addDelta(match.teamB.attack, match.deltaELO[1]);
+        addDelta(match.teamA.defence, match.deltaELO[0], 0);
+        addDelta(match.teamA.attack, match.deltaELO[0], 1);
+        addDelta(match.teamB.defence, match.deltaELO[1], 0);
+        addDelta(match.teamB.attack, match.deltaELO[1], 1);
       } else {
         // Incrementa il contatore delle partite anche per i giorni precedenti
-        const players = [match.teamA.defence, match.teamA.attack, match.teamB.defence, match.teamB.attack];
-        for (const playerId of players) {
-          const count = playerMatchCounts.get(playerId) ?? 0;
-          playerMatchCounts.set(playerId, count + 1);
+        const playersData = [
+          [match.teamA.defence, 0],
+          [match.teamA.attack, 1],
+          [match.teamB.defence, 0],
+          [match.teamB.attack, 1]
+        ];
+        for (const [playerId, role] of playersData) {
+          const counts = playerMatchCounts.get(playerId as number) ?? [0, 0];
+          counts[role as number] += 1;
+          playerMatchCounts.set(playerId as number, counts);
         }
       }
     }
@@ -225,25 +471,30 @@ export class RankingView {
    */
   private static buildRankMap(players: IPlayer[], getElo: (player: IPlayer) => number): Map<number, number> {
     const sorted = players.toSorted((a, b) => {
-      const classA = a.class === -1 ? Infinity : a.class;
-      const classB = b.class === -1 ? Infinity : b.class;
-      if (classA !== classB) return classA - classB;
+      const classA = RankingView.getRankingClass(a);
+      const classB = RankingView.getRankingClass(b);
+      const classAForSort = classA === -1 ? Number.NEGATIVE_INFINITY : classA;
+      const classBForSort = classB === -1 ? Number.NEGATIVE_INFINITY : classB;
+      if (classAForSort !== classBForSort) return classBForSort - classAForSort;
       return getElo(b) - getElo(a);
     });
     const ranks = new Map<number, number>();
     let currentRank = 1;
     let prevElo: number | null = null;
+    let prevClass: number | null = null;
 
     for (let i = 0; i < sorted.length; i++) {
       const player = sorted[i];
       const elo = getElo(player);
-      if (prevElo !== null && elo === prevElo) {
+      const playerClass = RankingView.getRankingClass(player);
+      if (prevElo !== null && prevClass !== null && elo === prevElo && playerClass === prevClass) {
         // stesso rank
       } else {
         currentRank = i + 1;
       }
       ranks.set(player.id, currentRank);
       prevElo = elo;
+      prevClass = playerClass;
     }
 
     return ranks;
@@ -332,7 +583,7 @@ export class RankingView {
    * @param players - Sorted list of players.
    * @param todayDeltas - Map of player IDs to today's Elo delta info.
    */
-  private static renderrRows(players: IPlayer[], todayDeltas: Map<number, { delta: number; matches: number }>): void {
+  private static renderrRows(players: IPlayer[], todayDeltas: Map<number, { delta: [number, number]; matches: [number, number] }>): void {
     const table = RankingView.getTable();
     const tbody = table.querySelector('tbody')!;
     const fragment = document.createDocumentFragment();
@@ -342,13 +593,16 @@ export class RankingView {
 
     const playerIdToStartRank = RankingView.buildRankMap(
       players,
-      p => Math.round(p.elo - (todayDeltas.get(p.id)?.delta ?? 0))
+      (p) => {
+        const deltasInfo = todayDeltas.get(p.id);
+        const deltaForRanking = RankingView.getTodayDeltaForLeaderboard(deltasInfo).delta;
+        return Math.round(RankingView.getBestElo(p) - deltaForRanking);
+      }
     );
 
     for (const player of players) {
-      const rank = getRank(player.id);
+      const rank = RankingView.getPlayerRank(player);
       const rankDisplay = `${rank}`;
-      const elo = getDisplayElo(player);
 
       const isFirst = rank === 1;
       const isSecond = rank === 2;
@@ -357,42 +611,6 @@ export class RankingView {
       // Mostra il ruolo prevalente (ATT, BAL o DIF) e la percentuale
       const roleDisplay = RankingView.getRoleDisplay(player.role);
       const role = `<span style="font-size:0.9em;color:${roleDisplay.color};">${roleDisplay.label}</span>`;
-
-      // Usa matchesDelta precalcolato per ultimi 5 risultati e Elo guadagnato
-      const matchesDelta = player.matchesDelta || [];
-      const last5Delta = matchesDelta.slice(-5);
-
-      let eloGainedLast5 = 0;
-      last5Delta.forEach((delta) => {
-        eloGainedLast5 += delta;
-      });
-
-      const last5Results = last5Delta.slice().reverse().map((delta) => {
-        return delta > 0 ? '🟢' : '🔴';
-      }).join('');
-
-      const eloGainedFormatted = eloGainedLast5 >= 0
-        ? `<span style="font-size:0.85em;color:green;">(+${Math.round(eloGainedLast5)})</span>`
-        : `<span style="font-size:0.85em;color:red;">(${Math.round(eloGainedLast5)})</span>`;
-
-      // Usa dati precalcolati per win rate e vittorie/sconfitte
-      const wins = player.wins || 0;
-      const losses = player.matches - wins;
-      const winRate = player.matches > 0 ? Math.round((wins / player.matches) * 100) : 0;
-      const record = `${wins} / ${losses}`;
-
-      // Usa dati precalcolati per rapporto goal fatti/subiti
-      const goalsScored = player.goalsFor || 0;
-      const goalsConceded = player.goalsAgainst || 0;
-      const goalRatio = goalsConceded > 0 ? goalsScored / goalsConceded : (goalsScored > 0 ? Infinity : 0);
-      let goalDiff = '-';
-      if (goalRatio === Infinity) {
-        goalDiff = '<span style="color:green;">∞</span>';
-      } else if (goalRatio > 0) {
-        const roundedRatio = parseFloat(goalRatio.toFixed(2));
-        const color = roundedRatio <= 0.8 ? 'red' : roundedRatio >= 1.15 ? 'green' : 'inherit';
-        goalDiff = `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
-      }
 
       const tr = document.createElement('tr');
       tr.style.cursor = 'pointer';
@@ -434,43 +652,179 @@ export class RankingView {
       `;
 
       const todayDeltaInfo = todayDeltas.get(player.id);
-      const todayDelta = todayDeltaInfo?.delta ?? 0;
-      const todayMatches = todayDeltaInfo?.matches ?? 0;
-      const todayBadge = RankingView.renderTodayDeltaBadge(todayDelta, todayMatches);
+      const todayDeltaDef = todayDeltaInfo?.delta[0] ?? 0;
+      const todayMatchesDef = todayDeltaInfo?.matches[0] ?? 0;
+      const todayDeltaAtt = todayDeltaInfo?.delta[1] ?? 0;
+      const todayMatchesAtt = todayDeltaInfo?.matches[1] ?? 0;
+      const leaderboardTodayStats = RankingView.getTodayDeltaForLeaderboard(todayDeltaInfo);
       const startRank = playerIdToStartRank.get(player.id) ?? rank;
       const rankDelta = startRank - rank;
-      const todayRankBadge = RankingView.renderTodayRankBadge(rankDelta, todayMatches);
+      const todayRankBadge = RankingView.renderTodayRankBadge(rankDelta, leaderboardTodayStats.matches);
+      const playerClass = RankingView.getRankingClass(player);
+      const [firstRoleIndex, secondRoleIndex]: [0 | 1, 0 | 1] = [0, 1];
+      const leaderboardRole = RankingView.currentLeaderboard === 'defence'
+        ? 0
+        : RankingView.currentLeaderboard === 'attack'
+          ? 1
+          : null;
+      const [isDefRankingElo, isAttRankingElo] = RankingView.getHighlightedEloRoles(player);
 
-      // Class icon
+      const winsByRole: [number, number] = [player.wins[0], player.wins[1]];
+      const lossesByRole: [number, number] = [
+        player.matches[0] - player.wins[0],
+        player.matches[1] - player.wins[1]
+      ];
+      const winRateByRole: [number, number] = [
+        player.matches[0] > 0 ? Math.round((player.wins[0] / player.matches[0]) * 100) : 0,
+        player.matches[1] > 0 ? Math.round((player.wins[1] / player.matches[1]) * 100) : 0
+      ];
+      const goalsForByRole: [number, number] = [player.goalsFor[0], player.goalsFor[1]];
+      const goalsAgainstByRole: [number, number] = [player.goalsAgainst[0], player.goalsAgainst[1]];
+      const hasMatchesByRole: [boolean, boolean] = [player.matches[0] > 0, player.matches[1] > 0];
+
+      const renderGoalRatio = (roleIndex: 0 | 1): string => {
+        if (!hasMatchesByRole[roleIndex]) {
+          return '-';
+        }
+
+        const goalsFor = goalsForByRole[roleIndex];
+        const goalsAgainst = goalsAgainstByRole[roleIndex];
+        const ratio = goalsAgainst > 0 ? goalsFor / goalsAgainst : (goalsFor > 0 ? Infinity : 0);
+        if (ratio === Infinity) {
+          return '<span style="color:green;">∞</span>';
+        }
+        if (ratio <= 0) {
+          return '-';
+        }
+
+        const roundedRatio = parseFloat(ratio.toFixed(2));
+        const color = roundedRatio <= 0.8 ? 'red' : roundedRatio >= 1.15 ? 'green' : 'inherit';
+        return `<span style="color:${color};">${roundedRatio.toFixed(2)}</span>`;
+      };
+
+      // ELO display con ruoli fissi: difesa sopra, attacco sotto
+      const firstRoleHasMatches = hasMatchesByRole[firstRoleIndex];
+      const secondRoleHasMatches = hasMatchesByRole[secondRoleIndex];
+      const eloFirstValue = Math.round(player.elo[firstRoleIndex]);
+      const deltaFirstRole = firstRoleIndex === 0 ? todayDeltaDef : todayDeltaAtt;
+      const matchesFirstRole = firstRoleIndex === 0 ? todayMatchesDef : todayMatchesAtt;
+      const todayBadgeFirstRole = firstRoleHasMatches
+        ? RankingView.renderTodayDeltaBadge(deltaFirstRole, matchesFirstRole)
+        : '';
+      const eloSecondValue = Math.round(player.elo[secondRoleIndex]);
+      const deltaSecondRole = todayDeltaAtt;
+      const matchesSecondRole = todayMatchesAtt;
+      const todayBadgeSecondRole = secondRoleHasMatches
+        ? RankingView.renderTodayDeltaBadge(deltaSecondRole, matchesSecondRole)
+        : '';
+      const firstRoleEloLabel = firstRoleHasMatches
+        ? isDefRankingElo
+          ? `<strong>${eloFirstValue}</strong>`
+          : `${eloFirstValue}`
+        : '-';
+      const secondRoleEloLabel = secondRoleHasMatches
+        ? isAttRankingElo
+          ? `<strong>${eloSecondValue}</strong>`
+          : `${eloSecondValue}`
+        : '-';
+      const eloDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          `${firstRoleEloLabel}${todayBadgeFirstRole}`,
+          `${secondRoleEloLabel}${todayBadgeSecondRole}`
+        ])
+        : `${leaderboardRole === 0 ? firstRoleEloLabel : secondRoleEloLabel}${leaderboardRole === 0 ? todayBadgeFirstRole : todayBadgeSecondRole}`;
+
       const fallbackClassIcon = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjQiIHk9IjMyIiBmb250LXNpemU9IjMwIiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzc5N2FiMSI+PzwvdGV4dD48L3N2Zz4=';
-      const classImageHTML = player.class !== -1 ? `
-        <div class="class-icon">
-          <img 
-            src="/class/${player.class}.webp" 
-            alt="Class ${player.class}"
-            title="${getClassName(player.class)}"
-            onerror="this.src='${fallbackClassIcon}'"
-            style="cursor: help;"
-          />
-        </div>
-      ` : '';
+      const renderClassLine = (roleIndex: 0 | 1): string => {
+        const showRoleEmoji = leaderboardRole === null;
+        const roleIcon = RankingView.ROLE_ICONS[roleIndex];
+        const roleClass = player.class[roleIndex];
+        const classIconSize = leaderboardRole === null ? 24 : 48;
+        if (roleClass === -1) {
+          return showRoleEmoji ? `${roleIcon} -` : '-';
+        }
+
+        const classImage = `<img src="/class/${roleClass}.webp" alt="Class ${roleClass}" title="${getClassName(roleClass)}" onerror="this.src='${fallbackClassIcon}'" style="display:block;cursor:help;width:${classIconSize}px;height:${classIconSize}px;object-fit:contain;" />`;
+
+        if (showRoleEmoji) {
+          return `<span style="display:inline-flex;align-items:center;gap:4px;line-height:1;">${roleIcon}${classImage}</span>`;
+        }
+
+        return `<span style="display:inline-flex;align-items:center;justify-content:center;line-height:0;vertical-align:middle;">${classImage}</span>`;
+      };
+      const classDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          renderClassLine(firstRoleIndex),
+          renderClassLine(secondRoleIndex)
+        ])
+        : renderClassLine(leaderboardRole as 0 | 1);
+
+      const matchesFirstRoleLabel = firstRoleHasMatches ? `${player.matches[firstRoleIndex]}` : '-';
+      const matchesSecondRoleLabel = secondRoleHasMatches ? `${player.matches[secondRoleIndex]}` : '-';
+      const recordFirstRoleLabel = firstRoleHasMatches
+        ? `${winsByRole[firstRoleIndex]} / ${lossesByRole[firstRoleIndex]}`
+        : '-';
+      const recordSecondRoleLabel = secondRoleHasMatches
+        ? `${winsByRole[secondRoleIndex]} / ${lossesByRole[secondRoleIndex]}`
+        : '-';
+      const winRateFirstRoleLabel = firstRoleHasMatches ? `${winRateByRole[firstRoleIndex]}%` : '-';
+      const winRateSecondRoleLabel = secondRoleHasMatches ? `${winRateByRole[secondRoleIndex]}%` : '-';
+      const goalsFirstRoleLabel = firstRoleHasMatches
+        ? `${goalsForByRole[firstRoleIndex]} / ${goalsAgainstByRole[firstRoleIndex]}`
+        : '-';
+      const goalsSecondRoleLabel = secondRoleHasMatches
+        ? `${goalsForByRole[secondRoleIndex]} / ${goalsAgainstByRole[secondRoleIndex]}`
+        : '-';
+      const goalRatioFirstRoleLabel = firstRoleHasMatches ? `${renderGoalRatio(firstRoleIndex)}` : '-';
+      const goalRatioSecondRoleLabel = secondRoleHasMatches ? `${renderGoalRatio(secondRoleIndex)}` : '-';
+
+      const matchesDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          matchesFirstRoleLabel,
+          matchesSecondRoleLabel
+        ])
+        : leaderboardRole === 0 ? matchesFirstRoleLabel : matchesSecondRoleLabel;
+      const recordDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          recordFirstRoleLabel,
+          recordSecondRoleLabel
+        ])
+        : leaderboardRole === 0 ? recordFirstRoleLabel : recordSecondRoleLabel;
+      const winRateDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          winRateFirstRoleLabel,
+          winRateSecondRoleLabel
+        ])
+        : leaderboardRole === 0 ? winRateFirstRoleLabel : winRateSecondRoleLabel;
+      const goalsDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          goalsFirstRoleLabel,
+          goalsSecondRoleLabel
+        ])
+        : leaderboardRole === 0 ? goalsFirstRoleLabel : goalsSecondRoleLabel;
+      const goalRatioDisplay = leaderboardRole === null
+        ? RankingView.renderStackedCell([
+          goalRatioFirstRoleLabel,
+          goalRatioSecondRoleLabel
+        ])
+        : leaderboardRole === 0 ? goalRatioFirstRoleLabel : goalRatioSecondRoleLabel;
 
       // Mostra posizione solo se ha classe
-      const rankCell = player.class !== -1
-        ? `<td title="Posizione in classifica"><strong>${rankDisplay}°</strong> ${todayRankBadge}</td>`
-        : `<td title="Nessuna classe">${todayRankBadge}</td>`;
+      const rankCell = playerClass === -1
+        ? `<td title="Nessuna classe">${todayRankBadge}</td>`
+        : `<td title="Posizione in classifica"><strong>${rankDisplay}°</strong> ${todayRankBadge}</td>`;
 
       tr.innerHTML = `
         ${rankCell}
-        <td title="Classe">${classImageHTML}</td>
+        <td title="Classe per ruolo">${classDisplay}</td>
         <td title="Nome giocatore"><div class="player-info">${avatarHTML}<span>${playerNameDisplay}</span></div></td>
-        <td title="ELO rating attuale"><strong>${elo}</strong> ${todayBadge}</td>
+        <td title="ELO rating per ruolo">${eloDisplay}</td>
         <td title="Ruolo preferito e percentuale">${role}</td>
-        <td title="Partite giocate">${player.matches}</td>
-        <td title="Vittorie - Sconfitte">${record}</td>
-        <td title="Percentuale di vittorie">${winRate}%</td>
-        <td title="Rapporto goal fatti/subiti">${goalDiff}</td>
-        <td title="Ultime 5 partite e variazione ELO">${last5Results || '-'} ${last5Results ? eloGainedFormatted : ''}</td>
+        <td title="Partite giocate per ruolo">${matchesDisplay}</td>
+        <td title="Vittorie - Sconfitte per ruolo">${recordDisplay}</td>
+        <td title="Percentuale di vittorie per ruolo">${winRateDisplay}</td>
+        <td title="Goal fatti / goal subiti per ruolo">${goalsDisplay}</td>
+        <td title="Rapporto goal fatti/subiti per ruolo">${goalRatioDisplay}</td>
       `;
       fragment.appendChild(tr);
 
@@ -507,7 +861,7 @@ export class RankingView {
     let maxEloPlayer: IPlayer | null = null;
     let maxElo = 0;
     for (const player of allPlayers) {
-      const bestElo = player.bestElo;
+      const bestElo = Math.max(player.bestElo[0], player.bestElo[1]);
       if (bestElo > maxElo) {
         maxElo = bestElo;
         maxEloPlayer = player;
@@ -517,12 +871,15 @@ export class RankingView {
     // Trova la migliore coppia (delta più alto)
     let bestPair = { player1: '', player2: '', delta: -Infinity };
     for (const player of allPlayers) {
-      if (!player.teammatesDelta) continue;
-      for (const [teammateId, delta] of player.teammatesDelta) {
-        if (delta > bestPair.delta) {
-          const teammate = getPlayerById(teammateId);
-          if (teammate) {
-            bestPair = { player1: player.name, player2: teammate.name, delta };
+      for (const roleStats of player.teammatesStats) {
+        for (const [teammateIdRaw, stats] of Object.entries(roleStats)) {
+          const teammateId = Number(teammateIdRaw);
+          const delta = stats.delta;
+          if (delta > bestPair.delta) {
+            const teammate = getPlayerById(teammateId);
+            if (teammate) {
+              bestPair = { player1: player.name, player2: teammate.name, delta };
+            }
           }
         }
       }
@@ -531,12 +888,15 @@ export class RankingView {
     // Trova la peggior coppia (delta più basso)
     let worstPair = { player1: '', player2: '', delta: Infinity };
     for (const player of allPlayers) {
-      if (!player.teammatesDelta) continue;
-      for (const [teammateId, delta] of player.teammatesDelta) {
-        if (delta < worstPair.delta) {
-          const teammate = getPlayerById(teammateId);
-          if (teammate) {
-            worstPair = { player1: player.name, player2: teammate.name, delta };
+      for (const roleStats of player.teammatesStats) {
+        for (const [teammateIdRaw, stats] of Object.entries(roleStats)) {
+          const teammateId = Number(teammateIdRaw);
+          const delta = stats.delta;
+          if (delta < worstPair.delta) {
+            const teammate = getPlayerById(teammateId);
+            if (teammate) {
+              worstPair = { player1: player.name, player2: teammate.name, delta };
+            }
           }
         }
       }
@@ -821,13 +1181,21 @@ export class RankingView {
         return;
       }
 
-      const rankDefA = getRank(runningMatch.teamA.defence);
-      const rankAttA = getRank(runningMatch.teamA.attack);
-      const rankDefB = getRank(runningMatch.teamB.defence);
-      const rankAttB = getRank(runningMatch.teamB.attack);
+      const rankDefA = RankingView.getPlayerRankByRole(runningMatch.teamA.defence, 0);
+      const rankAttA = RankingView.getPlayerRankByRole(runningMatch.teamA.attack, 1);
+      const rankDefB = RankingView.getPlayerRankByRole(runningMatch.teamB.defence, 0);
+      const rankAttB = RankingView.getPlayerRankByRole(runningMatch.teamB.attack, 1);
 
-      const avgEloA = Math.round((defA.elo + attA.elo) / 2);
-      const avgEloB = Math.round((defB.elo + attB.elo) / 2);
+      const defAElo = defA.elo[0];
+      const attAElo = attA.elo[1];
+      const defBElo = defB.elo[0];
+      const attBElo = attB.elo[1];
+      const avgEloA = Math.round((defAElo + attAElo) / 2);
+      const avgEloB = Math.round((defBElo + attBElo) / 2);
+      const defAClass = defA.class[0];
+      const attAClass = attA.class[1];
+      const defBClass = defB.class[0];
+      const attBClass = attB.class[1];
 
       // Calcola percentuali dei ruoli
       const defPercA = RankingView.getDefencePercentage(defA.role);
@@ -869,13 +1237,13 @@ export class RankingView {
                   <a href="./players.html?id=${defA.id}" class="live-player-link">
                     <div class="live-avatar-wrapper">
                       <img src="/avatars/${defA.id}.webp" alt="${defA.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
-                      ${defA.class !== -1 ? `<img src="/class/${defA.class}.webp" alt="Class ${defA.class}" class="live-class-icon" />` : ''}
+                      ${defAClass === -1 ? '' : `<img src="/class/${defAClass}.webp" alt="Class ${defAClass}" class="live-class-icon" />`}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">🛡️ ${defA.name} ${defA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefA)})</span>` : ''}</span>
+                      <span class="live-player-name">🛡️ ${defA.name} ${defAClass === -1 ? '' : `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefA)})</span>`}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercA}%</span>
-                        <span class="live-player-elo">${Math.round(defA.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
+                        <span class="live-player-elo">${Math.round(defAElo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defA)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -884,13 +1252,13 @@ export class RankingView {
                   <a href="./players.html?id=${attA.id}" class="live-player-link">
                     <div class="live-avatar-wrapper">
                       <img src="/avatars/${attA.id}.webp" alt="${attA.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
-                      ${attA.class !== -1 ? `<img src="/class/${attA.class}.webp" alt="Class ${attA.class}" class="live-class-icon" />` : ''}
+                      ${attAClass === -1 ? '' : `<img src="/class/${attAClass}.webp" alt="Class ${attAClass}" class="live-class-icon" />`}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">⚔️ ${attA.name} ${attA.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttA)})</span>` : ''}</span>
+                      <span class="live-player-name">⚔️ ${attA.name} ${attAClass === -1 ? '' : `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttA)})</span>`}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercA}%</span>
-                        <span class="live-player-elo">${Math.round(attA.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
+                        <span class="live-player-elo">${Math.round(attAElo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attA)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -909,13 +1277,13 @@ export class RankingView {
                   <a href="./players.html?id=${defB.id}" class="live-player-link">
                     <div class="live-avatar-wrapper">
                       <img src="/avatars/${defB.id}.webp" alt="${defB.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
-                      ${defB.class !== -1 ? `<img src="/class/${defB.class}.webp" alt="Class ${defB.class}" class="live-class-icon" />` : ''}
+                      ${defBClass === -1 ? '' : `<img src="/class/${defBClass}.webp" alt="Class ${defBClass}" class="live-class-icon" />`}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">🛡️ ${defB.name} ${defB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefB)})</span>` : ''}</span>
+                      <span class="live-player-name">🛡️ ${defB.name} ${defBClass === -1 ? '' : `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankDefB)})</span>`}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-def">DIF ${defPercB}%</span>
-                        <span class="live-player-elo">${Math.round(defB.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
+                        <span class="live-player-elo">${Math.round(defBElo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(defB)})</span></span>
                       </div>
                     </div>
                   </a>
@@ -924,13 +1292,13 @@ export class RankingView {
                   <a href="./players.html?id=${attB.id}" class="live-player-link">
                     <div class="live-avatar-wrapper">
                       <img src="/avatars/${attB.id}.webp" alt="${attB.name}" class="live-avatar" onerror="this.src='${fallbackAvatar}'" />
-                      ${attB.class !== -1 ? `<img src="/class/${attB.class}.webp" alt="Class ${attB.class}" class="live-class-icon" />` : ''}
+                      ${attBClass === -1 ? '' : `<img src="/class/${attBClass}.webp" alt="Class ${attBClass}" class="live-class-icon" />`}
                     </div>
                     <div class="live-player-info">
-                      <span class="live-player-name">⚔️ ${attB.name} ${attB.class !== -1 ? `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttB)})</span>` : ''}</span>
+                      <span class="live-player-name">⚔️ ${attB.name} ${attBClass === -1 ? '' : `<span style="font-size:0.9em;opacity:0.8;">(${formatRank(rankAttB)})</span>`}</span>
                       <div style="display:flex;align-items:center;gap:0.5rem;">
                         <span class="role-badge badge-att">ATT ${attPercB}%</span>
-                        <span class="live-player-elo">${Math.round(attB.elo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
+                        <span class="live-player-elo">${Math.round(attBElo)} <span style="font-size:0.85em;opacity:0.7;">(${getDisplayElo(attB)})</span></span>
                       </div>
                     </div>
                   </a>

@@ -7,5 +7,5 @@ import { IPlayer } from '@/models/player.interface';
  * @returns The player's Elo rounded to the nearest integer.
  */
 export function getDisplayElo(player: IPlayer): number {
-  return Math.round(player.elo);
+  return Math.round(Math.max(player.elo[0], player.elo[1]));
 }
