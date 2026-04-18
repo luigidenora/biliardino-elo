@@ -15,7 +15,7 @@ import './styles/utilities.css';
 import '../pwa';
 
 // ── App ────────────────────────────────────────────────────
-import { matchesReady } from '@/services/match.service';
+import '@/services/match.service';
 import { LayoutComponent } from './components/layout.component';
 import { pullToRefresh } from './components/pull-to-refresh.component';
 import { userDropdown } from './components/user-dropdown.component';
@@ -173,7 +173,6 @@ async function bootstrap(): Promise<void> {
 
   // 4. Wait for players and matches to be loaded before routing
   trace('Bootstrap', 'waiting for data (players + matches)');
-  await matchesReady;
   trace('Bootstrap', 'data ready — starting router');
 
   // 5. Start the router (reads current hash, renders first page)

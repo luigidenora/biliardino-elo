@@ -17,7 +17,7 @@
 
 import { API_BASE_URL, VAPID_PUBLIC_KEY } from '@/config/env.config';
 import { subscribeToPushNotifications } from '@/notifications';
-import { getAllPlayers, getPlayerById, playersReady } from '@/services/player.service';
+import { getAllPlayers, getPlayerById } from '@/services/player.service';
 import { AUTH } from '@/utils/firebase.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
@@ -141,7 +141,7 @@ class UserDropdownComponent {
     this.updatePillDot();
 
     /* Re-render header avatar once player data is available */
-    playersReady.then(() => this.updateHeader());
+    this.updateHeader();
   }
 
   destroy(): void {

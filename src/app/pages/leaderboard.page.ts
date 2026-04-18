@@ -11,11 +11,10 @@
 
 import { MatchHistoryComponent, renderMatchHistory } from '@/app/components/match-history.component';
 import { refreshCoreData, registerAppRefreshHandler } from '@/services/app-refresh.service';
-import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
+import { expectedScore } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
-import { getAllPlayers, getBonusK, getPlayerById, getRank } from '@/services/player.service';
+import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { fetchRunningMatch } from '@/services/repository.service';
-import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
 import { animateVisible } from '@/utils/animate-visible.util';
 import { Component } from '../components/component.base';
@@ -55,12 +54,14 @@ const MEDAL_SHADOW: Record<number, string> = {
 };
 
 type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate';
+type LeaderboardType = 'overall' | 'defence' | 'attack';
 
 const RECENT_MATCHES_COUNT = 30;
 
 class LeaderboardPage extends Component {
   private sortKey: SortKey = 'rank';
   private sortAsc = false;
+  private currentLeaderboard: LeaderboardType = 'overall';
   private matchHistory: MatchHistoryComponent | null = null;
   private unregisterRefreshHandler: (() => void) | null = null;
   private isDestroyed = false;
@@ -73,6 +74,7 @@ class LeaderboardPage extends Component {
         ${this.renderPageHeader()}
         ${this.renderReminderBanner()}
         ${this.renderIdentityBanner()}
+        ${this.renderLeaderboardSelector()}
         <div id="leaderboard-hero-slot" data-hero-content="podium">
           ${this.renderPodium()}
         </div>
@@ -91,6 +93,21 @@ class LeaderboardPage extends Component {
   override mount(): void {
     this.isDestroyed = false;
     refreshIcons();
+
+    // Leaderboard selector buttons
+    document.querySelectorAll<HTMLButtonElement>('[data-leaderboard]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.leaderboard as LeaderboardType | undefined;
+        if (!key || this.currentLeaderboard === key) return;
+        this.currentLeaderboard = key;
+        this.sortKey = 'rank';
+        this.sortAsc = false;
+        this.refreshPodium();
+        this.refreshTable();
+        this.updateLeaderboardSelector();
+        this.updateSortIndicators();
+      });
+    });
 
     // Identity banner CTA
     document.getElementById('identity-banner-btn')?.addEventListener('click', () => {
@@ -194,29 +211,72 @@ class LeaderboardPage extends Component {
 
   // ── Helpers ───────────────────────────────────────────────
 
+  private getRoleIndex(): 0 | 1 | null {
+    if (this.currentLeaderboard === 'defence') return 0;
+    if (this.currentLeaderboard === 'attack') return 1;
+    return null;
+  }
+
+  private getPlayerElo(player: IPlayer): number {
+    const roleIdx = this.getRoleIndex();
+    if (roleIdx === null) {
+      const defElo = player.elo[0];
+      const attElo = player.elo[1];
+      return player.bestRole === 1 ? attElo : defElo;
+    }
+    return player.elo[roleIdx];
+  }
+
+  private getPlayerEloRounded(player: IPlayer): number {
+    return Math.round(this.getPlayerElo(player));
+  }
+
+  private getPlayerRank(player: IPlayer): number {
+    const roleIdx = this.getRoleIndex();
+    if (roleIdx === null) return player.rank[2]; // overall
+    return player.rank[roleIdx];
+  }
+
   private getAllRankedPlayers(): IPlayer[] {
-    return getAllPlayers().filter(p => p.matches > 0);
+    const roleIdx = this.getRoleIndex();
+    return getAllPlayers().filter(p => {
+      if (roleIdx === null) {
+        // General: include players with non-zero rank[2]
+        return p.rank[2] > 0;
+      }
+      return p.matches[roleIdx] > 0;
+    });
   }
 
   private getSortedPlayers(): IPlayer[] {
     const filtered = [...this.getAllRankedPlayers()];
+    const roleIdx = this.getRoleIndex();
 
     const { sortKey, sortAsc } = this;
     filtered.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
         case 'rank':
-          cmp = getRank(a.id) - getRank(b.id);
+          cmp = this.getPlayerRank(a) - this.getPlayerRank(b);
           break;
         case 'name': cmp = a.name.localeCompare(b.name);
           break;
-        case 'elo': cmp = b.elo - a.elo;
+        case 'elo':
+          cmp = this.getPlayerElo(b) - this.getPlayerElo(a);
           break;
-        case 'matches': cmp = b.matches - a.matches;
+        case 'matches': {
+          const aMatches = roleIdx === null ? (a.matches[0] + a.matches[1]) : a.matches[roleIdx];
+          const bMatches = roleIdx === null ? (b.matches[0] + b.matches[1]) : b.matches[roleIdx];
+          cmp = bMatches - aMatches;
           break;
+        }
         case 'winrate': {
-          const aR = a.matches > 0 ? (a.wins || 0) / a.matches : 0;
-          const bR = b.matches > 0 ? (b.wins || 0) / b.matches : 0;
+          const aMatches = roleIdx === null ? (a.matches[0] + a.matches[1]) : a.matches[roleIdx];
+          const aWins = roleIdx === null ? (a.wins[0] + a.wins[1]) : a.wins[roleIdx];
+          const bMatches = roleIdx === null ? (b.matches[0] + b.matches[1]) : b.matches[roleIdx];
+          const bWins = roleIdx === null ? (b.wins[0] + b.wins[1]) : b.wins[roleIdx];
+          const aR = aMatches > 0 ? aWins / aMatches : 0;
+          const bR = bMatches > 0 ? bWins / bMatches : 0;
           cmp = bR - aR;
           break;
         }
@@ -227,7 +287,7 @@ class LeaderboardPage extends Component {
     return filtered;
   }
 
-  private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
+private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -272,7 +332,8 @@ class LeaderboardPage extends Component {
     const yesterdayElos = new Map<number, number>();
     for (const p of players) {
       const entry = todayDeltas.get(p.id);
-      yesterdayElos.set(p.id, p.elo - (entry?.delta ?? 0));
+      const currentElo = this.getPlayerElo(p);
+      yesterdayElos.set(p.id, currentElo - (entry?.delta ?? 0));
     }
 
     // Sort by yesterday ELO descending → yesterday ranks
@@ -287,13 +348,43 @@ class LeaderboardPage extends Component {
     for (const p of players) {
       const entry = todayDeltas.get(p.id);
       if (entry && entry.matches > 0) {
-        result.set(p.id, (yesterdayRanks.get(p.id) ?? getRank(p.id)) - getRank(p.id));
+        result.set(p.id, (yesterdayRanks.get(p.id) ?? this.getPlayerRank(p)) - this.getPlayerRank(p));
       }
     }
     return result;
   }
 
   // ── Section Renderers ──────────────────────────────────────
+
+  private renderLeaderboardSelector(): string {
+    const options: Array<{ key: LeaderboardType; label: string }> = [
+      { key: 'overall', label: 'Generale' },
+      { key: 'defence', label: 'Difesa' },
+      { key: 'attack', label: 'Attacco' }
+    ];
+
+    return `
+      <div class="flex justify-center">
+        <div class="inline-flex gap-2 p-1 rounded-xl"
+             style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px)">
+          ${options.map(({ key, label }) => `
+            <button
+              type="button"
+              data-leaderboard="${key}"
+              class="leaderboard-selector-btn px-4 py-2 rounded-lg font-ui text-sm transition-all"
+              style="
+                ${this.currentLeaderboard === key
+                  ? 'background:linear-gradient(135deg,#FFD700,#F0A500); color:var(--color-bg-deep); font-weight:700'
+                  : 'background:transparent; color:rgba(255,255,255,0.6); hover:color:rgba(255,255,255,0.9)'}
+              "
+            >
+              ${label}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
 
   private renderPageHeader(): string {
     return `
@@ -369,10 +460,10 @@ class LeaderboardPage extends Component {
       const attB = getPlayerById(runningMatch.teamB.attack);
       if (!defA || !attA || !defB || !attB) return '';
 
-      const defAElo = Math.round(getMatchPlayerElo(defA, true));
-      const attAElo = Math.round(getMatchPlayerElo(attA, false));
-      const defBElo = Math.round(getMatchPlayerElo(defB, true));
-      const attBElo = Math.round(getMatchPlayerElo(attB, false));
+      const defAElo = Math.round(defA.elo[0]);
+      const attAElo = Math.round(attA.elo[1]);
+      const defBElo = Math.round(defB.elo[0]);
+      const attBElo = Math.round(attB.elo[1]);
 
       const avgEloA = Math.round((defAElo + attAElo) / 2);
       const avgEloB = Math.round((defBElo + attBElo) / 2);
@@ -383,11 +474,12 @@ class LeaderboardPage extends Component {
       const isLive = this.isLiveNow();
 
       const renderLeftPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
-        const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+        const roleIdx = role === 'DIF' ? 0 : 1;
+        const color = CLASS_COLORS[p.class[roleIdx]] ?? '#8B7D6B';
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-3 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors">
             <div class="relative shrink-0">
-              ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'lg', playerId: p.id, playerClass: p.class })}
+              ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'lg', playerId: p.id, playerClass: p.class[roleIdx] })}
             </div>
             <div class="min-w-0 flex-1">
               <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
@@ -404,11 +496,12 @@ class LeaderboardPage extends Component {
       };
 
       const renderRightPlayer = (p: IPlayer, role: 'DIF' | 'ATT', elo: number): string => {
-        const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+        const roleIdx = role === 'DIF' ? 0 : 1;
+        const color = CLASS_COLORS[p.class[roleIdx]] ?? '#8B7D6B';
         return `
           <a href="/profile/${p.id}" class="flex items-center gap-5 rounded-xl py-2 px-3 hover:bg-white/5 transition-colors flex-row-reverse">
             <div class="relative shrink-0">
-              ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'lg', playerId: p.id, playerClass: p.class })}
+              ${renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'lg', playerId: p.id, playerClass: p.class[roleIdx] })}
             </div>
             <div class="min-w-0 flex-1 text-right">
               <div class="text-white font-ui truncate" style="font-size:15px;font-weight:600">${p.name}</div>
@@ -560,22 +653,25 @@ class LeaderboardPage extends Component {
 
   private renderPodium(): string {
     const players = this.getAllRankedPlayers()
-      .sort((a, b) => getRank(a.id) - getRank(b.id));
+      .sort((a, b) => this.getPlayerRank(a) - this.getPlayerRank(b));
 
-    const top3 = players.filter(p => getRank(p.id) <= 3).slice(0, 3);
+    const top3 = players.filter(p => this.getPlayerRank(p) <= 3).slice(0, 3);
     if (top3.length < 3) return '';
 
     const [first, second, third] = top3;
 
     const card = (p: IPlayer, rank: number, elevated = false): string => {
-      const elo = getDisplayElo(p);
-      const wins = p.wins || 0;
-      const winRate = p.matches > 0 ? Math.round((wins / p.matches) * 100) : 0;
+      const roleIdx = this.getRoleIndex();
+      const displayedRoleIdx = roleIdx ?? p.bestRole;
+      const elo = this.getPlayerEloRounded(p);
+      const matches = roleIdx === null ? (p.matches[0] + p.matches[1]) : p.matches[roleIdx];
+      const wins = roleIdx === null ? (p.wins[0] + p.wins[1]) : p.wins[roleIdx];
+      const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
       const eloColor = MEDAL_ELO_COLOR[rank] ?? '#8B7D6B';
       const border = MEDAL_BORDER[rank] ?? 'rgba(255,255,255,0.08)';
       const shadow = MEDAL_SHADOW[rank] ?? 'none';
       const medal = MEDALS[rank];
-      const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+      const color = CLASS_COLORS[p.class[displayedRoleIdx]] ?? '#8B7D6B';
       const initials = getInitials(p.name);
       const elevatedClass = elevated ? 'transform-[translateY(-10px)]' : '';
       // Card bg: 15% white base gives ~50 RGB unit contrast over the dark field
@@ -600,7 +696,7 @@ class LeaderboardPage extends Component {
         
         <!-- Avatar -->
         <div class="relative flex flex-col text-center">
-        ${renderPlayerAvatar({ initials, color, size: 'base', playerId: p.id, playerClass: p.class })}
+        ${renderPlayerAvatar({ initials, color, size: 'base', playerId: p.id, playerClass: p.class[displayedRoleIdx] })}
           <!-- Medal emoji -->
           <span class="-translate-y-1" style="font-size:28px; line-height:1">${medal}</span>
           </div>
@@ -628,7 +724,7 @@ class LeaderboardPage extends Component {
           </div>
             <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
             <div>
-              <div style="font-family:var(--font-ui); font-size:14px; color:white">${p.matches}</div>
+              <div style="font-family:var(--font-ui); font-size:14px; color:white">${matches}</div>
               <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">MATCH</div>
             </div>
           </div>
@@ -665,7 +761,7 @@ class LeaderboardPage extends Component {
     const todayRankDeltas = this.getTodayRankDeltas();
 
     const rows = players.map((p, idx) =>
-      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId)
+      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId, this.getRoleIndex())
     ).join('');
 
     const emptyState = players.length === 0
@@ -681,44 +777,18 @@ class LeaderboardPage extends Component {
       <div class="rounded-xl"
            style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px)">
 
-        <!-- Desktop header -->
-        <div class="hidden md:grid gap-3 px-5 py-3 sort-header-row overflow-hidden rounded-t-xl"
-             style="
-               grid-template-columns: 52px 1fr 100px 70px 90px 90px 70px 65px 88px;
-               background: rgba(10,25,18,0.8);
-               border-bottom: 1px solid rgba(255,215,0,0.2);
-             ">
-          <div class="sort-header cursor-pointer hover:text-(--color-gold) transition-colors text-center"
-               data-sort-key="rank"
-               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">#</div>
-          <div class="sort-header cursor-pointer hover:text-(--color-gold) transition-colors"
-               data-sort-key="name"
-               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">GIOCATORE</div>
-          <div class="sort-header cursor-pointer hover:text-(--color-gold) transition-colors"
-               data-sort-key="elo"
-               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">ELO</div>
-          <div class="sort-header cursor-pointer hover:text-(--color-gold) transition-colors text-center"
-               data-sort-key="matches"
-               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">MATCH</div>
-          <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">V / S</div>
-          <div class="sort-header cursor-pointer hover:text-(--color-gold) transition-colors"
-               data-sort-key="winrate"
-               style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">WIN RATE</div>
-          <div class="text-center" style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">RUOLO</div>
-          <div class="text-center" style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">G/S</div>
-          <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">FORMA</div>
-        </div>
-
-        <!-- Mobile header -->
-        <div class="md:hidden grid gap-3 px-4 py-2.5 overflow-hidden rounded-t-xl"
-             style="
-               grid-template-columns: auto 1fr 52px 48px;
-               background: rgba(10,25,18,0.8);
-               border-bottom: 1px solid rgba(255,215,0,0.2);
-             ">
-          ${['#', 'GIOCATORE', 'ELO', 'WR'].map(col => `
-            <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">${col}</div>
-          `).join('')}
+        <!-- Header unificato responsive -->
+        <div class="sort-header-row flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-5 py-2.5 overflow-hidden rounded-t-xl"
+             style="background:rgba(10,25,18,0.8); border-bottom:1px solid rgba(255,215,0,0.2); font-family:var(--font-ui); font-size:10px; letter-spacing:0.12em; color:rgba(255,215,0,0.7)">
+          <div class="sort-header cursor-pointer flex-none w-7 sm:w-9 text-center" data-sort-key="rank" data-label="#">#</div>
+          <div class="sort-header cursor-pointer flex-1" data-sort-key="name" data-label="GIOCATORE">GIOCATORE</div>
+          <div class="sort-header cursor-pointer flex-none w-14 sm:w-[96px]" data-sort-key="elo" data-label="ELO">ELO</div>
+          <div class="sort-header cursor-pointer hidden sm:block flex-none w-10 lg:w-12 text-center" data-sort-key="matches" data-label="MATCH">MATCH</div>
+          <div class="hidden lg:block flex-none w-[88px]">V / S</div>
+          <div class="sort-header cursor-pointer flex-none w-10 sm:w-[88px]" data-sort-key="winrate" data-label="WIN RATE">WR</div>
+          <div class="hidden lg:block flex-none w-[64px] text-center">RUOLO</div>
+          <div class="hidden lg:block flex-none w-[60px]">G/S</div>
+          <div class="hidden sm:block flex-none w-[80px]">FORMA</div>
         </div>
 
         <!-- Rows -->
@@ -736,14 +806,20 @@ class LeaderboardPage extends Component {
     total: number,
     todayDeltas: Map<number, { delta: number; matches: number }>,
     rankDeltas: Map<number, number>,
-    selectedPlayerId: number
+    selectedPlayerId: number,
+    roleForDisplay: 0 | 1 | null
   ): string {
-    const rank = getRank(player.id);
-    const elo = getDisplayElo(player);
-    const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
-    const wins = player.wins || 0;
-    const losses = player.matches - wins;
-    const winRate = player.matches > 0 ? Math.round((wins / player.matches) * 100) : 0;
+    const rank = this.getPlayerRank(player);
+
+    // For roleForDisplay, use specific role or best role (for overall display)
+    const displayedElo = roleForDisplay === null ? player.elo[player.bestRole] : player.elo[roleForDisplay];
+    const elo = Math.round(displayedElo);
+    const playerClass = roleForDisplay === null ? player.class[player.bestRole] : player.class[roleForDisplay];
+    const color = CLASS_COLORS[playerClass] ?? '#8B7D6B';
+    const wins = roleForDisplay === null ? (player.wins[0] + player.wins[1]) : player.wins[roleForDisplay];
+    const matches = roleForDisplay === null ? (player.matches[0] + player.matches[1]) : player.matches[roleForDisplay];
+    const losses = matches - wins;
+    const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
     const wrColor = winRate >= 60 ? '#4ADE80' : winRate >= 45 ? '#FFD700' : '#F87171';
 
     // Today delta badge
@@ -757,10 +833,6 @@ class LeaderboardPage extends Component {
       else if (rounded < 0) todayBadge = `<span class="font-body text-xs" style="color:var(--color-loss)"> ${rounded}</span>`;
       else todayBadge = `<span class="font-body text-xs" style="color:rgba(255,255,255,0.3)"> =</span>`;
     }
-    const mobileTodayBadge = todayBadge
-      ? `<div style="line-height:1;margin-top:2px">${todayBadge}</div>`
-      : '';
-
     // ── Rank delta — icona freccia, no box ───────────────
     const rankDelta = rankDeltas.get(player.id);
     let rankDeltaBadge = '';
@@ -780,48 +852,137 @@ class LeaderboardPage extends Component {
       : `<div class="flex flex-col items-center gap-0.5"><span style="font-family:var(--font-display);font-size:16px;color:rgba(255,255,255,0.5)">${rank}</span>${rankDeltaBadge}</div>`;
 
     // ── Role: icona + % su una riga sola ─────────────────
-    const defMatches = player.matchesAsDefender;
-    const attMatches = player.matchesAsAttacker;
-    const roleCell = renderRoleBadge({ defenceMatches: defMatches, attackMatches: attMatches, size: 'base' });
+    const roleCell = renderRoleBadge({ defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'base' });
 
-    // ── Goal ratio ────────────────────────────────────────
-    const totalGoals = player.goalsFor + player.goalsAgainst;
-    const goalRatioPct = totalGoals > 0 ? Math.round((player.goalsFor / totalGoals) * 100) : 0;
-    const goalRatioColor = goalRatioPct >= 55 ? '#4ADE80' : goalRatioPct >= 45 ? '#FFD700' : '#F87171';
-    const goalsCell = `
-      <div class="flex flex-col gap-0.5 text-center">
-        <span style="font-family:var(--font-display);font-size:15px;color:${goalRatioColor};letter-spacing:0.05em;line-height:1">${goalRatioPct}%</span>
-        <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.3)">${player.goalsFor}/${player.goalsAgainst}</span>
-      </div>
-    `;
+    const isOverall = roleForDisplay === null;
+    const isBest = (r: 0 | 1) => player.bestRole === r;
+    const opacity = (r: 0 | 1) => isBest(r) ? '1' : '0.5';
+    const fw = (r: 0 | 1) => isBest(r) ? '600' : '400';
 
-    // ── Forma: 5 pallini + Δ ELO ─────────────────────────
-    const last5 = player.matchesDelta.slice(-5);
+    // ── Matches cell ──────────────────────────────────────
+    const matchesCell = isOverall
+      ? `
+        <div class="flex flex-col gap-0.5 text-center">
+          <span style="font-family:var(--font-ui);font-size:13px;color:rgba(255,255,255,0.7);opacity:${opacity(0)};font-weight:${fw(0)}">${player.matches[0]}</span>
+          <span style="font-family:var(--font-ui);font-size:13px;color:rgba(255,255,255,0.7);opacity:${opacity(1)};font-weight:${fw(1)}">${player.matches[1]}</span>
+        </div>`
+      : `<span style="font-family:var(--font-ui);font-size:14px;color:rgba(255,255,255,0.7)">${matches}</span>`;
+
+    // ── V/S cell ──────────────────────────────────────────
+    const winLoss = isOverall
+      ? `
+        <div class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-1" style="opacity:${opacity(0)};font-weight:${fw(0)}">
+            <span style="font-family:var(--font-ui);font-size:12px;color:#4ADE80">${player.wins[0]}W</span>
+            <span style="color:rgba(255,255,255,0.3);font-size:11px">/</span>
+            <span style="font-family:var(--font-ui);font-size:12px;color:#F87171">${player.matches[0] - player.wins[0]}S</span>
+          </div>
+          <div class="flex items-center gap-1" style="opacity:${opacity(1)};font-weight:${fw(1)}">
+            <span style="font-family:var(--font-ui);font-size:12px;color:#4ADE80">${player.wins[1]}W</span>
+            <span style="color:rgba(255,255,255,0.3);font-size:11px">/</span>
+            <span style="font-family:var(--font-ui);font-size:12px;color:#F87171">${player.matches[1] - player.wins[1]}S</span>
+          </div>
+        </div>`
+      : `
+        <div class="flex items-center gap-1.5">
+          <span style="font-family:var(--font-ui);font-size:14px;color:#4ADE80">${wins}W</span>
+          <span style="color:rgba(255,255,255,0.3);font-size:12px">/</span>
+          <span style="font-family:var(--font-ui);font-size:14px;color:#F87171">${losses}S</span>
+        </div>`;
+
+    // ── Win Rate cell ─────────────────────────────────────
+    const wr0 = player.matches[0] > 0 ? Math.round((player.wins[0] / player.matches[0]) * 100) : 0;
+    const wr1 = player.matches[1] > 0 ? Math.round((player.wins[1] / player.matches[1]) * 100) : 0;
+    const wrc0 = wr0 >= 60 ? '#4ADE80' : wr0 >= 45 ? '#FFD700' : '#F87171';
+    const wrc1 = wr1 >= 60 ? '#4ADE80' : wr1 >= 45 ? '#FFD700' : '#F87171';
+    const winRateBar = isOverall
+      ? `
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-1.5" style="opacity:${opacity(0)}">
+            <div class="flex-1 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
+              <div class="h-full rounded-full" style="width:${wr0}%;background:${wrc0}"></div>
+            </div>
+            <span style="font-family:var(--font-ui);font-size:11px;color:${wrc0};min-width:28px;font-weight:${fw(0)}">${wr0}%</span>
+          </div>
+          <div class="flex items-center gap-1.5" style="opacity:${opacity(1)}">
+            <div class="flex-1 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
+              <div class="h-full rounded-full" style="width:${wr1}%;background:${wrc1}"></div>
+            </div>
+            <span style="font-family:var(--font-ui);font-size:11px;color:${wrc1};min-width:28px;font-weight:${fw(1)}">${wr1}%</span>
+          </div>
+        </div>`
+      : `
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
+            <div class="h-full rounded-full" style="width:${winRate}%;background:${wrColor}"></div>
+          </div>
+          <span style="font-family:var(--font-ui);font-size:13px;color:${wrColor};min-width:36px">${winRate}%</span>
+        </div>`;
+
+    // ── Goal ratio cell ────────────────────────────────────
+    const gf0 = player.goalsFor[0]; const ga0 = player.goalsAgainst[0];
+    const gf1 = player.goalsFor[1]; const ga1 = player.goalsAgainst[1];
+    const gr0 = (gf0 + ga0) > 0 ? Math.round((gf0 / (gf0 + ga0)) * 100) : 0;
+    const gr1 = (gf1 + ga1) > 0 ? Math.round((gf1 / (gf1 + ga1)) * 100) : 0;
+    const grc0 = gr0 >= 55 ? '#4ADE80' : gr0 >= 45 ? '#FFD700' : '#F87171';
+    const grc1 = gr1 >= 55 ? '#4ADE80' : gr1 >= 45 ? '#FFD700' : '#F87171';
+    const goalsCell = isOverall
+      ? `
+        <div class="flex flex-col gap-0.5 text-center">
+          <div style="opacity:${opacity(0)}">
+            <span style="font-family:var(--font-display);font-size:13px;color:${grc0};letter-spacing:0.04em;font-weight:${fw(0)}">${gr0}%</span>
+            <span style="font-family:var(--font-ui);font-size:8px;color:rgba(255,255,255,0.3);display:block">${gf0}/${ga0}</span>
+          </div>
+          <div style="opacity:${opacity(1)}">
+            <span style="font-family:var(--font-display);font-size:13px;color:${grc1};letter-spacing:0.04em;font-weight:${fw(1)}">${gr1}%</span>
+            <span style="font-family:var(--font-ui);font-size:8px;color:rgba(255,255,255,0.3);display:block">${gf1}/${ga1}</span>
+          </div>
+        </div>`
+      : (() => {
+          const goalsFor = player.goalsFor[roleForDisplay!];
+          const goalsAgainst = player.goalsAgainst[roleForDisplay!];
+          const totalGoals = goalsFor + goalsAgainst;
+          const goalRatioPct = totalGoals > 0 ? Math.round((goalsFor / totalGoals) * 100) : 0;
+          const goalRatioColor = goalRatioPct >= 55 ? '#4ADE80' : goalRatioPct >= 45 ? '#FFD700' : '#F87171';
+          return `
+            <div class="flex flex-col gap-0.5 text-center">
+              <span style="font-family:var(--font-display);font-size:15px;color:${goalRatioColor};letter-spacing:0.05em;line-height:1">${goalRatioPct}%</span>
+              <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.3)">${goalsFor}/${goalsAgainst}</span>
+            </div>`;
+        })();
+
+    // ── Forma cell ────────────────────────────────────────
+    const makeDots = (arr: number[], size: number) => arr.map(d =>
+      `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${d > 0 ? '#4ADE80' : '#F87171'};flex-shrink:0"></div>`
+    ).join('');
+    const makeFormaRow = (arr: number[], r: 0 | 1) => {
+      const last = arr.slice(-5);
+      const sum = Math.round(last.reduce((a, d) => a + d, 0));
+      const fc = sum > 0 ? '#4ADE80' : sum < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
+      const fs = sum > 0 ? `+${sum}` : `${sum}`;
+      return `
+        <div class="flex flex-col gap-0.5" style="opacity:${opacity(r)}">
+          <div class="flex items-center gap-1 flex-wrap">${makeDots(last, 6)}</div>
+          ${last.length > 0 ? `<span style="font-family:var(--font-ui);font-size:8px;color:${fc};white-space:nowrap;font-weight:${fw(r)}">${fs} ELO</span>` : ''}
+        </div>`;
+    };
+    const deltaArr = roleForDisplay === null ? null : (player.matchesDelta[roleForDisplay] || []);
+    const last5 = deltaArr ? deltaArr.slice(-5) : [];
     const formaEloSum = last5.reduce((acc, d) => acc + d, 0);
     const formaEloRounded = Math.round(formaEloSum);
     const formaEloColor = formaEloRounded > 0 ? '#4ADE80' : formaEloRounded < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
     const formaEloStr = formaEloRounded > 0 ? `+${formaEloRounded}` : `${formaEloRounded}`;
-    const formaDots = last5.map(d =>
-      `<div style="width:7px;height:7px;border-radius:50%;background:${d > 0 ? '#4ADE80' : '#F87171'};flex-shrink:0"></div>`
-    ).join('');
-    const formaCell = `
-      <div class="flex flex-col justify-center gap-1">
-        <div class="flex items-center gap-1 flex-wrap">${formaDots}</div>
-        ${last5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:9px;color:${formaEloColor};letter-spacing:0.03em;white-space:nowrap">${formaEloStr} ELO</span>` : ''}
-      </div>
-    `;
-
-    // ── Mobile sub-row ────────────────────────────────────
-    const mobileFormaDots = last5.map(d =>
-      `<div style="width:5px;height:5px;border-radius:50%;background:${d > 0 ? '#4ADE80' : '#F87171'};flex-shrink:0"></div>`
-    ).join('');
-    const mobileSubRow = `
-      <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-        ${renderRoleBadge({ defenceMatches: defMatches, attackMatches: attMatches, size: 'sm' })}
-        <div class="flex items-center gap-px">${mobileFormaDots}</div>
-        ${last5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:7px;color:${formaEloColor};font-weight:600">${formaEloStr}</span>` : ''}
-      </div>
-    `;
+    const formaCell = isOverall
+      ? `
+        <div class="flex flex-col justify-center gap-1">
+          ${makeFormaRow(player.matchesDelta[0] || [], 0)}
+          ${makeFormaRow(player.matchesDelta[1] || [], 1)}
+        </div>`
+      : `
+        <div class="flex flex-col justify-center gap-1">
+          <div class="flex items-center gap-1 flex-wrap">${makeDots(last5, 7)}</div>
+          ${last5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:9px;color:${formaEloColor};letter-spacing:0.03em;white-space:nowrap">${formaEloStr} ELO</span>` : ''}
+        </div>`;
 
     const isSelected = selectedPlayerId && player.id === selectedPlayerId;
     const rowBg = isSelected
@@ -830,86 +991,101 @@ class LeaderboardPage extends Component {
     const borderBottom = idx < total - 1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : '';
     const eloColor = rank <= 3 ? '#FFD700' : 'white';
 
-    const displayName = player.name;
+    // Mobile: usa sempre il best role per WR e forma
+    const mobileWr = isOverall
+      ? (player.matches[player.bestRole] > 0 ? Math.round((player.wins[player.bestRole] / player.matches[player.bestRole]) * 100) : 0)
+      : winRate;
+    const mobileWrColor = mobileWr >= 60 ? '#4ADE80' : mobileWr >= 45 ? '#FFD700' : '#F87171';
+    const mobileLast5 = (roleForDisplay === null ? player.matchesDelta[player.bestRole] : player.matchesDelta[roleForDisplay] ?? []).slice(-5);
+    const mobileFormaDots = makeDots(mobileLast5, 5);
+    const mobileFormaSum = Math.round(mobileLast5.reduce((a, d) => a + d, 0));
+    const mobileFormaColor = mobileFormaSum > 0 ? '#4ADE80' : mobileFormaSum < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
+    const mobileFormaStr = mobileFormaSum > 0 ? `+${mobileFormaSum}` : `${mobileFormaSum}`;
 
-    const avatarAndNameDesktop = `
-      <div class="flex items-center gap-3 min-w-0">
-        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'base', playerId: player.id, playerClass: player.class })}
-        <div class="min-w-0">
-          <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
-               style="font-family:var(--font-ui); font-size:14px; font-weight:600">
-            ${displayName}
+    // ELO cell
+    const eloDesktopCell = isOverall
+      ? `
+        <div class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-1.5">
+            <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.4);width:20px">DIF</span>
+            <span style="font-family:var(--font-display);font-size:${player.bestRole === 0 ? '17px' : '14px'};color:${player.bestRole === 0 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 0 ? 700 : 400}">${Math.round(player.elo[0])}</span>
           </div>
-        </div>
-      </div>
-    `;
-
-    const avatarAndNameMobile = `
-      <div class="flex items-center gap-5 min-w-0">
-        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: 'sm', playerId: player.id, playerClass: player.class })}
-        <div class="min-w-0">
-          <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
-               style="font-family:var(--font-ui); font-size:13px; font-weight:600">
-            ${displayName}
+          <div class="flex items-center gap-1.5">
+            <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.4);width:20px">ATT</span>
+            <span style="font-family:var(--font-display);font-size:${player.bestRole === 1 ? '17px' : '14px'};color:${player.bestRole === 1 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 1 ? 700 : 400}">${Math.round(player.elo[1])}</span>
           </div>
-          ${mobileSubRow}
-        </div>
-      </div>
-    `;
+        </div>`
+      : `<div class="flex items-baseline gap-1"><span style="font-family:var(--font-display);font-size:20px;color:${eloColor};letter-spacing:0.05em">${elo}</span>${todayBadge}</div>`;
 
-    const winRateBar = `
-      <div class="flex items-center gap-2">
-        <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
-          <div class="h-full rounded-full" style="width:${winRate}%; background:${wrColor}"></div>
-        </div>
-        <span style="font-family:var(--font-ui); font-size:13px; color:${wrColor}; min-width:36px">${winRate}%</span>
-      </div>
-    `;
+    // Mobile: subrow — badge ruolo + pallini forma
+    const mobileSubRow = `
+      <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+        ${renderRoleBadge({ defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'sm' })}
+        <div class="flex items-center gap-px">${mobileFormaDots}</div>
+        ${mobileLast5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:7px;color:${mobileFormaColor};font-weight:600">${mobileFormaStr}</span>` : ''}
+      </div>`;
 
-    const winLoss = `
-      <div class="flex items-center gap-1.5">
-        <span style="font-family:var(--font-ui); font-size:14px; color:#4ADE80">${wins}W</span>
-        <span style="color:rgba(255,255,255,0.3); font-size:12px">/</span>
-        <span style="font-family:var(--font-ui); font-size:14px; color:#F87171">${losses}S</span>
-      </div>
-    `;
+    const nameRow = (sz: 'sm' | 'base', withSubrow: boolean) => `
+      <div class="flex items-center gap-2.5 min-w-0">
+        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: sz, playerId: player.id, playerClass: playerClass })}
+        <div class="min-w-0 flex-1">
+          <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
+               style="font-family:var(--font-ui); font-size:${sz === 'sm' ? '13px' : '14px'}; font-weight:600">
+            ${player.name}
+          </div>
+          ${withSubrow ? mobileSubRow : ''}
+        </div>
+      </div>`;
 
     return `
       <a href="/profile/${player.id}"
          class="ranking-row group block"
          style="${rowBg}; ${borderBottom}">
+        <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 transition-colors hover:bg-white/5">
 
-        <!-- Desktop row -->
-        <div class="hidden md:grid gap-3 px-5 py-3.5 items-center transition-all duration-200 hover:bg-white/5"
-             style="grid-template-columns: 52px 1fr 100px 70px 90px 90px 70px 65px 88px">
-          <div class="flex justify-center">${rankDisplay}</div>
-          <div>${avatarAndNameDesktop}</div>
-          <div class="flex gap-1">
-            <span style="font-family:var(--font-display); font-size:20px; color:${eloColor}; letter-spacing:0.05em">${elo}</span>${todayBadge}
-          </div>
-          <div class="text-center" style="font-family:var(--font-ui); font-size:14px; color:rgba(255,255,255,0.7)">${player.matches}</div>
-          <div>${winLoss}</div>
-          <div>${winRateBar}</div>
-          <div class="flex justify-center">${roleCell}</div>
-          <div>${goalsCell}</div>
-          <div>${formaCell}</div>
-        </div>
+          <!-- RANK -->
+          <div class="flex-none w-7 sm:w-9 flex flex-col items-center">${rankDisplay}</div>
 
-        <!-- Mobile row -->
-        <div class="md:hidden grid gap-3 px-4 py-3 items-center transition-all duration-200 hover:bg-white/5"
-             style="grid-template-columns: auto 1fr 52px 48px">
-          <div class="flex justify-center">${rankDisplay}</div>
-          <div class="min-w-0">${avatarAndNameMobile}</div>
-          <div class="flex flex-col items-start">
-            <span style="font-family:var(--font-display); font-size:17px; color:${eloColor}; line-height:1">${elo}</span>
-            ${mobileTodayBadge}
+          <!-- AVATAR + NOME (mobile: subrow ricco; sm+: solo nome) -->
+          <div class="flex-1 min-w-0">
+            <div class="sm:hidden">${nameRow('sm', true)}</div>
+            <div class="hidden sm:block">${nameRow('base', false)}</div>
           </div>
-          <div>
-            <div style="font-family:var(--font-ui); font-size:13px; color:${wrColor}">${winRate}%</div>
-            <div class="h-1 rounded-full overflow-hidden mt-0.5" style="background:rgba(255,255,255,0.1); max-width:42px">
-              <div class="h-full rounded-full" style="width:${winRate}%; background:${wrColor}"></div>
+
+          <!-- ELO -->
+          <div class="flex-none w-14 sm:w-[96px]">
+            <div class="sm:hidden">
+              <span style="font-family:var(--font-display);font-size:16px;color:${eloColor};letter-spacing:0.04em;line-height:1">${elo}</span>
+              ${todayBadge ? `<div style="line-height:1;margin-top:1px">${todayBadge}</div>` : ''}
             </div>
+            <div class="hidden sm:block">${eloDesktopCell}</div>
           </div>
+
+          <!-- MATCH (da sm) -->
+          <div class="hidden sm:flex flex-none w-10 lg:w-12 justify-center">${matchesCell}</div>
+
+          <!-- V/S (da lg) -->
+          <div class="hidden lg:flex flex-none w-[88px]">${winLoss}</div>
+
+          <!-- WIN RATE -->
+          <div class="flex-none w-10 sm:w-[88px]">
+            <div class="sm:hidden">
+              <div style="font-family:var(--font-ui);font-size:12px;color:${mobileWrColor};font-weight:600;text-align:right">${mobileWr}%</div>
+              <div class="h-1 rounded-full overflow-hidden mt-0.5" style="background:rgba(255,255,255,0.1)">
+                <div class="h-full rounded-full" style="width:${mobileWr}%;background:${mobileWrColor}"></div>
+              </div>
+            </div>
+            <div class="hidden sm:block">${winRateBar}</div>
+          </div>
+
+          <!-- RUOLO (da lg) -->
+          <div class="hidden lg:flex flex-none w-[64px] justify-center">${roleCell}</div>
+
+          <!-- G/S (da lg) -->
+          <div class="hidden lg:block flex-none w-[60px]">${goalsCell}</div>
+
+          <!-- FORMA (da sm) -->
+          <div class="hidden sm:block flex-none w-[80px]">${formaCell}</div>
         </div>
       </a>
     `;
@@ -965,6 +1141,15 @@ class LeaderboardPage extends Component {
     );
   }
 
+  private refreshPodium(): void {
+    const heroSlot = this.$('#leaderboard-hero-slot');
+    if (!heroSlot || heroSlot.getAttribute('data-hero-content') === 'live-match') return;
+
+    heroSlot.innerHTML = this.renderPodium();
+    refreshIcons();
+    gsap.from('.podium-card', { scale: 0.9, y: 12, stagger: 0.08, duration: 0.35, ease: 'back.out(1.4)', clearProps: 'transform' });
+  }
+
   private refreshTable(): void {
     const tbody = this.$('#ranking-tbody');
     if (!tbody) return;
@@ -985,7 +1170,7 @@ class LeaderboardPage extends Component {
     }
 
     tbody.innerHTML = players.map((p, idx) =>
-      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId)
+      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId, this.getRoleIndex())
     ).join('');
 
     refreshIcons();
@@ -1013,18 +1198,37 @@ class LeaderboardPage extends Component {
     refreshIcons();
   }
 
+  private updateLeaderboardSelector(): void {
+    const buttons = this.$$('[data-leaderboard]');
+    for (const btn of buttons) {
+      const htmlBtn = btn as HTMLButtonElement;
+      const key = htmlBtn.dataset.leaderboard as LeaderboardType | undefined;
+      if (!key) continue;
+      if (this.currentLeaderboard === key) {
+        htmlBtn.style.background = 'linear-gradient(135deg,#FFD700,#F0A500)';
+        htmlBtn.style.color = 'var(--color-bg-deep)';
+        htmlBtn.style.fontWeight = '700';
+      } else {
+        htmlBtn.style.background = 'transparent';
+        htmlBtn.style.color = 'rgba(255,255,255,0.6)';
+        htmlBtn.style.fontWeight = 'normal';
+      }
+    }
+  }
+
   private updateSortIndicators(): void {
     const headers = this.$$('.sort-header');
     for (const th of headers) {
-      const key = (th as HTMLElement).dataset.sortKey;
+      const el = th as HTMLElement;
+      const key = el.dataset.sortKey;
       if (!key) continue;
-      const text = th.textContent?.replace(/[↑↓]/g, '').trim() ?? '';
+      const label = el.dataset.label ?? el.textContent?.replace(/[↑↓]/g, '').trim() ?? '';
       if (this.sortKey === key) {
-        th.innerHTML = `${text} ${this.sortAsc ? '↑' : '↓'}`;
-        (th as HTMLElement).style.color = 'var(--color-gold)';
+        el.textContent = `${label} ${this.sortAsc ? '↑' : '↓'}`;
+        el.style.color = 'var(--color-gold)';
       } else {
-        th.textContent = text;
-        (th as HTMLElement).style.color = '';
+        el.textContent = label;
+        el.style.color = '';
       }
     }
   }

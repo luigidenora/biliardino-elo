@@ -26,11 +26,18 @@ const sizeMap: Record<AvatarSize, { container: string; text: string; dot: string
 };
 
 const frameTransformMap: Record<number, { translateX: number; translateY: number; scale: number; origin: string }> = {
-  0: { translateX: 0, translateY: -11, scale: 1.4, origin: '50% 50%' },
-  1: { translateX: 0, translateY: 0, scale: 1.56, origin: '50% 50%' },
-  2: { translateX: 0, translateY: 0.9, scale: 1.26, origin: '50% 50%' },
-  3: { translateX: 0, translateY: 0, scale: 1.5, origin: '50% 50%' },
-  4: { translateX: 0, translateY: -0.1, scale: 1.35, origin: '50% 50%' }
+  0:
+  { translateX: 0, translateY: -0.1, scale: 1.35, origin: '50% 50%' },
+  1:
+  { translateX: 0, translateY: 0, scale: 1.5, origin: '50% 50%' },
+  2:
+  { translateX: 0, translateY: 0.9, scale: 1.26, origin: '50% 50%' },
+  3:
+  { translateX: 0, translateY: 0, scale: 1.56, origin: '50% 50%' },
+  4:
+  { translateX: 0, translateY: -11, scale: 1.4, origin: '50% 50%' },
+  5:
+   { translateX: 0, translateY: -0.1, scale: 1.35, origin: '50% 50%' }
 };
 
 interface AvatarOptions {
@@ -52,7 +59,8 @@ interface AvatarOptions {
  */
 export function renderPlayerAvatar({ initials, color, size = 'md', online, playerId, playerClass = undefined, hideFrame = false }: AvatarOptions): string {
   const s = sizeMap[size];
-  const resolvedClass = hideFrame ? undefined : (playerClass !== undefined ? playerClass : (playerId !== undefined ? getPlayerById(playerId)?.class : undefined));
+  const playerData = playerId !== undefined ? getPlayerById(playerId) : undefined;
+  const resolvedClass = hideFrame ? undefined : (playerClass !== undefined ? playerClass : (playerData !== undefined ? playerData.class[playerData.bestRole] : undefined));
   const classFrameSrc = resolvedClass !== undefined && resolvedClass >= 0
     ? `${BASE_PATH}class/${resolvedClass}.png`
     : undefined;
