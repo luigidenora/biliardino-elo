@@ -496,65 +496,57 @@ export class PlayersView {
         ${PlayersView.renderRoleFilters(statsScope, 'stats')}
         <div class="highlights-columns">
           <div class="highlights-column highlights-column-players">
-            <div class="highlights-relations-columns">
-              <div class="highlights-relations-column">
-                <div class="stats-grid">
-                  <div class="stat-item">
-                    <span class="stat-label">Miglior Compagno</span>
-                    <span class="stat-value">${formatRelationshipHighlight(bestTeammateByDelta)}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Compagno Più Frequente</span>
-                    <span class="stat-value">${formatRelationshipCountHighlight(bestTeammateByCount)}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Peggior Compagno</span>
-                    <span class="stat-value">${formatRelationshipHighlight(worstTeammateByDelta)}</span>
-                  </div>
-                </div>
+            <div class="stats-grid highlights-player-grid">
+              <div class="stat-item">
+                <span class="stat-label">Miglior Compagno</span>
+                <span class="stat-value">${formatRelationshipHighlight(bestTeammateByDelta)}</span>
               </div>
-              <div class="highlights-relations-column">
-                <div class="stats-grid">
-                  <div class="stat-item">
-                    <span class="stat-label">Miglior Avversario</span>
-                    <span class="stat-value">${formatRelationshipHighlight(bestOpponentByDelta)}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Avversario Più Frequente</span>
-                    <span class="stat-value">${formatRelationshipCountHighlight(bestOpponentByCount)}</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Peggior Avversario</span>
-                    <span class="stat-value">${formatRelationshipHighlight(worstOpponentByDelta)}</span>
-                  </div>
-                </div>
+              <div class="stat-item">
+                <span class="stat-label">Peggior Compagno</span>
+                <span class="stat-value">${formatRelationshipHighlight(worstTeammateByDelta)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Avversario più forte</span>
+                <span class="stat-value">${formatRelationshipHighlight(bestOpponentByDelta)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Avversario più debole</span>
+                <span class="stat-value">${formatRelationshipHighlight(worstOpponentByDelta)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Compagno Più Frequente</span>
+                <span class="stat-value">${formatRelationshipCountHighlight(bestTeammateByCount)}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Avversario Più Frequente</span>
+                <span class="stat-value">${formatRelationshipCountHighlight(bestOpponentByCount)}</span>
               </div>
             </div>
           </div>
           <div class="highlights-column highlights-column-matches">
             <div class="stats-grid">
               <div class="stat-item">
-                <span class="stat-label">Migliore Partita (ELO)</span>
+                <span class="stat-label">Miglior Vittoria (ELO)</span>
                 <span class="stat-value">${formatHighlightMatch(scopeExtremes.bestVictoryByElo)}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Peggiore Partita (ELO)</span>
+                <span class="stat-label">Peggior Sconfitta (ELO)</span>
                 <span class="stat-value">${formatHighlightMatch(scopeExtremes.worstDefeatByElo)}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Migliore Partita (Scarto)</span>
+                <span class="stat-label">Miglior Vittoria (Scarto)</span>
                 <span class="stat-value">${formatHighlightMatch(scopeExtremes.bestVictoryByScore)}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Peggiore Partita (Scarto)</span>
+                <span class="stat-label">Peggior Sconfitta (Scarto)</span>
                 <span class="stat-value">${formatHighlightMatch(scopeExtremes.worstDefeatByScore)}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Migliore Partita (Percentuale)</span>
+                <span class="stat-label">Miglior Vittoria (Percentuale)</span>
                 <span class="stat-value">${formatHighlightMatch(scopeExtremes.bestByExpected)}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Peggiore Partita (Percentuale)</span>
+                <span class="stat-label">Peggior Sconfitta (Percentuale)</span>
                 <span class="stat-value">${formatHighlightMatch(scopeExtremes.worstByExpected)}</span>
               </div>
             </div>

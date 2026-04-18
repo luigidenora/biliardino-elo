@@ -123,9 +123,9 @@ export function updatePlayersOccurency(player: IPlayer, idMate: number, idOppoA:
 
 function updateMatchesRecord(player: IPlayer, match: IMatch, role: number, teamId: number, won: number): void {
   if (won) {
-    player.bestVictoryByElo[role] ??= { match, value: match.deltaELO[teamId] };
-    player.bestVictoryByScore[role] ??= { match, value: match.score[teamId] };
-    player.bestVictoryByPercentage[role] ??= { match, value: match.expectedScore[teamId] };
+    player.bestVictoryByElo[role] ??= { match, value: -Infinity };
+    player.bestVictoryByScore[role] ??= { match, value: -Infinity };
+    player.bestVictoryByPercentage[role] ??= { match, value: Infinity };
 
     if (match.deltaELO[teamId] > player.bestVictoryByElo[role].value) {
       player.bestVictoryByElo[role].match = match;
@@ -146,9 +146,9 @@ function updateMatchesRecord(player: IPlayer, match: IMatch, role: number, teamI
     return;
   }
 
-  player.worstDefeatByElo[role] ??= { match, value: match.deltaELO[teamId] };
-  player.worstDefeatByScore[role] ??= { match, value: match.score[teamId] };
-  player.worstDefeatByPercentage[role] ??= { match, value: match.expectedScore[teamId] };
+  player.worstDefeatByElo[role] ??= { match, value: Infinity };
+  player.worstDefeatByScore[role] ??= { match, value: -Infinity };
+  player.worstDefeatByPercentage[role] ??= { match, value: -Infinity };
 
   if (match.deltaELO[teamId] < player.worstDefeatByElo[role].value) {
     player.worstDefeatByElo[role].match = match;
@@ -237,8 +237,8 @@ export function updatePlayerRecords(playerId: number, role: number): void {
     const stats = opponentsStats[idOpponent];
 
     player.bestOpponentCount[role] ??= { player: -1, value: 0 };
-    player.bestOpponent[role] ??= { player: -1, value: -Infinity };
-    player.worstOpponent[role] ??= { player: -1, value: Infinity };
+    player.bestOpponent[role] ??= { player: -1, value: Infinity };
+    player.worstOpponent[role] ??= { player: -1, value: -Infinity };
 
     if (stats.matches > player.bestOpponentCount[role].value) {
       player.bestOpponentCount[role].player = Number(idOpponent);

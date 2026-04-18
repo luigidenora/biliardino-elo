@@ -1355,6 +1355,12 @@ a.nav-link:hover {
   min-width: 0;
 }
 
+.highlights-list-card .highlights-player-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
 .highlights-list-card .highlights-relations-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1442,6 +1448,10 @@ a.nav-link:hover {
 
 @media (max-width: 900px) {
   .highlights-list-card .highlights-relations-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .highlights-list-card .highlights-player-grid {
     grid-template-columns: 1fr;
   }
 }
