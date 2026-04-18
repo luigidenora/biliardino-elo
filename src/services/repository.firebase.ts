@@ -9,39 +9,11 @@ const CACHE_CONTROL_DOC = 'id';
 const CACHE_HASH_PLAYERS_KEY = 'firestore_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'firestore_cache_hash_matches';
 
-// Lazy cache state — initialized on first data fetch to avoid blocking module evaluation
-let _cacheStateResolved = false;
-let useCachePlayers = false;
-let useCacheMatches = false;
-
-async function ensureCacheInitialized(): Promise<void> {
-  if (_cacheStateResolved) return;
-  _cacheStateResolved = true;
-  const state = await shouldUseCache();
-  useCachePlayers = state.useCachePlayers;
-  useCacheMatches = state.useCacheMatches;
-}
-
-function toFiniteNumber(value: unknown, fallback: number): number {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function parseNumericId(rawId: string, dataId?: unknown): number | null {
-  const fromData = toFiniteNumber(dataId, Number.NaN);
-  if (Number.isFinite(fromData) && fromData > 0) return Math.trunc(fromData);
-
-  if (/^\d+$/.test(rawId)) return Number(rawId);
-
-  const trailingDigits = rawId.match(/(\d+)$/);
-  if (trailingDigits) return Number(trailingDigits[1]);
-
-  return null;
-}
+const { useCacheMatches, useCachePlayers } = await shouldUseCache();
 
 async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMatches: number | null }> {
   try {
-    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    const ref = doc(collection(db!, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     const snap = await getDoc(ref);
 
     if (!snap.exists()) return { hashPlayers: null, hashMatches: null };
@@ -60,7 +32,7 @@ async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMat
 export async function updatePlayersHash(): Promise<void> {
   try {
     const hashPlayers = Math.random();
-    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    const ref = doc(collection(db!, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     await setDoc(ref, { hashPlayers }, { merge: true });
   } catch (error) {
     console.error('Error saving players cache hash:', error);
@@ -70,7 +42,7 @@ export async function updatePlayersHash(): Promise<void> {
 export async function updateMatchesHash(): Promise<void> {
   try {
     const hashMatches = Math.random();
-    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    const ref = doc(collection(db!, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     await setDoc(ref, { hashMatches }, { merge: true });
   } catch (error) {
     console.error('Error saving matches cache hash:', error);
@@ -83,11 +55,11 @@ function getStoredHash(key: string): number | null {
 }
 
 function setStoredHashPlayers(hash: number): void {
-  localStorage.setItem(CACHE_HASH_PLAYERS_KEY, hash.toString());
+  localStorage.setItem(CACHE_HASH_PLAYERS_KEY, `${hash}`);
 }
 
 function setStoredHashMatches(hash: number): void {
-  localStorage.setItem(CACHE_HASH_MATCHES_KEY, hash.toString());
+  localStorage.setItem(CACHE_HASH_MATCHES_KEY, `${hash}`);
 }
 
 async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMatches: boolean }> {
@@ -111,37 +83,50 @@ async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMat
 }
 
 export async function fetchPlayers(): Promise<IPlayer[]> {
-  await ensureCacheInitialized();
   const snap = await getDocsCacheServer(PLAYERS_COLLECTION, useCachePlayers);
 
-  const players = snap.docs.flatMap((d) => {
+  const players = snap.docs.map((d) => {
     const data = d.data() as IPlayer;
-    const parsedId = parseNumericId(d.id, (data as { id?: unknown }).id);
-
-    if (parsedId == null) {
-      console.warn('[firebase] skipping player with invalid id:', d.id);
-      return [];
-    }
-
-    const defenceRaw = toFiniteNumber(data.defence, 50);
-    const defence = defenceRaw > 1 ? defenceRaw / 100 : defenceRaw;
 
     return {
-      id: parsedId,
-      name: String(data.name ?? 'Sconosciuto'),
-      elo: 1000,
-      startElo: 1000,
-      defence: Math.min(1, Math.max(0, defence)),
-      matches: 0,
-      bestElo: -1,
-      goalsAgainst: 0,
-      goalsFor: 0,
-      matchesAsAttacker: 0,
-      matchesAsDefender: 0,
-      matchesDelta: [],
-      wins: 0,
-      rank: -1,
-      class: -1
+      id: Number.parseInt(d.id),
+      name: data.name,
+      elo: [1000, 1000],
+      role: data.role,
+      matches: [0, 0],
+      wins: [0, 0],
+      goalsFor: [0, 0],
+      goalsAgainst: [0, 0],
+      rank: [-1, -1, -1],
+      bestRole: 0,
+      class: [-1, -1],
+      streak: [0, 0],
+
+      teammatesStats: [{}, {}],
+      opponentsStats: [{}, {}],
+      history: [[], []],
+      matchesDelta: [[], []],
+
+      avgTeamElo: [0, 0],
+      avgOpponentElo: [0, 0],
+      bestTeammateCount: [null, null],
+      bestTeammate: [null, null],
+      worstTeammate: [null, null],
+      bestOpponentCount: [null, null],
+      bestOpponent: [null, null],
+      worstOpponent: [null, null],
+
+      bestElo: [-Infinity, -Infinity],
+      worstElo: [Infinity, Infinity],
+      bestClass: [-1, -1],
+      bestWinStreak: [0, 0],
+      worstLossStreak: [0, 0],
+      bestVictoryByElo: [null, null],
+      bestVictoryByScore: [null, null],
+      bestVictoryByPercentage: [null, null],
+      worstDefeatByElo: [null, null],
+      worstDefeatByScore: [null, null],
+      worstDefeatByPercentage: [null, null]
     } satisfies IPlayer;
   });
 
@@ -149,7 +134,6 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 }
 
 export async function fetchMatches(): Promise<IMatch[]> {
-  await ensureCacheInitialized();
   const snap = await getDocsCacheServer(MATCHES_COLLECTION, useCacheMatches);
   const matches: IMatch[] = [];
 
@@ -177,7 +161,7 @@ export async function fetchMatches(): Promise<IMatch[]> {
 }
 
 export async function saveMatch(match: IMatchDTO, merge = false): Promise<void> {
-  const ref = doc(collection(db, MATCHES_COLLECTION), match.id.toString());
+  const ref = doc(collection(db!, MATCHES_COLLECTION), match.id.toString());
   await setDoc(ref, match, { merge });
   await updateMatchesHash();
 }
@@ -198,12 +182,12 @@ export function parseMatchDTO(match: IMatchDTO): IMatch {
 }
 
 export async function saveRunningMatch(match: IRunningMatchDTO): Promise<void> {
-  const ref = doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
+  const ref = doc(collection(db!, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
   await setDoc(ref, match, { merge: true });
 }
 
 export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
-  const snap = await getDocFromServer(doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH));
+  const snap = await getDocFromServer(doc(collection(db!, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH));
 
   if (!snap?.exists()) return null;
 
@@ -211,32 +195,31 @@ export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
 }
 
 export async function clearRunningMatch(): Promise<void> {
-  const ref = doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
+  const ref = doc(collection(db!, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
   await deleteDoc(ref);
 }
 
 export async function savePlayer(player: IPlayerDTO): Promise<void> {
-  const ref = doc(collection(db, PLAYERS_COLLECTION), player.id.toString());
+  const ref = doc(collection(db!, PLAYERS_COLLECTION), player.id.toString());
   const playerDTO = {
     name: player.name,
-    elo: player.elo,
-    defence: player.defence
+    role: player.role
   };
   await setDoc(ref, playerDTO, { merge: true });
   await updatePlayersHash();
 }
 
 export async function deletePlayer(id: number): Promise<void> {
-  const ref = doc(collection(db, PLAYERS_COLLECTION), id.toString());
+  const ref = doc(collection(db!, PLAYERS_COLLECTION), id.toString());
   await deleteDoc(ref);
 }
 
 async function getDocsCacheServer(collectionName: string, useCache: boolean): Promise<QuerySnapshot<DocumentData, DocumentData>> {
   if (useCache) {
     console.log('cached fetch for collection:', collectionName);
-    return await getDocsFromCache(collection(db, collectionName));
+    return await getDocsFromCache(collection(db!, collectionName));
   }
 
   console.log('server fetch for collection:', collectionName);
-  return await getDocsFromServer(collection(db, collectionName));
+  return await getDocsFromServer(collection(db!, collectionName));
 }

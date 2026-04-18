@@ -1,22 +1,16 @@
 import { computeMatch } from '@/utils/update-elo.util';
 import { IMatch, IMatchDTO, ITeam } from '../models/match.interface';
-import { playersReady } from './player.service';
+import { computeRanks, updateAllPlayerRecords } from './player.service';
 import { fetchMatches, parseMatchDTO } from './repository.service';
 
 let matches: IMatch[] = [];
 
-/** Resolves when the initial match data has been fetched, players are loaded, and ELO is computed. */
-export const matchesReady: Promise<void> = (async () => {
-  const [rawMatches] = await Promise.all([fetchMatches(), playersReady]);
-  matches = rawMatches;
-  matches.sort((a, b) => a.createdAt - b.createdAt);
-  computeMatches();
-})();
+await loadAllMatches();
+computeMatches();
 
 export async function loadAllMatches(): Promise<void> {
   matches = await fetchMatches();
   matches.sort((a, b) => a.createdAt - b.createdAt);
-  computeMatches();
 }
 
 export function getAllMatches(): IMatch[] {
@@ -31,7 +25,7 @@ export function addMatch(teamA: ITeam, teamB: ITeam, score: [number, number]): I
 
   matches.push(match);
 
-  computeMatch(match);
+  computeMatch(match, true);
 
   return matchDTO;
 }
@@ -51,7 +45,12 @@ export function editMatch(id: number, teamA: ITeam, teamB: ITeam, score: [number
 }
 
 function computeMatches(): void {
+  console.time('computeMatches');
   for (const match of matches) {
-    computeMatch(match);
+    computeMatch(match, false);
   }
+
+  updateAllPlayerRecords();
+  computeRanks();
+  console.timeEnd('computeMatches');
 }

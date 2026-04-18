@@ -3,12 +3,13 @@
  */
 export interface IConfirmation {
   playerId: number;
+  matchTime: string;
   confirmedAt: string;
   subscription?: unknown;
 }
 
 /**
- * Risposta dell'API lobby-state (sezione conferme)
+ * Risposta dell'API get-confirmations
  */
 export interface IConfirmationsResponse {
   count: number;

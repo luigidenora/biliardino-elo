@@ -1,11 +1,16 @@
 import { IMatch } from '@/models/match.interface';
-import { IPlayer } from '@/models/player.interface';
 import { getPlayerById } from './player.service';
 
-export const StartK = 24 * 2.5;
+export const StartK = 24 * 1;
 export const FinalK = 24;
 export const MatchesToRank = 10;
-export const MatchesToTransition = 30; // Numero di partite dopo le quali il moltiplicatore K diventa 1
+export const MatchesToTransition = 1; // Numero di partite dopo le quali il moltiplicatore K diventa 1
+export const RankTreshold = 70;
+export const DerankTreshold = Math.round(RankTreshold * 0.2);
+export const MaxEloDiff = RankTreshold * 2 + DerankTreshold - 1; // qui consideriamo un rank di differenza nel mm
+export const FirstRankUp = 1005;
+export const startElo = 1000;
+const EloScalingFactorFormula = 150;
 
 export function updateMatch(match: IMatch): void {
   const teamAP1 = getPlayerById(match.teamA.defence);
@@ -15,18 +20,14 @@ export function updateMatch(match: IMatch): void {
   const teamBP2 = getPlayerById(match.teamB.attack);
 
   if (!teamAP1 || !teamAP2 || !teamBP1 || !teamBP2) {
-    throw new Error('One or more players not found for match Elo calculation.');
+    // throw new Error('One or more players not found for match Elo calculation.'); // TODO
+    return;
   }
 
   const [goalsA, goalsB] = match.score;
 
-  const teamAP1Elo = getMatchPlayerElo(teamAP1, true);
-  const teamAP2Elo = getMatchPlayerElo(teamAP2, false);
-  const teamBP1Elo = getMatchPlayerElo(teamBP1, true);
-  const teamBP2Elo = getMatchPlayerElo(teamBP2, false);
-
-  const eloA = (teamAP1Elo + teamAP2Elo) / 2;
-  const eloB = (teamBP1Elo + teamBP2Elo) / 2;
+  const eloA = (teamAP1.elo[0] + teamAP2.elo[1]) / 2;
+  const eloB = (teamBP1.elo[0] + teamBP2.elo[1]) / 2;
 
   const expA = expectedScore(eloA, eloB);
   const expB = 1 - expA;
@@ -53,19 +54,15 @@ export function updateMatch(match: IMatch): void {
   match.teamELO[0] = eloA;
   match.teamELO[1] = eloB;
 
-  match.teamAELO[0] = teamAP1Elo;
-  match.teamAELO[1] = teamAP2Elo;
+  match.teamAELO[0] = teamAP1.elo[0];
+  match.teamAELO[1] = teamAP2.elo[1];
 
-  match.teamBELO[0] = teamBP1Elo;
-  match.teamBELO[1] = teamBP2Elo;
-}
-
-export function getMatchPlayerElo(player: IPlayer, isDef: boolean): number {
-  return player.elo - (isDef ? 1 - player.defence : player.defence) * 100;
+  match.teamBELO[0] = teamBP1.elo[0];
+  match.teamBELO[1] = teamBP2.elo[1];
 }
 
 export function expectedScore(eloA: number, eloB: number): number {
-  return 1 / (1 + Math.pow(10, (eloB - eloA) / 300));
+  return 1 / (1 + Math.pow(10, (eloB - eloA) / EloScalingFactorFormula));
 }
 
 function marginMultiplier(goalsA: number, goalsB: number): number {
