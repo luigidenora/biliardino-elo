@@ -94,7 +94,7 @@ function generateBestMatch(priority: Priority, maxDiversity: Diversity, def: IPl
 
     for (let j = 0; j < attCount; j++) {
       const p2 = att[j];
-      if (p2 === p1) continue;
+      if (p2 === p1 || getClassDiff2(p1, p2) > maxClassDiff) continue;
 
       for (let k = i + 1; k < defCount; k++) {
         const p3 = def[k];
@@ -129,10 +129,10 @@ function validatePriority(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer, pr
 }
 
 function getClassDiff4(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): number {
-  const class1 = Math.max(2, p1.class === -1 ? getClass(p1.elo) : p1.class);
-  const class2 = Math.max(2, p2.class === -1 ? getClass(p2.elo) : p2.class);
-  const class3 = Math.max(2, p3.class === -1 ? getClass(p3.elo) : p3.class);
-  const class4 = Math.max(2, p4.class === -1 ? getClass(p4.elo) : p4.class);
+  const class1 = Math.min(3, Math.max(1, p1.class[0] === -1 ? getClass(p1.elo[0]) : p1.class[0])); // da 1 a 3 perchè le altre classi sono virtuali
+  const class2 = Math.min(3, Math.max(1, p2.class[1] === -1 ? getClass(p2.elo[1]) : p2.class[1]));
+  const class3 = Math.min(3, Math.max(1, p3.class[0] === -1 ? getClass(p3.elo[0]) : p3.class[0]));
+  const class4 = Math.min(3, Math.max(1, p4.class[1] === -1 ? getClass(p4.elo[1]) : p4.class[1]));
 
   const maxClass = Math.max(class1, class2, class3, class4);
   const minClass = Math.min(class1, class2, class3, class4);
@@ -141,27 +141,27 @@ function getClassDiff4(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): numb
 }
 
 function getClassDiff2(p1: IPlayer, p2: IPlayer): number {
-  const class1 = Math.max(2, p1.class === -1 ? getClass(p1.elo) : p1.class);
-  const class2 = Math.max(2, p2.class === -1 ? getClass(p2.elo) : p2.class);
+  const class1 = Math.min(3, Math.max(1, p1.class[0] === -1 ? getClass(p1.elo[0]) : p1.class[0]));
+  const class2 = Math.min(3, Math.max(1, p2.class[1] === -1 ? getClass(p2.elo[1]) : p2.class[1]));
   return Math.abs(class1 - class2);
 }
 
 function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlayer, priority: Priority, diversity: Diversity, bestScore: number, proposal: IMatchProposal): number {
   // MATCH ELO DIFFERENCE SCORE
-  const teamAElo = (defA.elo + attA.elo) / 2; // il / 2 può essere tolgo se usiamo la somma
-  const teamBElo = (defB.elo + attB.elo) / 2;
+  const teamAElo = (defA.elo[0] + attA.elo[1]) / 2; // il / 2 può essere tolgo se usiamo la somma
+  const teamBElo = (defB.elo[0] + attB.elo[1]) / 2;
   const matchEloDiff = Math.abs(teamAElo - teamBElo);
   const matchEloDiffNormalized = 1 - Math.min(1, matchEloDiff / MaxEloDiff);
   const matchBalanceScore = matchEloDiffNormalized * config.matchBalanceWeight;
 
   // AVERAGE MATCHES PLAYED
-  const localMaxMatches = Math.max(defA.matches, attA.matches, defB.matches, attB.matches);
+  const localMaxMatches = Math.max(defA.matches[0], attA.matches[1], defB.matches[0], attB.matches[1]);
   const teamMatchessNormalized = 1 - ((localMaxMatches - priority.min) / priority.diff);
   const priorityScore = teamMatchessNormalized * config.priorityWeight;
 
   // PLAYERS ELO DIFFERENCE SCORE
-  const playersMaxElo = Math.max(defA.elo, attA.elo, defB.elo, attB.elo);
-  const playersMinElo = Math.min(defA.elo, attA.elo, defB.elo, attB.elo);
+  const playersMaxElo = Math.max(defA.elo[0], attA.elo[1], defB.elo[0], attB.elo[1]);
+  const playersMinElo = Math.min(defA.elo[0], attA.elo[1], defB.elo[0], attB.elo[1]);
   const playersEloDiff = playersMaxElo - playersMinElo;
   const playersEloDiffNormalized = 1 - Math.min(1, playersEloDiff / MaxEloDiff);
   const playersDifferenceScore = playersEloDiffNormalized * config.playersDifferenceWeight;
@@ -197,7 +197,7 @@ function checkProposal(defA: IPlayer, attA: IPlayer, defB: IPlayer, attB: IPlaye
 }
 
 function getPriority(players: IPlayer[]): Priority {
-  const matches = players.map(x => x.matches);
+  const matches = players.map(x => x.role === 0 ? Math.max(...x.matches) : (x.role === -1 ? x.matches[0] : x.matches[1]));
   const max = Math.max(...matches, 1);
   const min = Math.min(...matches);
   return { max, min, diff: max - min };
@@ -205,7 +205,7 @@ function getPriority(players: IPlayer[]): Priority {
 
 // this can be precompute once
 function getDiversity(playersId: number[], maxClassDiff: number): Diversity {
-  const matches = getAllMatches();
+  const matches = getAllMatches(); // TODO
   const teamDef: DiversityMap = {};
   const teamAtt: DiversityMap = {};
   const opponent: DiversityMap = {};
