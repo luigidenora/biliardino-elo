@@ -1,6 +1,6 @@
 import { IPlayer } from '@/models/player.interface';
 import { MaxEloDiff } from './elo.service';
-import { getPlayerById } from './player.service';
+import { getClass, getPlayerById } from './player.service';
 
 export interface IMatchmakingConfig {
   /**
