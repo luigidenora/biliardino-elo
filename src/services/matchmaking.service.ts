@@ -129,10 +129,11 @@ function validatePriority(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer, pr
 }
 
 function getClassDiff4(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): number {
-  const class1 = Math.max(2, p1.class === -1 ? getClass(p1.elo) : p1.class);
-  const class2 = Math.max(2, p2.class === -1 ? getClass(p2.elo) : p2.class);
-  const class3 = Math.max(2, p3.class === -1 ? getClass(p3.elo) : p3.class);
-  const class4 = Math.max(2, p4.class === -1 ? getClass(p4.elo) : p4.class);
+  // p1=defA, p2=attA, p3=defB, p4=attB — use role-specific class
+  const class1 = Math.max(2, p1.class[0]);
+  const class2 = Math.max(2, p2.class[1]);
+  const class3 = Math.max(2, p3.class[0]);
+  const class4 = Math.max(2, p4.class[1]);
 
   const maxClass = Math.max(class1, class2, class3, class4);
   const minClass = Math.min(class1, class2, class3, class4);
@@ -141,8 +142,8 @@ function getClassDiff4(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): numb
 }
 
 function getClassDiff2(p1: IPlayer, p2: IPlayer): number {
-  const class1 = Math.max(2, p1.class === -1 ? getClass(p1.elo) : p1.class);
-  const class2 = Math.max(2, p2.class === -1 ? getClass(p2.elo) : p2.class);
+  const class1 = Math.max(2, p1.class[p1.bestRole]);
+  const class2 = Math.max(2, p2.class[p2.bestRole]);
   return Math.abs(class1 - class2);
 }
 

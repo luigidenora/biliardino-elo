@@ -203,13 +203,13 @@ export function renderMatchCard(
 export function renderMatchPlayerAvatar(player: IPlayer | undefined): string {
   if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
 
-  const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
+  const color = CLASS_COLORS[player.class[player.bestRole]] ?? '#8B7D6B';
   return renderPlayerAvatar({
     initials: getInitials(player.name),
     color,
     size: 'sm',
     playerId: player.id,
-    playerClass: player.class
+    playerClass: player.class[player.bestRole]
   });
 }
 
@@ -338,13 +338,13 @@ function getMatchCardData(match: IMatch, selectedPlayerId: number): MatchCardDat
 function renderDetailPlayer(player: IPlayer | undefined, index: number): string {
   if (!player) return '<div style="width:110px"></div>';
 
-  const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
+  const color = CLASS_COLORS[player.class[player.bestRole]] ?? '#8B7D6B';
   const avatarHtml = renderPlayerAvatar({
     initials: getInitials(player.name),
     color,
     size: 'lg',
     playerId: player.id,
-    playerClass: player.class
+    playerClass: player.class[player.bestRole]
   });
 
   return `
@@ -357,7 +357,7 @@ function renderDetailPlayer(player: IPlayer | undefined, index: number): string 
         ${avatarHtml}
       </div>
       <div class="font-ui truncate text-center" style="font-size:12px;color:rgba(255,255,255,0.85);max-width:100%">${player.name}</div>
-      <div class="font-display" style="font-size:16px;color:rgba(255,215,0,0.9)">${Math.round(player.elo)}</div>
+      <div class="font-display" style="font-size:16px;color:rgba(255,215,0,0.9)">${Math.round(player.elo[player.bestRole])}</div>
     </a>
   `;
 }

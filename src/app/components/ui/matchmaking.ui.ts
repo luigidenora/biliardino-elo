@@ -1,5 +1,5 @@
-import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
-import { getClass, getRank } from '@/services/player.service';
+import { expectedScore } from '@/services/elo.service';
+import { getClass } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { html, rawHtml } from '../../utils/html-template.util';
@@ -64,12 +64,14 @@ export function renderMatchmakingPlayerList({
 
   const playerRows = players.map((player, idx) => {
     const state = playerStates.get(player.id) ?? 0;
-    const classNum = player.class === -1 ? getClass(player.elo) : player.class;
+    const classNum = player.class[player.bestRole];
     const classColor = getClassColor(classNum);
     const className = getClassName(classNum);
     const initials = getInitials(player.name);
     const displayElo = getDisplayElo(player);
-    const winRate = player.matches > 0 ? Math.round((player.wins / player.matches) * 100) : 0;
+    const totalMatches = player.matches[0] + player.matches[1];
+    const totalWins = player.wins[0] + player.wins[1];
+    const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
     const isConfirmed = confirmedPlayerIds.has(player.id);
 
     return `
@@ -100,8 +102,8 @@ export function renderMatchmakingPlayerList({
               </div>
               <span class="text-white/20">&middot;</span>
               <span class="font-ui text-[11px] text-white/45">${winRate}% WR</span>
-              <span class="hidden sm:inline font-ui text-[11px] text-[#4ADE80]">${player.wins}W</span>
-              <span class="hidden sm:inline font-ui text-[11px] text-[#F87171]">${player.matches - player.wins}L</span>
+              <span class="hidden sm:inline font-ui text-[11px] text-[#4ADE80]">${totalWins}W</span>
+              <span class="hidden sm:inline font-ui text-[11px] text-[#F87171]">${totalMatches - totalWins}L</span>
             </div>
           </div>
         </div>
@@ -184,17 +186,15 @@ export function renderMatchmakingTeamCard(
   const teamBg = team === 'A' ? 'rgba(229,62,62,0.08)' : 'rgba(49,130,206,0.08)';
   const teamBorder = team === 'A' ? 'rgba(229,62,62,0.25)' : 'rgba(49,130,206,0.25)';
 
-  const defClass = defence.class === -1 ? getClass(defence.elo) : defence.class;
-  const attClass = attack.class === -1 ? getClass(attack.elo) : attack.class;
+  const defClass = defence.class[0];
+  const attClass = attack.class[1];
   const defColor = getClassColor(defClass);
   const attColor = getClassColor(attClass);
   const defInitials = getInitials(defence.name);
   const attInitials = getInitials(attack.name);
 
-  const defRoleElo = Math.round(getMatchPlayerElo(defence, true));
-  const attRoleElo = Math.round(getMatchPlayerElo(attack, false));
-  const defPercent = Math.round(defence.defence * 100);
-  const attPercent = Math.round((1 - attack.defence) * 100);
+  const defRoleElo = Math.round(defence.elo[0]);
+  const attRoleElo = Math.round(attack.elo[1]);
 
   return `
     <div class="rounded-xl p-3 md:p-4" style="background:${teamBg}; border:1px solid ${teamBorder}">
@@ -211,10 +211,10 @@ export function renderMatchmakingTeamCard(
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="font-ui text-white truncate text-[13px]">${defence.name}</span>
-            <span class="font-ui text-[10px] text-white/40">#${getRank(defence.id)}</span>
+            <span class="font-ui text-[10px] text-white/40">#${defence.rank[2]}</span>
           </div>
           <div class="flex items-center gap-2 mt-0.5">
-            <span class="font-ui px-1.5 py-0.5 rounded text-[9px] tracking-[0.06em] text-[#3182CE] bg-[rgba(49,130,206,0.15)] border border-[rgba(49,130,206,0.3)]">DIF ${defPercent}%</span>
+            <span class="font-ui px-1.5 py-0.5 rounded text-[9px] tracking-[0.06em] text-[#3182CE] bg-[rgba(49,130,206,0.15)] border border-[rgba(49,130,206,0.3)]">DIF</span>
             <span class="font-ui text-[11px] text-white/50">${defRoleElo} <span class="text-[9px] opacity-60">(${getDisplayElo(defence)})</span></span>
           </div>
         </div>
@@ -225,10 +225,10 @@ export function renderMatchmakingTeamCard(
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="font-ui text-white truncate text-[13px]">${attack.name}</span>
-            <span class="font-ui text-[10px] text-white/40">#${getRank(attack.id)}</span>
+            <span class="font-ui text-[10px] text-white/40">#${attack.rank[2]}</span>
           </div>
           <div class="flex items-center gap-2 mt-0.5">
-            <span class="font-ui px-1.5 py-0.5 rounded text-[9px] tracking-[0.06em] text-[#E53E3E] bg-[rgba(229,62,62,0.15)] border border-[rgba(229,62,62,0.3)]">ATT ${attPercent}%</span>
+            <span class="font-ui px-1.5 py-0.5 rounded text-[9px] tracking-[0.06em] text-[#E53E3E] bg-[rgba(229,62,62,0.15)] border border-[rgba(229,62,62,0.3)]">ATT</span>
             <span class="font-ui text-[11px] text-white/50">${attRoleElo} <span class="text-[9px] opacity-60">(${getDisplayElo(attack)})</span></span>
           </div>
         </div>
@@ -245,8 +245,7 @@ export function renderMatchmakingHeuristicData(match: IMatchProposal): string {
     { icon: 'star', label: 'Priorita', score: h.priority.score, max: h.priority.max, color: '#FFD700' },
     { icon: 'dices', label: 'Diversita team', score: h.diversityTeam.score, max: h.diversityTeam.max, color: '#27AE60' },
     { icon: 'dices', label: 'Diversita avversari', score: h.diversityOpponent.score, max: h.diversityOpponent.max, color: '#2ECC71' },
-    { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' },
-    { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' }
+    { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' }
   ];
 
   return `
@@ -283,8 +282,8 @@ export function renderMatchmakingHeuristicData(match: IMatchProposal): string {
 }
 
 export function renderGeneratedMatchCard(match: IMatchProposal): string {
-  const avgEloA = (getMatchPlayerElo(match.teamA.defence, true) + getMatchPlayerElo(match.teamA.attack, false)) / 2;
-  const avgEloB = (getMatchPlayerElo(match.teamB.defence, true) + getMatchPlayerElo(match.teamB.attack, false)) / 2;
+  const avgEloA = (match.teamA.defence.elo[0] + match.teamA.attack.elo[1]) / 2;
+  const avgEloB = (match.teamB.defence.elo[0] + match.teamB.attack.elo[1]) / 2;
   const winProbA = expectedScore(avgEloA, avgEloB);
   const winProbB = 1 - winProbA;
 

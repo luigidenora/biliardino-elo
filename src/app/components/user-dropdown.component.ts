@@ -567,7 +567,7 @@ class UserDropdownComponent {
     const player = playerId ? getPlayerById(playerId) : null;
     const name = player?.name ?? localStorage.getItem(PLAYER_NAME_KEY) ?? 'Guest';
     const initials = getInitials(name) || 'G';
-    const color = player ? (CLASS_COLORS[player.class] ?? '#E8A020') : '#E8A020';
+    const color = player ? (CLASS_COLORS[player.class[player.bestRole]] ?? '#E8A020') : '#E8A020';
 
     document.querySelectorAll('[data-user-name]').forEach((el) => {
       el.textContent = name;
@@ -603,14 +603,14 @@ class UserDropdownComponent {
     if (this.showingPlayerList) return this.renderPlayerList();
 
     if (player) {
-      const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
+      const color = CLASS_COLORS[player.class[player.bestRole]] ?? '#8B7D6B';
       const initials = getInitials(player.name);
       const elo = getDisplayElo(player);
-      const className = getClassName(player.class);
+      const className = getClassName(player.class[player.bestRole]);
 
       return `
         <div class="flex items-center gap-3">
-          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId: player.id, playerClass: player.class })}
+          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId: player.id, playerClass: player.class[player.bestRole] })}
           <div class="flex-1 min-w-0">
             <div class="font-ui text-sm text-white leading-tight truncate">${player.name}</div>
             <div class="font-body flex items-center gap-1.5 mt-0.5" style="font-size:11px;color:rgba(255,255,255,0.4)">
@@ -641,7 +641,7 @@ class UserDropdownComponent {
     const players = [...getAllPlayers()].sort((a, b) => a.name.localeCompare(b.name));
 
     const items = players.map((p) => {
-      const color = CLASS_COLORS[p.class] ?? '#8B7D6B';
+      const color = CLASS_COLORS[p.class[p.bestRole]] ?? '#8B7D6B';
       const initials = getInitials(p.name);
       const elo = getDisplayElo(p);
       return `

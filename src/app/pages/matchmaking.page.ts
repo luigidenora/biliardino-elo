@@ -10,11 +10,11 @@
  */
 
 import { API_BASE_URL } from '@/config/env.config';
-import { expectedScore, getMatchPlayerElo } from '@/services/elo.service';
+import { expectedScore } from '@/services/elo.service';
 import { LobbyService } from '@/services/lobby.service';
 import { addMatch } from '@/services/match.service';
 import { findBestMatch } from '@/services/matchmaking.service';
-import { getAllPlayers, getClass, getPlayerById, getRank } from '@/services/player.service';
+import { getAllPlayers, getClass, getPlayerById } from '@/services/player.service';
 import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import haptics from '@/utils/haptics.util';
@@ -245,8 +245,8 @@ class MatchmakingPage extends Component {
   }
 
   private renderGeneratedMatch(match: IMatchProposal): string {
-    const avgEloA = (getMatchPlayerElo(match.teamA.defence, true) + getMatchPlayerElo(match.teamA.attack, false)) / 2;
-    const avgEloB = (getMatchPlayerElo(match.teamB.defence, true) + getMatchPlayerElo(match.teamB.attack, false)) / 2;
+    const avgEloA = ((getPlayerById(match.teamA.defence)?.elo[0] ?? 1000) + (getPlayerById(match.teamA.attack)?.elo[1] ?? 1000)) / 2;
+    const avgEloB = ((getPlayerById(match.teamB.defence)?.elo[0] ?? 1000) + (getPlayerById(match.teamB.attack)?.elo[1] ?? 1000)) / 2;
     const winProbA = expectedScore(avgEloA, avgEloB);
     const winProbB = 1 - winProbA;
 
@@ -377,8 +377,8 @@ class MatchmakingPage extends Component {
     const defInitials = getInitials(defence.name);
     const attInitials = getInitials(attack.name);
 
-    const defRoleElo = Math.round(getMatchPlayerElo(defence, true));
-    const attRoleElo = Math.round(getMatchPlayerElo(attack, false));
+    const defRoleElo = Math.round(defence.elo[0]);
+    const attRoleElo = Math.round(attack.elo[1]);
     const defPercent = Math.round(defence.defence * 100);
     const attPercent = Math.round((1 - attack.defence) * 100);
 
@@ -405,7 +405,7 @@ class MatchmakingPage extends Component {
                 ${defence.name}
               </span>
               <span class="font-ui" style="font-size:10px; color:rgba(255,255,255,0.4)">
-                #${getRank(defence.id)}
+                #${defence.rank[2]}
               </span>
             </div>
             <div class="flex items-center gap-2 mt-0.5">
@@ -430,7 +430,7 @@ class MatchmakingPage extends Component {
                 ${attack.name}
               </span>
               <span class="font-ui" style="font-size:10px; color:rgba(255,255,255,0.4)">
-                #${getRank(attack.id)}
+                #${attack.rank[2]}
               </span>
             </div>
             <div class="flex items-center gap-2 mt-0.5">

@@ -8,11 +8,8 @@
 
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
-import { getAllMatches } from '@/services/match.service';
-import { getAllPlayers, getPlayerById, getRank } from '@/services/player.service';
-import { getPlayerStats, PlayerStats } from '@/services/stats.service';
+import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
-import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { Chart, registerables } from 'chart.js';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
@@ -23,21 +20,17 @@ import { html, rawHtml } from '../utils/html-template.util';
 import template from './player-profile.page.html?raw';
 
 const CLASS_COLORS: Record<number, string> = {
-  0: '#12d9ff', // Squalo
-  1: '#008fff', // Barracuda
-  2: '#FFD700', // Tonno
-  3: '#C0C0C0', // Spigola
-  4: '#8B7D6B' // Sogliola
+  0: '#12d9ff',
+  1: '#008fff',
+  2: '#FFD700',
+  3: '#C0C0C0',
+  4: '#8B7D6B'
 };
 
 function getPlayerColor(player: IPlayer): string {
-  if (player.class >= 0 && CLASS_COLORS[player.class]) {
-    return CLASS_COLORS[player.class];
-  }
-  return '#FFFFFF'; // Default color if class is not defined
+  const cls = player.class[player.bestRole as 0 | 1];
+  return CLASS_COLORS[cls] ?? '#FFFFFF';
 }
-
-// ── Helpers ───────────────────────────────────────────────────
 
 function getRankMedal(rank: number): string {
   if (rank === 1) return '&#x1F947;';
@@ -63,6 +56,7 @@ export default class PlayerProfilePage extends Component {
   private radarChart: Chart | null = null;
   private radarData: number[] = [];
   private gsapCtx: gsap.Context | null = null;
+  private chartRole: 0 | 1 = 0;
 
   override render(): string {
     const id = Number(this.params.id);
@@ -84,65 +78,69 @@ export default class PlayerProfilePage extends Component {
     }
 
     const color = getPlayerColor(player);
-    const rank = getRank(player.id);
-    const displayElo = getDisplayElo(player);
-    const stats = getPlayerStats(id);
-    const className = player.class >= 0 ? getClassName(player.class) : 'Non classificato';
-    const losses = player.matches - player.wins;
-    const winRate = player.matches > 0 ? ((player.wins / player.matches) * 100).toFixed(1) : '0.0';
-    const goalsPerMatch = player.matches > 0 ? (player.goalsFor / player.matches).toFixed(1) : '0.0';
-    const concededPerMatch = player.matches > 0 ? (player.goalsAgainst / player.matches).toFixed(1) : '0.0';
-    const goalRatio = player.goalsAgainst > 0
-      ? (player.goalsFor / player.goalsAgainst).toFixed(2)
-      : player.goalsFor > 0 ? '∞' : '0.00';
+    const bestRole = player.bestRole as 0 | 1;
 
-    const bestElo = stats.bestElo === -Infinity ? displayElo : Math.round(stats.bestElo);
-    const worstElo = stats.worstElo === Infinity ? displayElo : Math.round(stats.worstElo);
-    const eloRange = bestElo - worstElo;
+    // Rank
+    const rankGeneral = player.rank[2];
+    const rankDefence = player.rank[0];
+    const rankAttack = player.rank[1];
 
-    const defenceRolePct = player.matches > 0
-      ? Math.round((stats.matchesAsDefence / player.matches) * 100)
-      : 0;
-    const attackRolePct = player.matches > 0
-      ? Math.round((stats.matchesAsAttack / player.matches) * 100)
-      : 0;
-    const attackWinRate = stats.matchesAsAttack > 0
-      ? Math.round((stats.winsAsAttack / stats.matchesAsAttack) * 100)
-      : 0;
-    const defenceWinRate = stats.matchesAsDefence > 0
-      ? Math.round((stats.winsAsDefence / stats.matchesAsDefence) * 100)
-      : 0;
+    // ELO
+    const displayElo = Math.round(player.elo[bestRole]);
 
-    // ── Radar chart data ──────────────────────────────────
-    const activePlayers = getAllPlayers().filter(p => p.matches > 0);
-    const maxGPM = Math.max(...activePlayers.map(p => p.goalsFor / p.matches), 1);
-    const maxGAM = Math.max(...activePlayers.map(p => p.goalsAgainst / p.matches), 1);
-    const allElos = activePlayers.map(p => p.elo);
-    const minElo = Math.min(...allElos);
-    const maxElo = Math.max(...allElos);
+    // Totals
+    const totalMatches = player.matches[0] + player.matches[1];
+    const totalWins = player.wins[0] + player.wins[1];
+    const totalLosses = totalMatches - totalWins;
+    const winRate = totalMatches > 0 ? ((totalWins / totalMatches) * 100).toFixed(1) : '0.0';
 
-    let winsVsWeaker = 0;
-    let totalWins = 0;
-    for (const m of stats.history) {
-      const teamIdx = (m.teamA.defence === id || m.teamA.attack === id) ? 0 : 1;
-      if (m.deltaELO[teamIdx] > 0) {
-        totalWins++;
-        if (m.teamELO[teamIdx ^ 1] < m.teamELO[teamIdx]) winsVsWeaker++;
-      }
-    }
+    // ELO per ruolo
+    const eloDef = Math.round(player.elo[0]);
+    const eloAtt = Math.round(player.elo[1]);
+    const bestEloDef = Math.round(player.bestElo[0]);
+    const worstEloDef = Math.round(player.worstElo[0]);
+    const bestEloAtt = Math.round(player.bestElo[1]);
+    const worstEloAtt = Math.round(player.worstElo[1]);
 
-    const radarGoalsFatti = stats.matches > 0 ? Math.min((stats.totalGoalsFor / stats.matches) / maxGPM * 100, 100) : 0;
-    const radarGoalsSubiti = stats.matches > 0 ? Math.max((1 - (stats.totalGoalsAgainst / stats.matches) / maxGAM) * 100, 0) : 50;
-    const radarAttack = stats.matchesAsAttack > 0 ? (stats.winsAsAttack / stats.matchesAsAttack) * 100 : 0;
-    const radarDefence = stats.matchesAsDefence > 0 ? (stats.winsAsDefence / stats.matchesAsDefence) * 100 : 0;
-    const radarCostanza = Math.max(100 - stats.worstLossStreak * 10, 0);
-    const radarElo = maxElo > minElo ? ((stats.elo - minElo) / (maxElo - minElo)) * 100 : 50;
-    const radarQualityWins = totalWins > 0 ? Math.max((1 - winsVsWeaker / totalWins) * 100, 0) : 50;
+    // Role stats
+    const winsAsDefence = player.wins[0];
+    const lossesAsDefence = player.matches[0] - player.wins[0];
+    const defenceWinRate = player.matches[0] > 0 ? Math.round((player.wins[0] / player.matches[0]) * 100) : 0;
+    const winsAsAttack = player.wins[1];
+    const lossesAsAttack = player.matches[1] - player.wins[1];
+    const attackWinRate = player.matches[1] > 0 ? Math.round((player.wins[1] / player.matches[1]) * 100) : 0;
+    const defenceRolePct = totalMatches > 0 ? Math.round((player.matches[0] / totalMatches) * 100) : 0;
+    const attackRolePct = totalMatches > 0 ? Math.round((player.matches[1] / totalMatches) * 100) : 0;
 
-    this.radarData = [radarGoalsFatti, radarGoalsSubiti, radarAttack, radarDefence, radarCostanza, radarElo, radarQualityWins];
+    // Goals
+    const totalGoalsFor = player.goalsFor[0] + player.goalsFor[1];
+    const totalGoalsAgainst = player.goalsAgainst[0] + player.goalsAgainst[1];
+    const goalRatio = totalGoalsAgainst > 0
+      ? (totalGoalsFor / totalGoalsAgainst).toFixed(2)
+      : totalGoalsFor > 0 ? '∞' : '0.00';
+    const goalsPerMatch = totalMatches > 0 ? (totalGoalsFor / totalMatches).toFixed(1) : '0.0';
+    const concededPerMatch = totalMatches > 0 ? (totalGoalsAgainst / totalMatches).toFixed(1) : '0.0';
 
-    // Match history (newest first)
-    const playerMatches = stats.history.slice().reverse();
+    // Streaks per role
+    const bestWinStreakDef = player.bestWinStreak[0];
+    const bestWinStreakAtt = player.bestWinStreak[1];
+    const worstLossStreakDef = Math.abs(player.worstLossStreak[0]);
+    const worstLossStreakAtt = Math.abs(player.worstLossStreak[1]);
+
+    // Class
+    const bestClass = player.class[bestRole];
+    const className = bestClass >= 0 ? getClassName(bestClass) : 'Non classificato';
+
+    // Chart default role
+    this.chartRole = bestRole;
+
+    // Radar data
+    this.radarData = this.computeRadarData(player);
+
+    // Match history — combined, sorted chronologically, then reversed (newest first)
+    const combinedHistory = [...player.history[0], ...player.history[1]]
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .reverse();
 
     return html(template, {
       pageHeader: rawHtml(this.renderPageHeader()),
@@ -152,45 +150,70 @@ export default class PlayerProfilePage extends Component {
         color,
         size: 'xxl',
         playerId: id,
-        playerClass: player.class
+        playerClass: player.class[bestRole]
       })),
-      rankBadge: rawHtml(rank <= 3 && rank > 0
-        ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rank)}</span>`
+      rankBadge: rawHtml(rankGeneral <= 3 && rankGeneral > 0
+        ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rankGeneral)}</span>`
         : ''),
       playerName: player.name.toUpperCase(),
       onlineBadge: rawHtml(''),
-      className: `${className.toUpperCase()}`,
-      rank: rank > 0 ? String(rank) : '---',
+      className: className.toUpperCase(),
+      rankWatermark: rankGeneral > 0 ? String(rankGeneral) : '---',
+      rankGeneral: rankGeneral > 0 ? String(rankGeneral) : '---',
+      rankDefence: rankDefence > 0 ? String(rankDefence) : '---',
+      rankAttack: rankAttack > 0 ? String(rankAttack) : '---',
       displayElo,
-      matches: player.matches,
-      wins: player.wins,
-      losses,
+      matches: totalMatches,
+      wins: totalWins,
+      losses: totalLosses,
       winRate,
-      bestElo,
-      worstElo,
-      eloRange,
-      matchesAsDefence: stats.matchesAsDefence,
+      // ELO per ruolo
+      eloDef,
+      eloAtt,
+      bestEloDef,
+      worstEloDef,
+      bestEloAtt,
+      worstEloAtt,
+      // Ruolo
+      matchesAsDefence: player.matches[0],
       defenceRolePct,
-      matchesAsAttack: stats.matchesAsAttack,
+      matchesAsAttack: player.matches[1],
       attackRolePct,
-      winsAsAttack: stats.winsAsAttack,
-      lossesAsAttack: stats.lossesAsAttack,
+      winsAsAttack,
+      lossesAsAttack,
       attackWinRate,
-      winsAsDefence: stats.winsAsDefence,
-      lossesAsDefence: stats.lossesAsDefence,
+      winsAsDefence,
+      lossesAsDefence,
       defenceWinRate,
-      goalsFor: player.goalsFor,
-      goalsAgainst: player.goalsAgainst,
+      // Goals totali
+      goalsFor: totalGoalsFor,
+      goalsAgainst: totalGoalsAgainst,
       goalRatio,
       goalsPerMatch,
       concededPerMatch,
-      bestWinStreak: stats.bestWinStreak,
-      worstLossStreak: stats.worstLossStreak,
-      companionCards: rawHtml(this.renderCompanionCards(stats)),
-      bestWorstMatches: rawHtml(this.renderBestWorstMatches(stats, id)),
-      matchCount: playerMatches.length,
-      tableRows: rawHtml(this.renderTableRows(playerMatches, id)),
-      mobileMatchCards: rawHtml(this.renderMobileMatchCards(playerMatches, id))
+      // Goals per ruolo
+      goalsForDef: player.goalsFor[0],
+      goalsAgainstDef: player.goalsAgainst[0],
+      goalsForAtt: player.goalsFor[1],
+      goalsAgainstAtt: player.goalsAgainst[1],
+      // Streaks
+      bestWinStreakDef,
+      bestWinStreakAtt,
+      worstLossStreakDef,
+      worstLossStreakAtt,
+      // Chart toggle initial styles
+      chartBtnDefStyle: bestRole === 0
+        ? 'background:linear-gradient(135deg,#FFD700,#F0A500);color:var(--color-bg-deep);font-weight:700'
+        : 'background:transparent;color:rgba(255,255,255,0.6)',
+      chartBtnAttStyle: bestRole === 1
+        ? 'background:linear-gradient(135deg,#FFD700,#F0A500);color:var(--color-bg-deep);font-weight:700'
+        : 'background:transparent;color:rgba(255,255,255,0.6)',
+      // Sections
+      companionCards: rawHtml(this.renderCompanionCards(player)),
+      bestWorstMatches: rawHtml(this.renderBestWorstMatches(player, id)),
+      matchCount: combinedHistory.length,
+      tableRows: rawHtml(this.renderTableRows(combinedHistory, id, player)),
+      mobileMatchCards: rawHtml(this.renderMobileMatchCards(combinedHistory, id, player))
     });
   }
 
@@ -215,56 +238,96 @@ export default class PlayerProfilePage extends Component {
     `;
   }
 
-  // ── Companion / Opponent Cards ────────────────────────────
+  // ── Radar data ────────────────────────────────────────────
 
-  private renderCompanionCards(stats: PlayerStats): string {
+  private computeRadarData(player: IPlayer): number[] {
+    const activePlayers = getAllPlayers().filter(p => p.matches[0] + p.matches[1] > 0);
+    const totalMatches = player.matches[0] + player.matches[1];
+    const totalGoalsFor = player.goalsFor[0] + player.goalsFor[1];
+    const totalGoalsAgainst = player.goalsAgainst[0] + player.goalsAgainst[1];
+
+    const maxGPM = Math.max(...activePlayers.map((p) => {
+      const m = p.matches[0] + p.matches[1];
+      return m > 0 ? (p.goalsFor[0] + p.goalsFor[1]) / m : 0;
+    }), 1);
+    const maxGAM = Math.max(...activePlayers.map((p) => {
+      const m = p.matches[0] + p.matches[1];
+      return m > 0 ? (p.goalsAgainst[0] + p.goalsAgainst[1]) / m : 0;
+    }), 1);
+
+    const allElos = activePlayers.map(p => p.elo[p.bestRole as 0 | 1]);
+    const minElo = Math.min(...allElos);
+    const maxElo = Math.max(...allElos);
+
+    const radarGoalsFatti = totalMatches > 0
+      ? Math.min((totalGoalsFor / totalMatches) / maxGPM * 100, 100)
+      : 0;
+    const radarGoalsSubiti = totalMatches > 0
+      ? Math.max((1 - (totalGoalsAgainst / totalMatches) / maxGAM) * 100, 0)
+      : 50;
+    const radarAttack = player.matches[1] > 0
+      ? (player.wins[1] / player.matches[1]) * 100
+      : 0;
+    const radarDefence = player.matches[0] > 0
+      ? (player.wins[0] / player.matches[0]) * 100
+      : 0;
+    const worstStreak = Math.min(player.worstLossStreak[0], player.worstLossStreak[1]);
+    const radarCostanza = Math.max(100 - Math.abs(worstStreak) * 10, 0);
+    const playerElo = player.elo[player.bestRole as 0 | 1];
+    const radarElo = maxElo > minElo ? ((playerElo - minElo) / (maxElo - minElo)) * 100 : 50;
+
+    const allHistory = [...player.history[0], ...player.history[1]];
+    let winsVsWeaker = 0;
+    let totalWins = 0;
+    for (const m of allHistory) {
+      const teamIdx = (m.teamA.defence === player.id || m.teamA.attack === player.id) ? 0 : 1;
+      if (m.deltaELO[teamIdx] > 0) {
+        totalWins++;
+        if (m.teamELO[teamIdx ^ 1] < m.teamELO[teamIdx]) winsVsWeaker++;
+      }
+    }
+    const radarQualityWins = totalWins > 0
+      ? Math.max((1 - winsVsWeaker / totalWins) * 100, 0)
+      : 50;
+
+    return [radarGoalsFatti, radarGoalsSubiti, radarAttack, radarDefence, radarCostanza, radarElo, radarQualityWins];
+  }
+
+  // ── Companion Cards ───────────────────────────────────────
+
+  private renderCompanionCards(player: IPlayer): string {
+    const role = player.bestRole as 0 | 1;
     const cards: { label: string; name: string; subtitle: string; color?: string }[] = [];
 
-    if (stats.bestTeammateCount?.player) {
-      cards.push({
-        label: 'COMPAGNO FREQUENTE',
-        name: stats.bestTeammateCount.player.name,
-        subtitle: `${stats.bestTeammateCount.score} partite`
-      });
+    const bt = player.bestTeammate[role];
+    if (bt) {
+      const p = getPlayerById(bt.player);
+      if (p) cards.push({ label: 'MIGLIOR COMPAGNO', name: p.name, subtitle: `+${Math.round(bt.value)}`, color: 'var(--color-win)' });
     }
-    if (stats.bestTeammate?.player) {
-      cards.push({
-        label: 'MIGLIOR COMPAGNO',
-        name: stats.bestTeammate.player.name,
-        subtitle: `+${Math.round(stats.bestTeammate.score)}`,
-        color: 'var(--color-win)'
-      });
+    const wt = player.worstTeammate[role];
+    if (wt) {
+      const p = getPlayerById(wt.player);
+      if (p) cards.push({ label: 'PEGGIOR COMPAGNO', name: p.name, subtitle: `${Math.round(wt.value)}`, color: 'var(--color-loss)' });
     }
-    if (stats.worstTeammate?.player) {
-      cards.push({
-        label: 'PEGGIOR COMPAGNO',
-        name: stats.worstTeammate.player.name,
-        subtitle: `${Math.round(stats.worstTeammate.score)}`,
-        color: 'var(--color-loss)'
-      });
+    const btc = player.bestTeammateCount[role];
+    if (btc) {
+      const p = getPlayerById(btc.player);
+      if (p) cards.push({ label: 'COMPAGNO FREQUENTE', name: p.name, subtitle: `${Math.round(btc.value)} partite` });
     }
-    if (stats.bestOpponent?.player) {
-      cards.push({
-        label: 'AVVERSARIO PIÙ FORTE',
-        name: stats.bestOpponent.player.name,
-        subtitle: `${Math.round(stats.bestOpponent.score)}`,
-        color: 'var(--color-loss)'
-      });
+    const bo = player.bestOpponent[role];
+    if (bo) {
+      const p = getPlayerById(bo.player);
+      if (p) cards.push({ label: 'AVVERSARIO PIÙ FORTE', name: p.name, subtitle: `${Math.round(bo.value)}`, color: 'var(--color-loss)' });
     }
-    if (stats.worstOpponent?.player) {
-      cards.push({
-        label: 'AVVERSARIO PIÙ SCARSO',
-        name: stats.worstOpponent.player.name,
-        subtitle: `+${Math.round(stats.worstOpponent.score)}`,
-        color: 'var(--color-win)'
-      });
+    const wo = player.worstOpponent[role];
+    if (wo) {
+      const p = getPlayerById(wo.player);
+      if (p) cards.push({ label: 'AVVERSARIO PIÙ SCARSO', name: p.name, subtitle: `+${Math.round(wo.value)}`, color: 'var(--color-win)' });
     }
-    if (stats.avgTeamElo != null && stats.avgOpponentElo != null) {
-      cards.push({
-        label: 'ELO MEDIO',
-        name: `Squadra: ${Math.round(stats.avgTeamElo)}`,
-        subtitle: `Avversari: ${Math.round(stats.avgOpponentElo)}`
-      });
+    const avgTeam = player.avgTeamElo[role];
+    const avgOpp = player.avgOpponentElo[role];
+    if (avgTeam != null && avgOpp != null) {
+      cards.push({ label: 'ELO MEDIO', name: `Squadra: ${Math.round(avgTeam)}`, subtitle: `Avversari: ${Math.round(avgOpp)}` });
     }
 
     return cards.map(c => `
@@ -278,16 +341,23 @@ export default class PlayerProfilePage extends Component {
 
   // ── Best/Worst Matches ────────────────────────────────────
 
-  private renderBestWorstMatches(stats: PlayerStats, playerId: number): string {
-    const items: { label: string; match: IMatch | null; isWin: boolean }[] = [
-      { label: 'MIGLIORE VITTORIA (ELO)', match: stats.bestVictoryByElo, isWin: true },
-      { label: 'PEGGIORE SCONFITTA (ELO)', match: stats.worstDefeatByElo, isWin: false },
-      { label: 'MIGLIORE VITTORIA (PUNTEGGIO)', match: stats.bestVictoryByScore, isWin: true },
-      { label: 'PEGGIORE SCONFITTA (PUNTEGGIO)', match: stats.worstDefeatByScore, isWin: false }
+  private renderBestWorstMatches(player: IPlayer, playerId: number): string {
+    type MS = { match: IMatch; value: number } | null;
+    const pick = (a: MS, b: MS, dir: 'max' | 'min'): MS => {
+      if (!a) return b;
+      if (!b) return a;
+      return dir === 'max' ? (a.value >= b.value ? a : b) : (a.value <= b.value ? a : b);
+    };
+
+    const items: { label: string; ms: MS }[] = [
+      { label: 'MIGLIORE VITTORIA (ELO)', ms: pick(player.bestVictoryByElo[0], player.bestVictoryByElo[1], 'max') },
+      { label: 'PEGGIORE SCONFITTA (ELO)', ms: pick(player.worstDefeatByElo[0], player.worstDefeatByElo[1], 'min') },
+      { label: 'MIGLIORE VITTORIA (PUNTEGGIO)', ms: pick(player.bestVictoryByScore[0], player.bestVictoryByScore[1], 'max') },
+      { label: 'PEGGIORE SCONFITTA (PUNTEGGIO)', ms: pick(player.worstDefeatByScore[0], player.worstDefeatByScore[1], 'min') }
     ];
 
     return items.map((item) => {
-      if (!item.match) {
+      if (!item.ms) {
         return `
           <div class="rounded-lg p-3" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
             <p class="font-ui text-[10px] uppercase tracking-widest mb-1" style="color:var(--color-text-muted)">${item.label}</p>
@@ -296,7 +366,7 @@ export default class PlayerProfilePage extends Component {
         `;
       }
 
-      const m = item.match;
+      const m = item.ms.match;
       const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
       const team = inTeamA ? 0 : 1;
       const delta = Math.round(m.deltaELO[team]);
@@ -328,29 +398,44 @@ export default class PlayerProfilePage extends Component {
     }).join('');
   }
 
-  // ── Desktop Table Rows ────────────────────────────────────
+  // ── ELO start computation ─────────────────────────────────
 
-  private renderTableRows(matches: IMatch[], playerId: number): string {
-    const runningElo = this.computeStartElo(playerId);
-    const allMatches = getAllMatches();
-    const eloHistory: { before: number; after: number; delta: number }[] = [];
+  private computeStartElo(player: IPlayer, role: 0 | 1): number {
+    const history = player.history[role];
+    const currentElo = player.elo[role];
+    let totalDelta = 0;
+    for (let i = 0; i < history.length; i++) {
+      const isTeamA = player.id === history[i].teamA.attack || player.id === history[i].teamA.defence;
+      const delta = isTeamA ? history[i].deltaELO[0] : history[i].deltaELO[1];
+      totalDelta += delta * getBonusK(i);
+    }
+    return currentElo - totalDelta;
+  }
 
-    // Build ELO history in chronological order
-    let elo = runningElo;
-    for (const m of allMatches) {
-      const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
-      const inTeamB = m.teamB.defence === playerId || m.teamB.attack === playerId;
-      if (!inTeamA && !inTeamB) continue;
+  // ── ELO snapshot map per match ────────────────────────────
 
-      const delta = inTeamA ? m.deltaELO[0] : m.deltaELO[1];
-      const before = Math.round(elo);
-      elo += delta;
-      const after = Math.round(elo);
-      eloHistory.push({ before, after, delta });
+  private buildEloMap(player: IPlayer, playerId: number): Map<number, { before: number; after: number }> {
+    const eloMap = new Map<number, { before: number; after: number }>();
+
+    for (const role of [0, 1] as const) {
+      const history = player.history[role];
+      let elo = this.computeStartElo(player, role);
+      for (let i = 0; i < history.length; i++) {
+        const m = history[i];
+        const isTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
+        const delta = (isTeamA ? m.deltaELO[0] : m.deltaELO[1]) * getBonusK(i);
+        eloMap.set(m.id, { before: Math.round(elo), after: Math.round(elo + delta) });
+        elo += delta;
+      }
     }
 
-    // Reverse to match the display order (newest first)
-    const reversedEloHistory = eloHistory.slice().reverse();
+    return eloMap;
+  }
+
+  // ── Desktop Table Rows ────────────────────────────────────
+
+  private renderTableRows(matches: IMatch[], playerId: number, player: IPlayer): string {
+    const eloMap = this.buildEloMap(player, playerId);
 
     return matches.map((m, idx) => {
       const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
@@ -361,21 +446,18 @@ export default class PlayerProfilePage extends Component {
       const deltaColor = roundedDelta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
       const deltaBg = roundedDelta >= 0 ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
 
-      const eloInfo = reversedEloHistory[idx];
+      const eloInfo = eloMap.get(m.id);
       const teamElo = Math.round(m.teamELO[team]);
       const oppTeamElo = Math.round(m.teamELO[team ^ 1]);
-
-      // K-factor multiplier display
       const kMultiplier = teamElo > 0 ? (oppTeamElo / teamElo).toFixed(2) : '1.00';
 
       const myTeam = inTeamA ? m.teamA : m.teamB;
       const oppTeam = inTeamA ? m.teamB : m.teamA;
       const isDefence = myTeam.defence === playerId;
-      const teammate = isDefence
-        ? getPlayerById(myTeam.attack)
-        : getPlayerById(myTeam.defence);
+      const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
       const opp1 = getPlayerById(oppTeam.defence);
       const opp2 = getPlayerById(oppTeam.attack);
+      const teammateElo = teammate ? Math.round(teammate.elo[isDefence ? 1 : 0]) : 0;
 
       const score = inTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
       const totalGoals = m.score[0] + m.score[1];
@@ -401,15 +483,15 @@ export default class PlayerProfilePage extends Component {
           </td>
           <td class="px-3 py-3">
             <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${teammate?.name ?? '?'}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-dim)">(${teammate ? getDisplayElo(teammate) : '?'})</p>
+            <p class="font-body text-[10px]" style="color:var(--color-text-dim)">(${teammateElo})</p>
           </td>
           <td class="px-3 py-3 text-center">
             <p class="font-display text-base" style="color:#fff">${score}</p>
             <p class="font-body text-[10px]" style="color:var(--color-text-dim)">${winPct}%</p>
           </td>
           <td class="px-3 py-3">
-            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${opp1?.name ?? '?'} (${opp1 ? getDisplayElo(opp1) : '?'})</p>
-            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${opp2?.name ?? '?'} (${opp2 ? getDisplayElo(opp2) : '?'})</p>
+            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${opp1?.name ?? '?'} (${opp1 ? Math.round(opp1.elo[0]) : '?'})</p>
+            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${opp2?.name ?? '?'} (${opp2 ? Math.round(opp2.elo[1]) : '?'})</p>
           </td>
           <td class="px-3 py-3 text-center">
             <span class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${oppTeamElo}</span>
@@ -421,25 +503,10 @@ export default class PlayerProfilePage extends Component {
 
   // ── Mobile Match Cards ────────────────────────────────────
 
-  private renderMobileMatchCards(matches: IMatch[], playerId: number): string {
-    let elo = this.computeStartElo(playerId);
-    const allMatches = getAllMatches();
-    const eloHistory: { before: number; after: number }[] = [];
+  private renderMobileMatchCards(matches: IMatch[], playerId: number, player: IPlayer): string {
+    const eloMap = this.buildEloMap(player, playerId);
 
-    for (const m of allMatches) {
-      const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
-      const inTeamB = m.teamB.defence === playerId || m.teamB.attack === playerId;
-      if (!inTeamA && !inTeamB) continue;
-
-      const delta = inTeamA ? m.deltaELO[0] : m.deltaELO[1];
-      const before = Math.round(elo);
-      elo += delta;
-      eloHistory.push({ before, after: Math.round(elo) });
-    }
-
-    const reversedEloHistory = eloHistory.slice().reverse();
-
-    return matches.map((m, idx) => {
+    return matches.map((m) => {
       const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
       const team = inTeamA ? 0 : 1;
       const delta = m.deltaELO[team];
@@ -450,22 +517,17 @@ export default class PlayerProfilePage extends Component {
       const winBg = isWin ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)';
       const deltaBg = isWin ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
 
-      const eloInfo = reversedEloHistory[idx];
-
+      const eloInfo = eloMap.get(m.id);
       const myTeam = inTeamA ? m.teamA : m.teamB;
       const oppTeam = inTeamA ? m.teamB : m.teamA;
       const isDefence = myTeam.defence === playerId;
-      const teammate = isDefence
-        ? getPlayerById(myTeam.attack)
-        : getPlayerById(myTeam.defence);
+      const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
       const opp1 = getPlayerById(oppTeam.defence);
       const opp2 = getPlayerById(oppTeam.attack);
-
       const score = inTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
 
       return `
         <div class="rounded-lg overflow-hidden" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05)">
-          <!-- Top row: result + score + delta -->
           <div class="flex items-center gap-2 px-3 py-2" style="border-bottom:1px solid rgba(255,255,255,0.04)">
             <span class="font-ui text-[9px] font-bold px-1.5 py-0.5 rounded"
                   style="background:${winBg}; color:${winColor}; letter-spacing:0.08em">
@@ -476,7 +538,6 @@ export default class PlayerProfilePage extends Component {
                   style="background:${deltaBg}; color:${winColor}">${deltaSign}${roundedDelta}</span>
             <span class="font-body text-[10px]" style="color:var(--color-text-dim)">${formatFullDate(m.createdAt)}</span>
           </div>
-          <!-- Details grid -->
           <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px]">
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ELO</span>
@@ -500,12 +561,6 @@ export default class PlayerProfilePage extends Component {
     }).join('');
   }
 
-  // ── Compute starting ELO ──────────────────────────────────
-
-  private computeStartElo(playerId: number): number {
-    return getPlayerById(playerId)?.startElo ?? 1000;
-  }
-
   // ── Mount ─────────────────────────────────────────────────
 
   override mount(): void {
@@ -516,23 +571,49 @@ export default class PlayerProfilePage extends Component {
     Chart.register(...registerables);
     refreshIcons();
 
-    this.mountEloChart(id, player);
+    this.chartRole = player.bestRole as 0 | 1;
+    this.mountEloChart(id, player, this.chartRole);
     this.mountRadarChart(id, player);
     this.mountAnimations(player);
+    this.bindChartToggle(id, player);
   }
 
-  private mountEloChart(id: number, player: IPlayer): void {
-    const allMatches = getAllMatches();
-    const labels: string[] = [];
-    const eloData: number[] = [];
-    let currentElo = player.startElo;
+  private bindChartToggle(id: number, player: IPlayer): void {
+    const btns = this.$$<HTMLButtonElement>('.js-chart-role-btn');
+    for (const btn of btns) {
+      btn.addEventListener('click', () => {
+        const role = Number(btn.dataset.role) as 0 | 1;
+        if (this.chartRole === role) return;
+        this.chartRole = role;
 
-    for (const match of allMatches) {
-      const inTeamA = match.teamA.defence === id || match.teamA.attack === id;
-      const inTeamB = match.teamB.defence === id || match.teamB.attack === id;
-      if (!inTeamA && !inTeamB) continue;
+        for (const b of btns) {
+          const isActive = Number(b.dataset.role) === role;
+          b.style.background = isActive ? 'linear-gradient(135deg,#FFD700,#F0A500)' : 'transparent';
+          b.style.color = isActive ? 'var(--color-bg-deep)' : 'rgba(255,255,255,0.6)';
+          b.style.fontWeight = isActive ? '700' : 'normal';
+        }
 
-      const delta = inTeamA ? match.deltaELO[0] : match.deltaELO[1];
+        if (this.chart) {
+          this.chart.destroy();
+          this.chart = null;
+        }
+        this.mountEloChart(id, player, role);
+      });
+    }
+  }
+
+  private mountEloChart(id: number, player: IPlayer, role: 0 | 1): void {
+    const history = player.history[role];
+    const startElo = this.computeStartElo(player, role);
+
+    const labels: string[] = ['Inizio'];
+    const eloData: number[] = [Math.round(startElo)];
+    let currentElo = startElo;
+
+    for (let i = 0; i < history.length; i++) {
+      const match = history[i];
+      const isTeamA = match.teamA.defence === id || match.teamA.attack === id;
+      const delta = (isTeamA ? match.deltaELO[0] : match.deltaELO[1]) * getBonusK(i);
       currentElo += delta;
       labels.push(formatShortDate(match.createdAt));
       eloData.push(Math.round(currentElo));
@@ -663,17 +744,15 @@ export default class PlayerProfilePage extends Component {
   }
 
   private mountAnimations(player: IPlayer): void {
-    const stats = getPlayerStats(Number(this.params.id));
-    const defPct = player.matches > 0 ? Math.round((stats.matchesAsDefence / player.matches) * 100) : 0;
-    const attPct = player.matches > 0 ? Math.round((stats.matchesAsAttack / player.matches) * 100) : 0;
+    const totalMatches = player.matches[0] + player.matches[1];
+    const defPct = totalMatches > 0 ? Math.round((player.matches[0] / totalMatches) * 100) : 0;
+    const attPct = totalMatches > 0 ? Math.round((player.matches[1] / totalMatches) * 100) : 0;
 
     this.gsapCtx = gsap.context(() => {
       gsap.from('#hero-card', { opacity: 0, y: 30, duration: 0.6, ease: 'power3.out' });
       gsap.from('.hero-avatar', { scale: 0.92, opacity: 0, duration: 0.45, ease: 'back.out(1.2)' });
       gsap.from('#elo-stats-row > div', { opacity: 0, y: 20, duration: 0.4, stagger: 0.08, delay: 0.15, ease: 'power2.out' });
       gsap.from('#chart-section', { opacity: 0, y: 25, duration: 0.5, delay: 0.2, ease: 'power3.out' });
-
-      // Role bars
       gsap.to('#defence-role-bar', { width: `${defPct}%`, duration: 0.8, delay: 0.4, ease: 'power2.out' });
       gsap.to('#attack-role-bar', { width: `${attPct}%`, duration: 0.8, delay: 0.5, ease: 'power2.out' });
     }, this.el ?? undefined);

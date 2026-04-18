@@ -153,20 +153,20 @@ class MobileDrawerComponent {
     const id = Number(localStorage.getItem(PLAYER_ID_KEY) ?? 0);
     const player = id ? getPlayerById(id) : null;
     if (!player) return 'Seleziona il tuo player';
-    return `${getDisplayElo(player)} ELO · ${getClassName(player.class)}`;
+    return `${getDisplayElo(player)} ELO · ${getClassName(player.class[player.bestRole])}`;
   }
 
   private buildUserAvatar(): string {
     const id = Number(localStorage.getItem(PLAYER_ID_KEY) ?? 0);
     const player = id ? getPlayerById(id) : null;
     const name = player?.name ?? localStorage.getItem(PLAYER_NAME_KEY) ?? '💀';
-    const color = player ? (CLASS_COLORS[player.class] ?? '#E8A020') : '#E8A020';
+    const color = player ? (CLASS_COLORS[player.class[player.bestRole]] ?? '#E8A020') : '#E8A020';
     return renderPlayerAvatar({
       initials: getInitials(name) || '💀',
       color,
       size: 'sm',
       playerId: player?.id,
-      playerClass: player?.class
+      playerClass: player ? player.class[player.bestRole] : undefined
     });
   }
 

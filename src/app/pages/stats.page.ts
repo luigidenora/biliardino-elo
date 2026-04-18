@@ -11,7 +11,7 @@
  */
 
 import { getAllMatches } from '@/services/match.service';
-import { getAllPlayers, getPlayerById, getRank } from '@/services/player.service';
+import { getAllPlayers, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import gsap from 'gsap';
@@ -172,7 +172,7 @@ class StatsPage extends Component {
         label: 'ELO ATTUALE',
         player: byElo,
         value: String(getDisplayElo(byElo)),
-        sub: `#${getRank(byElo.id)} in classifica`,
+        sub: `#${byElo.rank[2]} in classifica`,
         color: '#FFD700'
       },
       {
