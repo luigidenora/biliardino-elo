@@ -12,7 +12,7 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
-import { getAvgAgainstColor, getAvgForColor, getBestStreakColor, getGoalRatioColor, getOppEloColor, getTeamEloColor, getWinRateColor, getWorstStreakColor } from '@/utils/stats-thresholds.util';
+import { getAvgAgainstColor, getAvgForColor, getGoalRatioColor, getWinRateColor } from '@/utils/stats-thresholds.util';
 import { Chart, registerables } from 'chart.js';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
@@ -156,8 +156,9 @@ export default class PlayerProfilePage extends Component {
     this.chartRole = bestRole;
 
     // Radar data
-    this.radarDataDif = this.computeRadarDataForRole(player, 0);
-    this.radarDataAtt = this.computeRadarDataForRole(player, 1);
+    const radarRanges = this.computeRadarRanges();
+    this.radarDataDif = this.computeRadarDataForRole(player, 0, radarRanges);
+    this.radarDataAtt = this.computeRadarDataForRole(player, 1, radarRanges);
 
     // Match history — combined, sorted chronologically, then reversed (newest first)
     const combinedHistory = [...player.history[0], ...player.history[1]]
@@ -324,8 +325,8 @@ export default class PlayerProfilePage extends Component {
       row2('Massimo', dv(dif.bestElo), av(att.bestElo), dc(win), ac(win)),
       row2('Minimo', dv(dif.worstElo), av(att.worstElo), dc(loss), ac(loss)),
       row2('Classe', dv(dif.currentClass), av(att.currentClass), dc(gold), ac(gold)),
-      row2('ELO Compagno', dv(dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–'), av(att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–'), dc(getTeamEloColor(dif.avgTeamElo)), ac(getTeamEloColor(att.avgTeamElo))),
-      row2('ELO Avversario', dv(dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–'), av(att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–'), dc(getOppEloColor(dif.avgOppElo)), ac(getOppEloColor(att.avgOppElo)))
+      row2('ELO Compagno', dv(dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–'), av(att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–')),
+      row2('ELO Avversario', dv(dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–'), av(att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–'))
     ].join('');
 
     const matchRows = [
@@ -333,8 +334,8 @@ export default class PlayerProfilePage extends Component {
       row('Vittorie', dv(String(dif.wins)), av(String(att.wins)), String(tot.wins), dc(win), ac(win), win),
       row('Sconfitte', dv(String(dif.losses)), av(String(att.losses)), String(tot.losses), dc(loss), ac(loss), loss),
       row('Win Rate', dv(`${dif.winRate}%`), av(`${att.winRate}%`), `${tot.winRate}%`, dc(getWinRateColor(Number(dif.winRate))), ac(getWinRateColor(Number(att.winRate))), getWinRateColor(Number(tot.winRate))),
-      row('Best Streak', dv(dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–'), av(att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–'), '–', dc(getBestStreakColor(dif.bestWinStreak)), ac(getBestStreakColor(att.bestWinStreak))),
-      row('Worst Streak', dv(dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–'), av(att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–'), '–', dc(getWorstStreakColor(dif.worstLossStreak)), ac(getWorstStreakColor(att.worstLossStreak)))
+      row('Best Streak', dv(dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–'), av(att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–'), '–', dc(win), ac(win)),
+      row('Worst Streak', dv(dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–'), av(att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–'), '–', dc(loss), ac(loss))
     ].join('');
 
     const goalRows = [
@@ -347,7 +348,7 @@ export default class PlayerProfilePage extends Component {
 
     return `
       <div id="stats-body" class="p-3" style="border-top:1px solid var(--glass-border)">
-        <div class="grid grid-cols-3 gap-2 items-start">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start">
           ${groupCard('bar-chart-2', 'ELO', colHeader2(), eloRows)}
           ${groupCard('activity', 'Partite', colHeader3(), matchRows)}
           ${groupCard('target', 'Goal', colHeader3(), goalRows)}
@@ -356,21 +357,7 @@ export default class PlayerProfilePage extends Component {
   }
 
   private renderPageHeader(): string {
-    return `
-      <div class="page-header flex items-center gap-3">
-        <i data-lucide="circle-user" style="width:26px;height:26px;color:var(--color-gold)" aria-hidden="true"></i>
-        <div>
-          <h1 class="text-white font-display"
-              style="font-size:clamp(28px,6vw,42px); letter-spacing:0.12em; line-height:1">
-            PROFILO GIOCATORE
-          </h1>
-          <p class="font-ui"
-             style="font-size:12px; color:var(--color-text-muted); letter-spacing:0.1em">
-            STATISTICHE COMPLETE · STAGIONE 2025–2026
-          </p>
-        </div>
-      </div>
-    `;
+    return '';
   }
 
   // ── Relation Table Helpers ────────────────────────────────
@@ -489,50 +476,79 @@ export default class PlayerProfilePage extends Component {
 
   // ── Radar data ────────────────────────────────────────────
 
-  private computeRadarDataForRole(player: IPlayer, role: 0 | 1): number[] {
-    const activePlayers = getAllPlayers().filter(p => p.matches[role] > 0);
-    const allWithSelf = activePlayers.some(p => p.id === player.id) ? activePlayers : [...activePlayers, player];
+  private computeRadarRanges(): {
+    minElo: [number, number]; maxElo: [number, number];
+    minWR: [number, number]; maxWR: [number, number];
+    minGPM: [number, number]; maxGPM: [number, number];
+    minGAM: [number, number]; maxGAM: [number, number];
+    minRatio: [number, number]; maxRatio: [number, number];
+  } {
+    const all = getAllPlayers();
+    const toRatio = (p: IPlayer, r: 0 | 1): number =>
+      p.goalsAgainst[r] > 0 ? p.goalsFor[r] / p.goalsAgainst[r] : (p.goalsFor[r] > 0 ? 999 : 1);
 
-    // ELO — min-max normalize so best player = 100
-    const allElos = allWithSelf.map(p => p.elo[role]);
-    const minElo = Math.min(...allElos);
-    const maxElo = Math.max(...allElos);
-    const eloScore = maxElo > minElo
-      ? ((player.elo[role] - minElo) / (maxElo - minElo)) * 100
-      : 50;
+    const ranges = [0, 1].map((r) => {
+      const pool = all.filter(p => p.matches[r as 0 | 1] >= 10);
+      if (pool.length === 0) return { minElo: 0, maxElo: 0, minWR: 0, maxWR: 0, minGPM: 0, maxGPM: 0, minGAM: 0, maxGAM: 0, minRatio: 0, maxRatio: 0 };
+      const elos = pool.map(p => p.elo[r as 0 | 1]);
+      const wrs = pool.map(p => p.wins[r as 0 | 1] / p.matches[r as 0 | 1]);
+      const gpms = pool.map(p => p.goalsFor[r as 0 | 1] / p.matches[r as 0 | 1]);
+      const gams = pool.map(p => p.goalsAgainst[r as 0 | 1] / p.matches[r as 0 | 1]);
+      const ratios = pool.map(p => toRatio(p, r as 0 | 1));
+      return {
+        minElo: Math.min(...elos), maxElo: Math.max(...elos),
+        minWR: Math.min(...wrs), maxWR: Math.max(...wrs),
+        minGPM: Math.min(...gpms), maxGPM: Math.max(...gpms),
+        minGAM: Math.min(...gams), maxGAM: Math.max(...gams),
+        minRatio: Math.min(...ratios), maxRatio: Math.max(...ratios)
+      };
+    });
 
-    // Win Rate — max among players = 100
-    const allWR = allWithSelf.map(p => p.matches[role] > 0 ? p.wins[role] / p.matches[role] : 0);
-    const maxWR = Math.max(...allWR, 0.01);
+    // Usa il range globale (unione dei due ruoli) come riferimento comune
+    return {
+      minElo: [ranges[0].minElo, ranges[1].minElo],
+      maxElo: [ranges[0].maxElo, ranges[1].maxElo],
+      minWR: [ranges[0].minWR, ranges[1].minWR],
+      maxWR: [ranges[0].maxWR, ranges[1].maxWR],
+      minGPM: [ranges[0].minGPM, ranges[1].minGPM],
+      maxGPM: [ranges[0].maxGPM, ranges[1].maxGPM],
+      minGAM: [ranges[0].minGAM, ranges[1].minGAM],
+      maxGAM: [ranges[0].maxGAM, ranges[1].maxGAM],
+      minRatio: [ranges[0].minRatio, ranges[1].minRatio],
+      maxRatio: [ranges[0].maxRatio, ranges[1].maxRatio]
+    };
+  }
+
+  private computeRadarDataForRole(player: IPlayer, role: 0 | 1, ranges: ReturnType<typeof this.computeRadarRanges>): number[] {
+    const norm = (v: number, min: number, max: number): number =>
+      max > min ? Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100)) : 50;
+
+    const globalMinElo = Math.min(ranges.minElo[0], ranges.minElo[1]);
+    const globalMaxElo = Math.max(ranges.maxElo[0], ranges.maxElo[1]);
+    const globalMinWR = Math.min(ranges.minWR[0], ranges.minWR[1]);
+    const globalMaxWR = Math.max(ranges.maxWR[0], ranges.maxWR[1]);
+    const globalMinGPM = Math.min(ranges.minGPM[0], ranges.minGPM[1]);
+    const globalMaxGPM = Math.max(ranges.maxGPM[0], ranges.maxGPM[1]);
+    const globalMinGAM = Math.min(ranges.minGAM[0], ranges.minGAM[1]);
+    const globalMaxGAM = Math.max(ranges.maxGAM[0], ranges.maxGAM[1]);
+    const globalMinRatio = Math.min(ranges.minRatio[0], ranges.minRatio[1]);
+    const globalMaxRatio = Math.max(ranges.maxRatio[0], ranges.maxRatio[1]);
+
+    const eloScore = norm(player.elo[role], globalMinElo, globalMaxElo);
+
     const myWR = player.matches[role] > 0 ? player.wins[role] / player.matches[role] : 0;
-    const winRate = (myWR / maxWR) * 100;
+    const winRate = norm(myWR, globalMinWR, globalMaxWR);
 
-    // Goal Fatti (avg/match) — max among players = 100
     const avgFor = player.matches[role] > 0 ? player.goalsFor[role] / player.matches[role] : 0;
-    const maxGPM = Math.max(
-      ...allWithSelf.map(p => p.matches[role] > 0 ? p.goalsFor[role] / p.matches[role] : 0),
-      0.01
-    );
-    const goalFattiScore = Math.min((avgFor / maxGPM) * 100, 100);
+    const goalFattiScore = norm(avgFor, globalMinGPM, globalMaxGPM);
 
-    // Goal Subiti (avg/match) — inverted: min among players = 100, max = 0
     const avgAgainst = player.matches[role] > 0 ? player.goalsAgainst[role] / player.matches[role] : 0;
-    const allGAM = allWithSelf.map(p => p.matches[role] > 0 ? p.goalsAgainst[role] / p.matches[role] : 0);
-    const minGAM = Math.min(...allGAM);
-    const maxGAM = Math.max(...allGAM, 0.01);
-    const goalSubitiScore = maxGAM > minGAM
-      ? ((maxGAM - avgAgainst) / (maxGAM - minGAM)) * 100
-      : 50;
+    const goalSubitiScore = norm(globalMaxGAM - avgAgainst + globalMinGAM, globalMinGAM, globalMaxGAM);
 
-    // Goal Ratio — max among players = 100
     const myRatio = player.goalsAgainst[role] > 0
       ? player.goalsFor[role] / player.goalsAgainst[role]
       : (player.goalsFor[role] > 0 ? 999 : 1);
-    const allRatios = allWithSelf.map(p => p.goalsAgainst[role] > 0
-      ? p.goalsFor[role] / p.goalsAgainst[role]
-      : (p.goalsFor[role] > 0 ? 999 : 1));
-    const maxRatio = Math.max(...allRatios, 0.01);
-    const goalRatioScore = Math.min((myRatio / maxRatio) * 100, 100);
+    const goalRatioScore = norm(myRatio, globalMinRatio, globalMaxRatio);
 
     const costanzaScore = this.computeCostanza(player, role);
 
