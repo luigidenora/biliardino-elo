@@ -89,7 +89,8 @@ function linearRegressionPoints(data: number[]): number[] {
 export default class PlayerProfilePage extends Component {
   private chart: Chart | null = null;
   private radarChart: Chart | null = null;
-  private radarData: number[] = [];
+  private radarDataDif: number[] = [];
+  private radarDataAtt: number[] = [];
   private gsapCtx: gsap.Context | null = null;
   private chartRole: 0 | 1 = 0;
   private readonly showMovingAvg = true;
@@ -155,7 +156,8 @@ export default class PlayerProfilePage extends Component {
     this.chartRole = bestRole;
 
     // Radar data
-    this.radarData = this.computeRadarData(player);
+    this.radarDataDif = this.computeRadarDataForRole(player, 0);
+    this.radarDataAtt = this.computeRadarDataForRole(player, 1);
 
     // Match history — combined, sorted chronologically, then reversed (newest first)
     const combinedHistory = [...player.history[0], ...player.history[1]]
@@ -258,6 +260,15 @@ export default class PlayerProfilePage extends Component {
     const att = this.computeStatsData(player, 1);
     const tot = this.computeStatsData(player, 2);
 
+    const noDif = player.matches[0] === 0;
+    const noAtt = player.matches[1] === 0;
+    const muted = 'var(--color-text-muted)';
+    // Wrappers: return '–' and muted color if role has no matches
+    const dv = (val: string): string => noDif ? '–' : val;
+    const av = (val: string): string => noAtt ? '–' : val;
+    const dc = (color: string): string => noDif ? muted : color;
+    const ac = (color: string): string => noAtt ? muted : color;
+
     const ratio = (gf: number, ga: number): string => ga > 0 ? (gf / ga).toFixed(2) : '–';
 
     // Column headers — 2 cols (DIF/ATT) for ELO card, 3 cols (DIF/ATT/TOT) for others
@@ -309,29 +320,29 @@ export default class PlayerProfilePage extends Component {
     const gold = 'var(--color-gold)';
 
     const eloRows = [
-      row2('Attuale', dif.currentElo, att.currentElo),
-      row2('Massimo', dif.bestElo, att.bestElo, win, win),
-      row2('Minimo', dif.worstElo, att.worstElo, loss, loss),
-      row2('Classe', dif.currentClass, att.currentClass, gold, gold),
-      row2('ELO Compagno', dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–', att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–', getTeamEloColor(dif.avgTeamElo), getTeamEloColor(att.avgTeamElo)),
-      row2('ELO Avversario', dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–', att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–', getOppEloColor(dif.avgOppElo), getOppEloColor(att.avgOppElo))
+      row2('Attuale', dv(dif.currentElo), av(att.currentElo)),
+      row2('Massimo', dv(dif.bestElo), av(att.bestElo), dc(win), ac(win)),
+      row2('Minimo', dv(dif.worstElo), av(att.worstElo), dc(loss), ac(loss)),
+      row2('Classe', dv(dif.currentClass), av(att.currentClass), dc(gold), ac(gold)),
+      row2('ELO Compagno', dv(dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–'), av(att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–'), dc(getTeamEloColor(dif.avgTeamElo)), ac(getTeamEloColor(att.avgTeamElo))),
+      row2('ELO Avversario', dv(dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–'), av(att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–'), dc(getOppEloColor(dif.avgOppElo)), ac(getOppEloColor(att.avgOppElo)))
     ].join('');
 
     const matchRows = [
-      row('Partite', String(dif.matches), String(att.matches), String(tot.matches)),
-      row('Vittorie', String(dif.wins), String(att.wins), String(tot.wins), win, win, win),
-      row('Sconfitte', String(dif.losses), String(att.losses), String(tot.losses), loss, loss, loss),
-      row('Win Rate', `${dif.winRate}%`, `${att.winRate}%`, `${tot.winRate}%`, getWinRateColor(Number(dif.winRate)), getWinRateColor(Number(att.winRate)), getWinRateColor(Number(tot.winRate))),
-      row('Best Streak', dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–', att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–', '–', getBestStreakColor(dif.bestWinStreak), getBestStreakColor(att.bestWinStreak)),
-      row('Worst Streak', dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–', att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–', '–', getWorstStreakColor(dif.worstLossStreak), getWorstStreakColor(att.worstLossStreak))
+      row('Partite', dv(String(dif.matches)), av(String(att.matches)), String(tot.matches)),
+      row('Vittorie', dv(String(dif.wins)), av(String(att.wins)), String(tot.wins), dc(win), ac(win), win),
+      row('Sconfitte', dv(String(dif.losses)), av(String(att.losses)), String(tot.losses), dc(loss), ac(loss), loss),
+      row('Win Rate', dv(`${dif.winRate}%`), av(`${att.winRate}%`), `${tot.winRate}%`, dc(getWinRateColor(Number(dif.winRate))), ac(getWinRateColor(Number(att.winRate))), getWinRateColor(Number(tot.winRate))),
+      row('Best Streak', dv(dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–'), av(att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–'), '–', dc(getBestStreakColor(dif.bestWinStreak)), ac(getBestStreakColor(att.bestWinStreak))),
+      row('Worst Streak', dv(dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–'), av(att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–'), '–', dc(getWorstStreakColor(dif.worstLossStreak)), ac(getWorstStreakColor(att.worstLossStreak)))
     ].join('');
 
     const goalRows = [
-      row('Fatti', String(dif.goalsFor), String(att.goalsFor), String(tot.goalsFor), win, win, win),
-      row('Subiti', String(dif.goalsAgainst), String(att.goalsAgainst), String(tot.goalsAgainst), loss, loss, loss),
-      row('Ratio', ratio(dif.goalsFor, dif.goalsAgainst), ratio(att.goalsFor, att.goalsAgainst), ratio(tot.goalsFor, tot.goalsAgainst), getGoalRatioColor(dif.goalsAgainst > 0 ? dif.goalsFor / dif.goalsAgainst : 0), getGoalRatioColor(att.goalsAgainst > 0 ? att.goalsFor / att.goalsAgainst : 0), getGoalRatioColor(tot.goalsAgainst > 0 ? tot.goalsFor / tot.goalsAgainst : 0)),
-      row('Media Fatti', dif.avgFor, att.avgFor, tot.avgFor, getAvgForColor(Number(dif.avgFor)), getAvgForColor(Number(att.avgFor)), getAvgForColor(Number(tot.avgFor))),
-      row('Media Subiti', dif.avgAgainst, att.avgAgainst, tot.avgAgainst, getAvgAgainstColor(Number(dif.avgAgainst)), getAvgAgainstColor(Number(att.avgAgainst)), getAvgAgainstColor(Number(tot.avgAgainst)))
+      row('Fatti', dv(String(dif.goalsFor)), av(String(att.goalsFor)), String(tot.goalsFor), dc(win), ac(win), win),
+      row('Subiti', dv(String(dif.goalsAgainst)), av(String(att.goalsAgainst)), String(tot.goalsAgainst), dc(loss), ac(loss), loss),
+      row('Ratio', dv(ratio(dif.goalsFor, dif.goalsAgainst)), av(ratio(att.goalsFor, att.goalsAgainst)), ratio(tot.goalsFor, tot.goalsAgainst), dc(getGoalRatioColor(dif.goalsAgainst > 0 ? dif.goalsFor / dif.goalsAgainst : 0)), ac(getGoalRatioColor(att.goalsAgainst > 0 ? att.goalsFor / att.goalsAgainst : 0)), getGoalRatioColor(tot.goalsAgainst > 0 ? tot.goalsFor / tot.goalsAgainst : 0)),
+      row('Media Fatti', dv(dif.avgFor), av(att.avgFor), tot.avgFor, dc(getAvgForColor(Number(dif.avgFor))), ac(getAvgForColor(Number(att.avgFor))), getAvgForColor(Number(tot.avgFor))),
+      row('Media Subiti', dv(dif.avgAgainst), av(att.avgAgainst), tot.avgAgainst, dc(getAvgAgainstColor(Number(dif.avgAgainst))), ac(getAvgAgainstColor(Number(att.avgAgainst))), getAvgAgainstColor(Number(tot.avgAgainst)))
     ].join('');
 
     return `
@@ -478,57 +489,101 @@ export default class PlayerProfilePage extends Component {
 
   // ── Radar data ────────────────────────────────────────────
 
-  private computeRadarData(player: IPlayer): number[] {
-    const activePlayers = getAllPlayers().filter(p => p.matches[0] + p.matches[1] > 0);
-    const totalMatches = player.matches[0] + player.matches[1];
-    const totalGoalsFor = player.goalsFor[0] + player.goalsFor[1];
-    const totalGoalsAgainst = player.goalsAgainst[0] + player.goalsAgainst[1];
+  private computeRadarDataForRole(player: IPlayer, role: 0 | 1): number[] {
+    const activePlayers = getAllPlayers().filter(p => p.matches[role] > 0);
+    const allWithSelf = activePlayers.some(p => p.id === player.id) ? activePlayers : [...activePlayers, player];
 
-    const maxGPM = Math.max(...activePlayers.map((p) => {
-      const m = p.matches[0] + p.matches[1];
-      return m > 0 ? (p.goalsFor[0] + p.goalsFor[1]) / m : 0;
-    }), 1);
-    const maxGAM = Math.max(...activePlayers.map((p) => {
-      const m = p.matches[0] + p.matches[1];
-      return m > 0 ? (p.goalsAgainst[0] + p.goalsAgainst[1]) / m : 0;
-    }), 1);
-
-    const allElos = activePlayers.map(p => p.elo[p.bestRole as 0 | 1]);
+    // ELO — min-max normalize so best player = 100
+    const allElos = allWithSelf.map(p => p.elo[role]);
     const minElo = Math.min(...allElos);
     const maxElo = Math.max(...allElos);
-
-    const radarGoalsFatti = totalMatches > 0
-      ? Math.min((totalGoalsFor / totalMatches) / maxGPM * 100, 100)
-      : 0;
-    const radarGoalsSubiti = totalMatches > 0
-      ? Math.max((1 - (totalGoalsAgainst / totalMatches) / maxGAM) * 100, 0)
+    const eloScore = maxElo > minElo
+      ? ((player.elo[role] - minElo) / (maxElo - minElo)) * 100
       : 50;
-    const radarAttack = player.matches[1] > 0
-      ? (player.wins[1] / player.matches[1]) * 100
-      : 0;
-    const radarDefence = player.matches[0] > 0
-      ? (player.wins[0] / player.matches[0]) * 100
-      : 0;
-    const worstStreak = Math.min(player.worstLossStreak[0], player.worstLossStreak[1]);
-    const radarCostanza = Math.max(100 - Math.abs(worstStreak) * 10, 0);
-    const playerElo = player.elo[player.bestRole as 0 | 1];
-    const radarElo = maxElo > minElo ? ((playerElo - minElo) / (maxElo - minElo)) * 100 : 50;
 
-    const allHistory = [...player.history[0], ...player.history[1]];
-    let winsVsWeaker = 0;
-    let totalWins = 0;
-    for (const m of allHistory) {
+    // Win Rate — max among players = 100
+    const allWR = allWithSelf.map(p => p.matches[role] > 0 ? p.wins[role] / p.matches[role] : 0);
+    const maxWR = Math.max(...allWR, 0.01);
+    const myWR = player.matches[role] > 0 ? player.wins[role] / player.matches[role] : 0;
+    const winRate = (myWR / maxWR) * 100;
+
+    // Goal Fatti (avg/match) — max among players = 100
+    const avgFor = player.matches[role] > 0 ? player.goalsFor[role] / player.matches[role] : 0;
+    const maxGPM = Math.max(
+      ...allWithSelf.map(p => p.matches[role] > 0 ? p.goalsFor[role] / p.matches[role] : 0),
+      0.01
+    );
+    const goalFattiScore = Math.min((avgFor / maxGPM) * 100, 100);
+
+    // Goal Subiti (avg/match) — inverted: min among players = 100, max = 0
+    const avgAgainst = player.matches[role] > 0 ? player.goalsAgainst[role] / player.matches[role] : 0;
+    const allGAM = allWithSelf.map(p => p.matches[role] > 0 ? p.goalsAgainst[role] / p.matches[role] : 0);
+    const minGAM = Math.min(...allGAM);
+    const maxGAM = Math.max(...allGAM, 0.01);
+    const goalSubitiScore = maxGAM > minGAM
+      ? ((maxGAM - avgAgainst) / (maxGAM - minGAM)) * 100
+      : 50;
+
+    // Goal Ratio — max among players = 100
+    const myRatio = player.goalsAgainst[role] > 0
+      ? player.goalsFor[role] / player.goalsAgainst[role]
+      : (player.goalsFor[role] > 0 ? 999 : 1);
+    const allRatios = allWithSelf.map(p => p.goalsAgainst[role] > 0
+      ? p.goalsFor[role] / p.goalsAgainst[role]
+      : (p.goalsFor[role] > 0 ? 999 : 1));
+    const maxRatio = Math.max(...allRatios, 0.01);
+    const goalRatioScore = Math.min((myRatio / maxRatio) * 100, 100);
+
+    const costanzaScore = this.computeCostanza(player, role);
+
+    return [eloScore, winRate, goalRatioScore, goalSubitiScore, goalFattiScore, costanzaScore];
+  }
+
+  private computeCostanza(player: IPlayer, role: 0 | 1): number {
+    const history = player.history[role] ?? [];
+    if (history.length < 5) return 50;
+
+    // Ricostruiamo la serie ELO cronologica
+    const sorted = [...history].sort((a, b) => a.createdAt - b.createdAt);
+    let elo = player.elo[role];
+    const raw: number[] = new Array(sorted.length + 1);
+    raw[sorted.length] = elo;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const m = sorted[i];
       const teamIdx = (m.teamA.defence === player.id || m.teamA.attack === player.id) ? 0 : 1;
-      if (m.deltaELO[teamIdx] > 0) {
-        totalWins++;
-        if (m.teamELO[teamIdx ^ 1] < m.teamELO[teamIdx]) winsVsWeaker++;
-      }
+      elo -= m.deltaELO[teamIdx];
+      raw[i] = elo;
     }
-    const radarQualityWins = totalWins > 0
-      ? Math.max((1 - winsVsWeaker / totalWins) * 100, 0)
-      : 50;
 
-    return [radarGoalsFatti, radarGoalsSubiti, radarAttack, radarDefence, radarCostanza, radarElo, radarQualityWins];
+    // Media mobile (window=10) per filtrare il rumore partita-per-partita
+    const W = Math.min(10, Math.floor(raw.length / 2));
+    const smooth: number[] = [];
+    for (let i = 0; i < raw.length; i++) {
+      const start = Math.max(0, i - Math.floor(W / 2));
+      const end = Math.min(raw.length, start + W);
+      const slice = raw.slice(start, end);
+      smooth.push(slice.reduce<number>((s, v) => s + v, 0) / slice.length);
+    }
+
+    // Monotonicity della media mobile: quanto la MA va in una direzione sola.
+    // Sommiamo separatamente i tratti in salita e in discesa della MA.
+    let sumUp = 0;
+    let sumDown = 0;
+    for (let i = 1; i < smooth.length; i++) {
+      const diff = smooth[i] - smooth[i - 1];
+      if (diff > 0) sumUp += diff;
+      else sumDown -= diff;
+    }
+    const totalPath = sumUp + sumDown;
+
+    // Se la MA si muove pochissimo → giocatore stabile → costanza massima
+    if (totalPath < 5) return 100;
+
+    // Frazione del percorso nella direzione dominante: 0.5 = perfettamente sinusoidale, 1.0 = monotòna
+    const dominantFraction = Math.max(sumUp, sumDown) / totalPath;
+
+    // Scaliamo 0.5→0, 1.0→100
+    return Math.max(Math.round((dominantFraction - 0.5) / 0.5 * 100), 0);
   }
 
   // ── Companion Cards ───────────────────────────────────────
@@ -1353,40 +1408,74 @@ export default class PlayerProfilePage extends Component {
     const rCtx = radarCanvas.getContext('2d');
     if (!rCtx) return;
 
-    const color = getPlayerColor(player);
+    const hasDif = player.matches[0] > 0;
+    const hasAtt = player.matches[1] > 0;
+
+    type RadarDataset = {
+      label: string; data: number[]; backgroundColor: string; borderColor: string;
+      borderWidth: number; pointBackgroundColor: string; pointBorderColor: string;
+      pointRadius: number; pointHoverRadius: number;
+    };
+    const datasets: RadarDataset[] = [];
+    if (hasDif) {
+      datasets.push({
+        label: 'Difesa',
+        data: this.radarDataDif,
+        backgroundColor: 'rgba(59,130,246,0.18)',
+        borderColor: 'rgba(59,130,246,0.85)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(59,130,246,0.9)',
+        pointBorderColor: 'rgba(59,130,246,0.9)',
+        pointRadius: 3,
+        pointHoverRadius: 5
+      });
+    }
+    if (hasAtt) {
+      datasets.push({
+        label: 'Attacco',
+        data: this.radarDataAtt,
+        backgroundColor: 'rgba(239,68,68,0.18)',
+        borderColor: 'rgba(239,68,68,0.85)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(239,68,68,0.9)',
+        pointBorderColor: 'rgba(239,68,68,0.9)',
+        pointRadius: 3,
+        pointHoverRadius: 5
+      });
+    }
+
     this.radarChart = new Chart(rCtx, {
       type: 'radar',
       data: {
-        labels: ['Gol Fatti', 'Gol Subiti', 'Attacco', 'Difesa', 'Costanza', 'ELO', 'Qualità Win'],
-        datasets: [{
-          label: player.name,
-          data: this.radarData,
-          backgroundColor: `${color}33`,
-          borderColor: color,
-          borderWidth: 2,
-          pointBackgroundColor: color,
-          pointBorderColor: color,
-          pointRadius: 3,
-          pointHoverRadius: 5
-        }]
+        labels: ['ELO', 'Win Rate', 'Ratio Goal', 'Goal Subiti', 'Goal Fatti', 'Costanza'],
+        datasets
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {
+              color: 'rgba(255,255,255,0.7)',
+              font: { family: 'Oswald', size: 11 },
+              boxWidth: 12,
+              padding: 12
+            }
+          },
           tooltip: {
-            backgroundColor: 'rgba(15, 42, 32, 0.95)',
+            backgroundColor: 'rgba(15,42,32,0.95)',
             titleFont: { family: 'Oswald', size: 11 },
             bodyFont: { family: 'Inter', size: 12 },
             titleColor: 'rgba(255,255,255,0.5)',
-            bodyColor: color,
-            borderColor: `${color}33`,
+            bodyColor: 'rgba(255,255,255,0.85)',
+            borderColor: 'rgba(255,255,255,0.1)',
             borderWidth: 1,
             padding: 10,
-            displayColors: false,
+            displayColors: true,
             callbacks: {
-              label: ctx => `${ctx.parsed.r.toFixed(1)}`
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.r.toFixed(1)}`
             }
           }
         },
