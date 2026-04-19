@@ -913,13 +913,14 @@ export default class PlayerProfilePage extends Component {
     return matches.map((m) => {
       const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
       const team = inTeamA ? 0 : 1;
-      const delta = m.deltaELO[team];
-      const roundedDelta = Math.round(delta);
+      const roundedDelta = Math.round(m.deltaELO[team]);
       const deltaSign = roundedDelta >= 0 ? '+' : '';
       const isWin = roundedDelta >= 0;
       const winColor = isWin ? 'var(--color-win)' : 'var(--color-loss)';
       const winBg = isWin ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)';
       const deltaBg = isWin ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
+      const rowAccent = isWin ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)';
+      const rowBorder = isWin ? 'rgba(74,222,128,0.7)' : 'rgba(248,113,113,0.7)';
 
       const eloInfo = eloMap.get(m.id);
       const myTeam = inTeamA ? m.teamA : m.teamB;
@@ -928,36 +929,54 @@ export default class PlayerProfilePage extends Component {
       const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
       const opp1 = getPlayerById(oppTeam.defence);
       const opp2 = getPlayerById(oppTeam.attack);
+      const teammateElo = teammate ? Math.round(teammate.elo[isDefence ? 1 : 0]) : 0;
       const score = inTeamA ? `${m.score[0]}–${m.score[1]}` : `${m.score[1]}–${m.score[0]}`;
+      const teamElo = Math.round(m.teamELO[team]);
+      const oppTeamElo = Math.round(m.teamELO[team ^ 1]);
+      const myExp = Math.round(m.expectedScore[team] * 100);
+      const oppExp = 100 - myExp;
+      const expBold = (pct: number): boolean => pct >= 60 || pct <= 40;
 
       return `
-        <div class="rounded-xl overflow-hidden" style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border)">
-          <div class="flex items-center gap-2 px-3 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.05)">
-            <span class="font-ui text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                  style="background:${winBg}; color:${winColor}; letter-spacing:0.08em">
-              ${isWin ? 'WIN' : 'LOSS'}
+        <div class="rounded-xl overflow-hidden" style="background:${rowAccent}; border:1px solid var(--glass-border); box-shadow:inset 3px 0 0 ${rowBorder}">
+          <!-- Header row: WIN/LOSS + score + delta ELO -->
+          <div class="flex items-center gap-2 px-3 py-2" style="border-bottom:1px solid rgba(255,255,255,0.05)">
+            <span class="font-ui text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+                  style="background:${winBg}; color:${winColor}; letter-spacing:0.08em">${isWin ? 'WIN' : 'LOSS'}</span>
+            <span class="font-display text-base flex-1" style="color:${winColor}">${score}</span>
+            <span class="font-body text-[10px]" style="color:var(--color-text-muted)">
+              <span class="${expBold(myExp) ? 'font-bold' : ''}" style="color:${winColor}">${myExp}%</span>
+              <span style="color:var(--color-text-muted)"> – </span>
+              <span class="${expBold(oppExp) ? 'font-bold' : ''}" style="color:${isWin ? 'var(--color-loss)' : 'var(--color-win)'}">${oppExp}%</span>
             </span>
-            <span class="font-display text-lg flex-1" style="color:var(--color-text-primary)">${score}</span>
-            <span class="font-ui text-[10px] px-1.5 py-0.5 rounded-md"
+            <span class="font-ui text-[10px] px-1.5 py-0.5 rounded-md shrink-0"
                   style="background:${deltaBg};color:${winColor}">${deltaSign}${roundedDelta}</span>
-            <span class="font-body text-[10px]" style="color:var(--color-text-muted)">${formatFullDate(m.createdAt)}</span>
           </div>
-          <div class="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-2.5 text-[11px]">
+          <!-- Body: 2-col grid -->
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px]">
             <div>
-              <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ELO</span>
-              <p class="font-body" style="color:var(--color-text-secondary)">${eloInfo?.before ?? '?'} → ${eloInfo?.after ?? '?'}</p>
+              <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ELO Δ</span>
+              <p class="font-body text-xs" style="color:var(--color-text-secondary)">${eloInfo?.before ?? '?'} → ${eloInfo?.after ?? '?'}</p>
             </div>
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">RUOLO</span>
-              <div class="mt-1">${renderRoleBadge({ role: isDefence ? 'defence' : 'attack', size: 'lg', showLabel: true })}</div>
+              <div class="mt-0.5">${renderRoleBadge({ role: isDefence ? 'defence' : 'attack', size: 'lg', showLabel: true })}</div>
+            </div>
+            <div>
+              <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ELO TEAM / OPP</span>
+              <p class="font-body text-xs" style="color:var(--color-text-secondary)">${teamElo} <span style="color:var(--color-text-muted)">vs</span> ${oppTeamElo}</p>
             </div>
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">COMPAGNO</span>
-              <p class="font-body" style="color:var(--color-text-secondary)">${teammate?.name ?? '?'}</p>
+              <p class="font-body text-xs" style="color:var(--color-text-secondary)">${teammate?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${teammateElo})</span></p>
             </div>
-            <div>
+            <div class="col-span-2">
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">AVVERSARI</span>
-              <p class="font-body" style="color:var(--color-text-secondary)">${opp1?.name ?? '?'} &amp; ${opp2?.name ?? '?'}</p>
+              <p class="font-body text-xs" style="color:var(--color-text-secondary)">
+                ${opp1?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${opp1 ? Math.round(opp1.elo[0]) : '?'})</span>
+                &nbsp;&amp;&nbsp;
+                ${opp2?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${opp2 ? Math.round(opp2.elo[1]) : '?'})</span>
+              </p>
             </div>
           </div>
         </div>
