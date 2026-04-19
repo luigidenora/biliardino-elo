@@ -28,11 +28,10 @@
             {{rankBadge}}
           </div>
           <div class="flex-1 min-w-0 text-center sm:text-left">
-            <h2 class="font-display tracking-wide mb-1"
+            <h2 class="font-display tracking-wide mb-3"
               style="font-size:clamp(1.75rem,5vw,2.5rem);color:var(--color-text-primary);line-height:1">
               {{playerName}}
             </h2>
-            <p class="font-ui text-xs mb-3" style="color:{{playerColor}};letter-spacing:0.12em">{{className}}</p>
 
             <!-- Rank badges -->
             <div class="flex flex-wrap gap-2 justify-center sm:justify-start" role="list" aria-label="Classifiche">
@@ -57,37 +56,6 @@
             </div>
           </div>
         </div>
-
-        <div class="w-full h-px" style="background:linear-gradient(to right,{{playerColor}}20,transparent)"></div>
-
-        <!-- Quick stats -->
-        <dl class="grid grid-cols-3 sm:grid-cols-5 gap-x-4 gap-y-3 w-full" aria-label="Statistiche rapide">
-          <div class="text-center sm:text-left">
-            <dt class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">ELO
-            </dt>
-            <dd class="font-display text-3xl" style="color:{{eloColor}};line-height:1.1">{{displayElo}}</dd>
-          </div>
-          <div class="text-center sm:text-left">
-            <dt class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-              PARTITE</dt>
-            <dd class="font-display text-xl" style="color:var(--color-text-primary);line-height:1.1">{{matches}}</dd>
-          </div>
-          <div class="text-center sm:text-left">
-            <dt class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-              VITTORIE</dt>
-            <dd class="font-display text-xl" style="color:var(--color-win);line-height:1.1">{{wins}}</dd>
-          </div>
-          <div class="text-center sm:text-left">
-            <dt class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-              SCONFITTE</dt>
-            <dd class="font-display text-xl" style="color:var(--color-loss);line-height:1.1">{{losses}}</dd>
-          </div>
-          <div class="text-center sm:text-left col-span-3 sm:col-span-1">
-            <dt class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">WIN
-              RATE</dt>
-            <dd class="font-display text-xl" style="color:{{winRateColor}};line-height:1.1">{{winRate}}%</dd>
-          </div>
-        </dl>
       </div>
 
       <!-- Right: Radar chart -->
@@ -102,287 +70,129 @@
     </div>
   </article>
 
-  <!-- ── ELO per Ruolo ───────────────────────────────────── -->
-  <div id="elo-stats-row" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <div class="glass-card rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <i data-lucide="shield" class="w-3.5 h-3.5" style="color:#60A5FA" aria-hidden="true"></i>
-        <span class="font-ui text-[10px] uppercase tracking-widest" style="color:#60A5FA">ELO DIFESA</span>
-      </div>
-      <dl class="grid grid-cols-3 gap-2">
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Attuale</dt>
-          <dd class="font-display text-2xl" style="color:#60A5FA">{{eloDef}}</dd>
-        </div>
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Miglior</dt>
-          <dd class="font-display text-2xl" style="color:var(--color-win)">{{bestEloDef}}</dd>
-        </div>
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Peggior</dt>
-          <dd class="font-display text-2xl" style="color:var(--color-loss)">{{worstEloDef}}</dd>
-        </div>
-      </dl>
-    </div>
-    <div class="glass-card rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <i data-lucide="sword" class="w-3.5 h-3.5" style="color:#F87171" aria-hidden="true"></i>
-        <span class="font-ui text-[10px] uppercase tracking-widest" style="color:#F87171">ELO ATTACCO</span>
-      </div>
-      <dl class="grid grid-cols-3 gap-2">
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Attuale</dt>
-          <dd class="font-display text-2xl" style="color:#F87171">{{eloAtt}}</dd>
-        </div>
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Miglior</dt>
-          <dd class="font-display text-2xl" style="color:var(--color-win)">{{bestEloAtt}}</dd>
-        </div>
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Peggior</dt>
-          <dd class="font-display text-2xl" style="color:var(--color-loss)">{{worstEloAtt}}</dd>
-        </div>
-      </dl>
-    </div>
-  </div>
-
   <!-- ── ELO Chart ───────────────────────────────────────── -->
-  <section id="chart-section" class="glass-card rounded-xl" aria-label="Progressione ELO">
-    <div class="flex items-center justify-between p-4 pb-0 flex-wrap gap-2">
-      <div class="flex items-center gap-2">
-        <i data-lucide="trending-up" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
+  <section id="chart-section" class="glass-card rounded-xl overflow-hidden" aria-label="Progressione ELO">
+    <div class="flex items-center gap-3 px-4 py-3.5">
+      <button id="chart-collapse-btn" type="button" class="flex items-center gap-2 flex-1 min-w-0 text-left"
+        aria-expanded="true" aria-controls="chart-body">
+        <i data-lucide="trending-up" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)"
+          aria-hidden="true"></i>
         <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">PROGRESSIONE ELO</span>
-      </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <!-- Role toggle -->
-        <div class="inline-flex gap-0.5 p-0.5 rounded-lg"
-          style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
-          aria-label="Seleziona ruolo">
-          <button type="button" data-role="0"
-            class="js-chart-role-btn px-3 py-1 rounded-md font-ui text-xs transition-all" style="{{chartBtnDefStyle}}"
-            aria-pressed="{{chartRole}}">DIF</button>
-          <button type="button" data-role="1"
-            class="js-chart-role-btn px-3 py-1 rounded-md font-ui text-xs transition-all" style="{{chartBtnAttStyle}}"
-            aria-pressed="false">ATT</button>
-        </div>
-        <!-- Overlay toggles -->
-        <div class="inline-flex gap-1" role="group" aria-label="Overlay grafico">
-          <button id="ma-toggle-btn" type="button" class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
-            style="background:transparent;color:var(--color-text-muted);border:1px solid var(--glass-border)"
-            aria-pressed="false" title="Media mobile a 10 partite">MA10</button>
-          <button id="trend-toggle-btn" type="button" class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
-            style="background:transparent;color:var(--color-text-muted);border:1px solid var(--glass-border)"
-            aria-pressed="false" title="Linea di tendenza">TREND</button>
-        </div>
+        <i id="chart-chevron" data-lucide="chevron-down"
+          class="w-4 h-4 transition-transform duration-200 ml-auto shrink-0" style="color:var(--color-text-muted)"
+          aria-hidden="true"></i>
+      </button>
+      <!-- Role toggle -->
+      <div class="inline-flex gap-0.5 p-0.5 rounded-lg shrink-0"
+        style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
+        aria-label="Seleziona ruolo">
+        <button type="button" data-role="0"
+          class="js-chart-role-btn px-3 py-1 rounded-md font-ui text-xs transition-all" style="{{chartBtnDefStyle}}"
+          aria-pressed="{{chartRole}}">DIF</button>
+        <button type="button" data-role="1"
+          class="js-chart-role-btn px-3 py-1 rounded-md font-ui text-xs transition-all" style="{{chartBtnAttStyle}}"
+          aria-pressed="false">ATT</button>
       </div>
     </div>
-    <div class="relative p-4" style="height:280px">
-      <canvas id="elo-chart" aria-label="Grafico andamento ELO"></canvas>
+    <div id="chart-body" style="border-top:1px solid var(--glass-border)">
+      <div class="relative p-4" style="height:280px">
+        <canvas id="elo-chart" aria-label="Grafico andamento ELO"></canvas>
+      </div>
     </div>
   </section>
 
-  <!-- ── Ruolo + Vittorie per Ruolo ──────────────────────── -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <!-- Ruolo Preferito -->
-    <div class="glass-card rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-4">
-        <i data-lucide="gamepad-2" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
-        <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">DISTRIBUZIONE
-          RUOLO</span>
-      </div>
-      <div class="mb-3">
-        <div class="flex justify-between mb-1.5">
-          <span class="font-body text-xs flex items-center gap-1.5" style="color:var(--color-text-secondary)">
-            <i data-lucide="shield" class="w-3 h-3" style="color:#60A5FA" aria-hidden="true"></i>Difensore</span>
-          <span class="font-body text-xs" style="color:var(--color-text-muted)">{{matchesAsDefence}}
-            ({{defenceRolePct}}%)</span>
-        </div>
-        <div class="w-full h-2 rounded-full" style="background:rgba(255,255,255,0.06)" role="progressbar"
-          aria-valuenow="{{defenceRolePct}}" aria-valuemin="0" aria-valuemax="100">
-          <div id="defence-role-bar" class="h-full rounded-full" style="width:0%;background:#60A5FA"></div>
-        </div>
-      </div>
-      <div>
-        <div class="flex justify-between mb-1.5">
-          <span class="font-body text-xs flex items-center gap-1.5" style="color:var(--color-text-secondary)">
-            <i data-lucide="sword" class="w-3 h-3" style="color:#F87171" aria-hidden="true"></i>Attaccante</span>
-          <span class="font-body text-xs" style="color:var(--color-text-muted)">{{matchesAsAttack}}
-            ({{attackRolePct}}%)</span>
-        </div>
-        <div class="w-full h-2 rounded-full" style="background:rgba(255,255,255,0.06)" role="progressbar"
-          aria-valuenow="{{attackRolePct}}" aria-valuemin="0" aria-valuemax="100">
-          <div id="attack-role-bar" class="h-full rounded-full" style="width:0%;background:var(--color-loss)"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Vittorie per Ruolo -->
-    <div class="glass-card rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-4">
-        <i data-lucide="trophy" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
-        <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">VITTORIE PER
-          RUOLO</span>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-          <p class="font-display text-xl" style="color:var(--color-win)">{{winsAsAttack}}V – {{lossesAsAttack}}S</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">ATTACCO
-          </p>
-          <p class="font-body text-xs mt-1" style="color:{{attackWinRateColor}}">{{attackWinRate}}%</p>
-        </div>
-        <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-          <p class="font-display text-xl" style="color:var(--color-win)">{{winsAsDefence}}V – {{lossesAsDefence}}S</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">DIFESA</p>
-          <p class="font-body text-xs mt-1" style="color:{{defenceWinRateColor}}">{{defenceWinRate}}%</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Statistiche Goal ─────────────────────────────────── -->
-  <section class="glass-card rounded-xl p-4" aria-label="Statistiche goal">
-    <div class="flex items-center gap-2 mb-4">
-      <i data-lucide="target" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
-      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">STATISTICHE GOAL</span>
-    </div>
-    <dl class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-      <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-        <dt class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">FATTI</dt>
-        <dd class="font-display text-2xl" style="color:var(--color-win)">{{goalsFor}}</dd>
-      </div>
-      <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-        <dt class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">SUBITI</dt>
-        <dd class="font-display text-2xl" style="color:var(--color-loss)">{{goalsAgainst}}</dd>
-      </div>
-      <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-        <dt class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">RAPPORTO
-        </dt>
-        <dd class="font-display text-2xl" style="color:{{goalRatioColor}}">{{goalRatio}}</dd>
-      </div>
-      <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-        <dt class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">MEDIA FATTI
-        </dt>
-        <dd class="font-display text-2xl" style="color:#60A5FA">{{goalsPerMatch}}</dd>
-      </div>
-      <div class="rounded-xl p-3 text-center" style="background:rgba(0,0,0,0.2);border:1px solid var(--glass-border)">
-        <dt class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">MEDIA
-          SUBITI</dt>
-        <dd class="font-display text-2xl" style="color:var(--color-loss)">{{concededPerMatch}}</dd>
-      </div>
-    </dl>
-  </section>
-
-  <!-- ── Streak Cards ─────────────────────────────────────── -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <div class="glass-card rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <i data-lucide="zap" class="w-3.5 h-3.5" style="color:var(--color-win)" aria-hidden="true"></i>
-        <span class="font-ui text-[10px] uppercase tracking-widest" style="color:var(--color-gold)">MIGLIORE STRISCIA
-          WIN</span>
-      </div>
-      <dl class="grid grid-cols-2 gap-3">
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Difesa</dt>
-          <dd class="font-display text-3xl" style="color:var(--color-win)">{{bestWinStreakDef}}</dd>
-        </div>
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Attacco</dt>
-          <dd class="font-display text-3xl" style="color:var(--color-win)">{{bestWinStreakAtt}}</dd>
-        </div>
-      </dl>
-    </div>
-    <div class="glass-card rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <i data-lucide="trending-down" class="w-3.5 h-3.5" style="color:var(--color-loss)" aria-hidden="true"></i>
-        <span class="font-ui text-[10px] uppercase tracking-widest" style="color:var(--color-gold)">PEGGIORE STRISCIA
-          LOSS</span>
-      </div>
-      <dl class="grid grid-cols-2 gap-3">
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Difesa</dt>
-          <dd class="font-display text-3xl" style="color:var(--color-loss)">{{worstLossStreakDef}}</dd>
-        </div>
-        <div class="text-center">
-          <dt class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Attacco</dt>
-          <dd class="font-display text-3xl" style="color:var(--color-loss)">{{worstLossStreakAtt}}</dd>
-        </div>
-      </dl>
-    </div>
-  </div>
-
-  <!-- ── Highlights: Compagni & Avversari ─────────────────── -->
-  <section class="glass-card rounded-xl p-4" aria-label="Highlights compagni e avversari">
-    <div class="flex items-center gap-2 mb-4">
-      <i data-lucide="users" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
-      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">HIGHLIGHTS
-        RELAZIONI</span>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {{companionCards}}
-    </div>
-  </section>
-
-  <!-- ── Migliori & Peggiori Partite ──────────────────────── -->
-  <section class="glass-card rounded-xl p-4" aria-label="Record partite">
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div class="flex items-center gap-2">
-        <i data-lucide="medal" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
-        <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">RECORD PARTITE</span>
-      </div>
-      <div class="inline-flex gap-0.5 p-0.5 rounded-lg"
+  <!-- ── Record (collapsible) ─────────────────────────────── -->
+  <section class="glass-card rounded-xl overflow-hidden" aria-label="Record">
+    <!-- Collapsible header -->
+    <div class="flex items-center gap-3 px-4 py-3.5">
+      <button id="record-collapse-btn" type="button" class="flex items-center gap-2 flex-1 min-w-0 text-left"
+        aria-expanded="true" aria-controls="record-body">
+        <i data-lucide="medal" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)" aria-hidden="true"></i>
+        <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">RECORD</span>
+        <i id="record-chevron" data-lucide="chevron-down"
+          class="w-4 h-4 transition-transform duration-200 ml-auto shrink-0" style="color:var(--color-text-muted)"
+          aria-hidden="true"></i>
+      </button>
+      <!-- Shared filter -->
+      <div class="inline-flex gap-0.5 p-0.5 rounded-lg shrink-0"
         style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
         aria-label="Filtra per ruolo">
         <button type="button" data-filter="2"
-          class="js-record-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          class="js-record-shared-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
           style="background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700"
           aria-pressed="true">TOTALE</button>
         <button type="button" data-filter="0"
-          class="js-record-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          class="js-record-shared-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
           style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">DIF</button>
         <button type="button" data-filter="1"
-          class="js-record-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          class="js-record-shared-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
           style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">ATT</button>
       </div>
     </div>
-    <div id="record-matches-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {{bestWorstMatches}}
+
+    <!-- Collapsible body -->
+    <div id="record-body" style="border-top:1px solid var(--glass-border)">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 px-4 pb-4 pt-2">
+
+        <!-- Compagni -->
+        <div aria-label="Compagni e avversari highlights">
+          <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="users" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
+            <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">COMPAGNI</span>
+          </div>
+          <div id="companion-cards-grid" class="grid grid-cols-2 gap-3">
+            {{companionCards}}
+          </div>
+        </div>
+
+        <!-- Partite -->
+        <div aria-label="Record partite">
+          <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="trophy" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
+            <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">PARTITE</span>
+          </div>
+          <div id="record-matches-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {{bestWorstMatches}}
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
   <!-- ── Compagni ──────────────────────────────────────────── -->
   <section class="glass-card rounded-xl overflow-hidden" aria-label="Compagni">
     <!-- Collapsible header -->
-    <button id="tm-collapse-btn" type="button" class="w-full flex items-center justify-between px-4 py-3.5"
-      aria-expanded="true" aria-controls="tm-body">
-      <div class="flex items-center gap-2">
-        <i data-lucide="user-plus" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
+    <div class="flex items-center gap-3 px-4 py-3.5">
+      <button id="tm-collapse-btn" type="button" class="flex items-center gap-2 flex-1 min-w-0 text-left"
+        aria-expanded="true" aria-controls="tm-body">
+        <i data-lucide="user-plus" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)" aria-hidden="true"></i>
         <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">COMPAGNI</span>
         <span class="font-body text-[10px] px-1.5 py-0.5 rounded"
           style="color:var(--color-text-muted);background:rgba(255,255,255,0.05)">{{tmCount}}</span>
+        <i id="tm-chevron" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200 ml-auto shrink-0"
+          style="color:var(--color-text-muted)" aria-hidden="true"></i>
+      </button>
+      <!-- Role filter -->
+      <div class="inline-flex gap-0.5 p-0.5 rounded-lg shrink-0"
+        style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
+        aria-label="Filtra per ruolo">
+        <button type="button" data-filter="2"
+          class="js-tm-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          style="background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700"
+          aria-pressed="true">TOTALE</button>
+        <button type="button" data-filter="0"
+          class="js-tm-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">DIF</button>
+        <button type="button" data-filter="1"
+          class="js-tm-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">ATT</button>
       </div>
-      <i id="tm-chevron" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"
-        style="color:var(--color-text-muted)" aria-hidden="true"></i>
-    </button>
+    </div>
 
     <!-- Collapsible body -->
-    <div id="tm-body">
-      <div class="flex items-center justify-between px-4 pt-1 pb-3 flex-wrap gap-2"
-        style="border-top:1px solid var(--glass-border)">
-        <!-- Role filter -->
-        <div class="inline-flex gap-0.5 p-0.5 rounded-lg"
-          style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
-          aria-label="Filtra per ruolo">
-          <button type="button" data-filter="2"
-            class="js-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
-            style="background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700"
-            aria-pressed="true">TOTALE</button>
-          <button type="button" data-filter="0"
-            class="js-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
-            style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">DIF</button>
-          <button type="button" data-filter="1"
-            class="js-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
-            style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">ATT</button>
-        </div>
+    <div id="tm-body" style="border-top:1px solid var(--glass-border)">
+      <div class="flex items-center justify-start px-4 pt-1 pb-3 flex-wrap gap-2">
         <!-- Sort buttons -->
         <div class="inline-flex gap-1 flex-wrap" role="group" aria-label="Ordina compagni">
           <button type="button" data-tm-sort="name" class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
@@ -391,7 +201,7 @@
           </button>
           <button type="button" data-tm-sort="matches" class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
             style="background:transparent;color:var(--color-text-muted);border:1px solid var(--glass-border)">
-            P<span class="sort-arrow ml-0.5">↕</span>
+            MATCH<span class="sort-arrow ml-0.5">↕</span>
           </button>
           <button type="button" data-tm-sort="winrate" class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
             style="background:transparent;color:var(--color-text-muted);border:1px solid var(--glass-border)">
@@ -413,21 +223,37 @@
   <!-- ── Avversari ───────────────────────────────────────────── -->
   <section class="glass-card rounded-xl overflow-hidden" aria-label="Avversari">
     <!-- Collapsible header -->
-    <button id="opp-collapse-btn" type="button" class="w-full flex items-center justify-between px-4 py-3.5"
-      aria-expanded="true" aria-controls="opp-body">
-      <div class="flex items-center gap-2">
-        <i data-lucide="swords" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
+    <div class="flex items-center gap-3 px-4 py-3.5">
+      <button id="opp-collapse-btn" type="button" class="flex items-center gap-2 flex-1 min-w-0 text-left"
+        aria-expanded="true" aria-controls="opp-body">
+        <i data-lucide="swords" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)" aria-hidden="true"></i>
         <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">AVVERSARI</span>
         <span class="font-body text-[10px] px-1.5 py-0.5 rounded"
           style="color:var(--color-text-muted);background:rgba(255,255,255,0.05)">{{oppCount}}</span>
+        <i id="opp-chevron" data-lucide="chevron-down"
+          class="w-4 h-4 transition-transform duration-200 ml-auto shrink-0" style="color:var(--color-text-muted)"
+          aria-hidden="true"></i>
+      </button>
+      <!-- Role filter -->
+      <div class="inline-flex gap-0.5 p-0.5 rounded-lg shrink-0"
+        style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
+        aria-label="Filtra per ruolo">
+        <button type="button" data-filter="2"
+          class="js-opp-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          style="background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700"
+          aria-pressed="true">TOTALE</button>
+        <button type="button" data-filter="0"
+          class="js-opp-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">DIF</button>
+        <button type="button" data-filter="1"
+          class="js-opp-relation-filter px-3 py-1 rounded-md font-ui text-xs transition-all"
+          style="background:rgba(255,255,255,0.06);color:var(--color-text-muted)" aria-pressed="false">ATT</button>
       </div>
-      <i id="opp-chevron" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"
-        style="color:var(--color-text-muted)" aria-hidden="true"></i>
-    </button>
+    </div>
 
     <!-- Collapsible body -->
-    <div id="opp-body">
-      <div class="flex items-center justify-end px-4 pt-1 pb-3" style="border-top:1px solid var(--glass-border)">
+    <div id="opp-body" style="border-top:1px solid var(--glass-border)">
+      <div class="flex items-center justify-start px-4 pt-1 pb-3 flex-wrap gap-2">
         <!-- Sort buttons -->
         <div class="inline-flex gap-1 flex-wrap" role="group" aria-label="Ordina avversari">
           <button type="button" data-opp-sort="name" class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
@@ -437,7 +263,7 @@
           <button type="button" data-opp-sort="matches"
             class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
             style="background:transparent;color:var(--color-text-muted);border:1px solid var(--glass-border)">
-            P<span class="sort-arrow ml-0.5">↕</span>
+            MATCH<span class="sort-arrow ml-0.5">↕</span>
           </button>
           <button type="button" data-opp-sort="winrate"
             class="px-2.5 py-1 rounded-md font-ui text-[10px] transition-all"
@@ -458,16 +284,21 @@
   </section>
 
   <!-- ── Storico Partite ──────────────────────────────────── -->
-  <section class="glass-card rounded-xl" aria-label="Storico partite">
-    <div class="flex items-center justify-between p-4 pb-3 flex-wrap gap-2">
-      <div class="flex items-center gap-2">
-        <i data-lucide="scroll-text" class="w-3.5 h-3.5" style="color:var(--color-gold)" aria-hidden="true"></i>
+  <section class="glass-card rounded-xl overflow-hidden" aria-label="Storico partite">
+    <div class="flex items-center gap-3 px-4 py-3.5">
+      <button id="history-collapse-btn" type="button" class="flex items-center gap-2 flex-1 min-w-0 text-left"
+        aria-expanded="true" aria-controls="history-body">
+        <i data-lucide="scroll-text" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)"
+          aria-hidden="true"></i>
         <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">STORICO PARTITE</span>
-        <span id="history-match-count" class="font-body text-[10px]" style="color:var(--color-text-dim)">{{matchCount}}
-          partite</span>
-      </div>
+        <span id="history-match-count" class="font-body text-[10px] px-1.5 py-0.5 rounded"
+          style="color:var(--color-text-muted);background:rgba(255,255,255,0.05)">{{matchCount}}</span>
+        <i id="history-chevron" data-lucide="chevron-down"
+          class="w-4 h-4 transition-transform duration-200 ml-auto shrink-0" style="color:var(--color-text-muted)"
+          aria-hidden="true"></i>
+      </button>
       <!-- History role filter -->
-      <div class="inline-flex gap-0.5 p-0.5 rounded-lg"
+      <div class="inline-flex gap-0.5 p-0.5 rounded-lg shrink-0"
         style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border)" role="group"
         aria-label="Filtra storico per ruolo">
         <button type="button" data-filter="2"
@@ -483,426 +314,45 @@
       </div>
     </div>
 
-    <!-- Desktop table -->
-    <div class="hidden md:block overflow-x-auto">
-      <table class="w-full text-left" style="border-collapse:separate;border-spacing:0"
-        aria-label="Tabella storico partite">
-        <thead>
-          <tr style="background:rgba(255,255,255,0.04)">
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
-              style="color:var(--color-text-muted)">DATA</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
-              style="color:var(--color-text-muted)">ELO Δ</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-              style="color:var(--color-text-muted)">RUOLO</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
-              style="color:var(--color-text-muted)">COMPAGNO</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-              style="color:var(--color-text-muted)">RISULTATO</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
-              style="color:var(--color-text-muted)">AVVERSARI</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-              style="color:var(--color-text-muted)">ELO</th>
-            <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-              style="color:var(--color-text-muted)">EXP%</th>
-          </tr>
-        </thead>
-        <tbody id="history-desktop-tbody">
-          {{tableRows}}
-        </tbody>
-      </table>
-    </div>
+    <div id="history-body" style="border-top:1px solid var(--glass-border)">
 
-    <!-- Mobile cards -->
-    <div id="history-mobile-cards" class="md:hidden flex flex-col gap-2 px-4 pb-4">
-      {{mobileMatchCards}}
-    </div>
+      <!-- Desktop table -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-left" style="border-collapse:separate;border-spacing:0"
+          aria-label="Tabella storico partite">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.04)">
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
+                style="color:var(--color-text-muted)">DATA</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
+                style="color:var(--color-text-muted)">ELO Δ</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
+                style="color:var(--color-text-muted)">RUOLO</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
+                style="color:var(--color-text-muted)">COMPAGNO</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
+                style="color:var(--color-text-muted)">RISULTATO</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2"
+                style="color:var(--color-text-muted)">AVVERSARI</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
+                style="color:var(--color-text-muted)">ELO</th>
+              <th scope="col" class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
+                style="color:var(--color-text-muted)">EXP%</th>
+            </tr>
+          </thead>
+          <tbody id="history-desktop-tbody">
+            {{tableRows}}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="history-mobile-cards" class="md:hidden flex flex-col gap-2 px-4 pb-4">
+        {{mobileMatchCards}}
+      </div>
+
+    </div><!-- /history-body -->
   </section>
 
-</div>
-
-
-<!-- ── Page Header ─────────────────────────────────────── -->
-{{pageHeader}}
-
-<!-- ── Hero Card ───────────────────────────────────────── -->
-<div id="hero-card" class="glass-card rounded-2xl p-5 md:p-6 lg:p-10 relative overflow-visible"
-  style="border-color: {{playerColor}}33; box-shadow: 0 0 40px {{playerColor}}15, var(--shadow-card)">
-
-  <!-- Rank watermark background -->
-  <span
-    class="pointer-events-none select-none absolute inset-0 flex items-start justify-end font-display overflow-hidden"
-    style="z-index: 0;
-             background: linear-gradient(180deg, {{playerColor}}15 0%, {{playerColor}}08 40%, transparent 85%);
-             -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-             font-size: clamp(18rem, 40vw, 32rem); line-height: 0.8; padding: 0.02em">
-    #{{rankWatermark}}
-  </span>
-
-  <div class="relative z-10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-5 md:gap-10 items-center">
-
-    <!-- Left: identity + stats -->
-    <div class="flex flex-col items-center md:items-start gap-4">
-
-      <!-- Avatar + Identity row -->
-      <div class="flex flex-col sm:flex-row gap-9 items-center sm:items-start w-full">
-
-        <!-- Avatar (overflow-visible for crown) -->
-        <div class="hero-avatar relative shrink-0 -mt-3 sm:-mt-4 z-20">
-          {{avatar}}
-          {{rankBadge}}
-        </div>
-
-        <!-- Identity -->
-        <div class="flex-1 min-w-0 text-center sm:text-left">
-          <div class="flex flex-col sm:flex-row items-center sm:items-baseline gap-2 mb-1">
-            <h2 class="font-display text-3xl md:text-4xl tracking-wide" style="color:#fff; line-height:1">
-              {{playerName}}
-            </h2>
-            {{onlineBadge}}
-          </div>
-          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-3">
-            <span class="font-ui text-xs" style="color:{{playerColor}}; letter-spacing:0.1em">
-              {{className}}
-            </span>
-          </div>
-
-          <!-- 3 rank badges -->
-          <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
-            <div class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg"
-              style="background:rgba(255,215,0,0.12); border:1px solid rgba(255,215,0,0.3)">
-              <span class="font-ui text-[9px] uppercase tracking-widest"
-                style="color:rgba(255,215,0,0.7)">GENERALE</span>
-              <span class="font-display text-lg leading-none" style="color:#FFD700">#{{rankGeneral}}</span>
-            </div>
-            <div class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg"
-              style="background:rgba(96,165,250,0.10); border:1px solid rgba(96,165,250,0.25)">
-              <span class="font-ui text-[9px] uppercase tracking-widest"
-                style="color:rgba(96,165,250,0.7)">DIFESA</span>
-              <span class="font-display text-lg leading-none" style="color:#60A5FA">#{{rankDefence}}</span>
-            </div>
-            <div class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg"
-              style="background:rgba(248,113,113,0.10); border:1px solid rgba(248,113,113,0.25)">
-              <span class="font-ui text-[9px] uppercase tracking-widest"
-                style="color:rgba(248,113,113,0.7)">ATTACCO</span>
-              <span class="font-display text-lg leading-none" style="color:#F87171">#{{rankAttack}}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Divider -->
-      <div class="w-full h-px" style="background: linear-gradient(to right, {{playerColor}}20, transparent)"></div>
-
-      <!-- Quick Stats -->
-      <div class="hero-stats grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-2 w-full">
-        <div class="text-center sm:text-left">
-          <p class="font-display text-3xl md:text-3xl stat-elo" style="color:{{playerColor}}; line-height:1.1">
-            {{displayElo}}</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-            ELO ATTUALE</p>
-        </div>
-        <div class="text-center sm:text-left">
-          <p class="font-display text-xl stat-matches" style="color:#fff; line-height:1.1">{{matches}}</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-            PARTITE</p>
-        </div>
-        <div class="text-center sm:text-left">
-          <p class="font-display text-xl stat-wins" style="color:var(--color-win); line-height:1.1">{{wins}}</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-            VITTORIE</p>
-        </div>
-        <div class="text-center sm:text-left">
-          <p class="font-display text-xl stat-losses" style="color:var(--color-loss); line-height:1.1">{{losses}}</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-            SCONFITTE</p>
-        </div>
-        <div class="text-center sm:text-left col-span-2 sm:col-span-1">
-          <p class="font-display text-xl stat-winrate" style="color:#fff; line-height:1.1">{{winRate}}%</p>
-          <p class="font-ui text-[10px] uppercase tracking-widest mt-0.5" style="color:var(--color-text-muted)">
-            WIN RATE</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: Radar chart -->
-    <div class="radar-section flex flex-col items-center justify-center shrink-0
-                  pt-2 md:pt-0 md:pl-4 md:border-l" style="border-color: rgba(255,255,255,0.06)">
-      <p class="font-ui text-[10px] uppercase tracking-widest mb-3" style="color:var(--color-text-muted)">
-        RADAR STATS
-      </p>
-      <div style="width:240px; height:240px; position:relative">
-        <canvas id="radar-chart"></canvas>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ── ELO Stats Row (per ruolo) ──────────────────────── -->
-<div id="elo-stats-row" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-  <!-- Difesa -->
-  <div class="glass-card rounded-xl p-4">
-    <div class="flex items-center gap-2 mb-3">
-      <i data-lucide="shield" class="w-3.5 h-3.5" style="color:#60A5FA"></i>
-      <span class="font-ui text-[10px] uppercase tracking-widest" style="color:#60A5FA">ELO DIFESA</span>
-    </div>
-    <div class="grid grid-cols-3 gap-2">
-      <div class="text-center">
-        <p class="font-display text-2xl" style="color:#60A5FA">{{eloDef}}</p>
-        <p class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Attuale</p>
-      </div>
-      <div class="text-center">
-        <p class="font-display text-2xl" style="color:var(--color-win)">{{bestEloDef}}</p>
-        <p class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Miglior</p>
-      </div>
-      <div class="text-center">
-        <p class="font-display text-2xl" style="color:var(--color-loss)">{{worstEloDef}}</p>
-        <p class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Peggior</p>
-      </div>
-    </div>
-  </div>
-  <!-- Attacco -->
-  <div class="glass-card rounded-xl p-4">
-    <div class="flex items-center gap-2 mb-3">
-      <i data-lucide="sword" class="w-3.5 h-3.5" style="color:#F87171"></i>
-      <span class="font-ui text-[10px] uppercase tracking-widest" style="color:#F87171">ELO ATTACCO</span>
-    </div>
-    <div class="grid grid-cols-3 gap-2">
-      <div class="text-center">
-        <p class="font-display text-2xl" style="color:#F87171">{{eloAtt}}</p>
-        <p class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Attuale</p>
-      </div>
-      <div class="text-center">
-        <p class="font-display text-2xl" style="color:var(--color-win)">{{bestEloAtt}}</p>
-        <p class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Miglior</p>
-      </div>
-      <div class="text-center">
-        <p class="font-display text-2xl" style="color:var(--color-loss)">{{worstEloAtt}}</p>
-        <p class="font-body text-[10px] mt-0.5" style="color:var(--color-text-dim)">Peggior</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── ELO Progression Chart ───────────────────────────── -->
-<div id="chart-section" class="glass-card rounded-xl">
-  <div class="flex items-center justify-between p-4 pb-0 flex-wrap gap-2">
-    <div class="flex items-center gap-2">
-      <i data-lucide="trending-up" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">PROGRESSIONE ELO</span>
-    </div>
-    <!-- Toggle DIF / ATT -->
-    <div class="inline-flex gap-1 p-0.5 rounded-lg"
-      style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08)">
-      <button type="button" data-role="0" class="js-chart-role-btn px-3 py-1 rounded-md font-ui text-xs transition-all"
-        style="{{chartBtnDefStyle}}">
-        DIF
-      </button>
-      <button type="button" data-role="1" class="js-chart-role-btn px-3 py-1 rounded-md font-ui text-xs transition-all"
-        style="{{chartBtnAttStyle}}">
-        ATT
-      </button>
-    </div>
-  </div>
-  <div class="relative p-4" style="height:260px">
-    <canvas id="elo-chart"></canvas>
-  </div>
-</div>
-
-<!-- ── Ruolo Preferito + Vittorie per Ruolo ────────────── -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-  <!-- Ruolo Preferito -->
-  <div class="glass-card rounded-xl p-4">
-    <div class="flex items-center gap-2 mb-4">
-      <i data-lucide="gamepad-2" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">RUOLO PREFERITO</span>
-    </div>
-    <!-- Defence bar -->
-    <div class="mb-3">
-      <div class="flex justify-between mb-1">
-        <span class="font-body text-xs flex gap-1" style="color:rgba(255,255,255,0.7)">
-          <i data-lucide="shield" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i> Difensore</span>
-        <span class="font-body text-xs" style="color:rgba(255,255,255,0.5)">{{matchesAsDefence}}
-          ({{defenceRolePct}}%)</span>
-      </div>
-      <div class="w-full h-2 rounded-full" style="background:rgba(255,255,255,0.06)">
-        <div id="defence-role-bar" class="h-full rounded-full" style="width:0%; background:#60A5FA"></div>
-      </div>
-    </div>
-    <!-- Attack bar -->
-    <div>
-      <div class="flex justify-between mb-1">
-        <span class="font-body text-xs flex gap-1" style="color:rgba(255,255,255,0.7)">
-          <i data-lucide="sword" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i> Attaccante</span>
-        <span class="font-body text-xs" style="color:rgba(255,255,255,0.5)">{{matchesAsAttack}}
-          ({{attackRolePct}}%)</span>
-      </div>
-      <div class="w-full h-2 rounded-full" style="background:rgba(255,255,255,0.06)">
-        <div id="attack-role-bar" class="h-full rounded-full" style="width:0%; background:var(--color-loss)"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Vittorie per Ruolo -->
-  <div class="glass-card rounded-xl p-4">
-    <div class="flex items-center gap-2 mb-4">
-      <i data-lucide="trophy" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">VITTORIE PER RUOLO</span>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <div class="rounded-lg p-3 text-center"
-        style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-        <p class="font-display text-xl" style="color:#4ADE80">{{winsAsAttack}}V - {{lossesAsAttack}}S</p>
-        <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">ATTACCO</p>
-        <p class="font-body text-xs mt-1" style="color:rgba(255,255,255,0.5)">{{attackWinRate}}%</p>
-      </div>
-      <div class="rounded-lg p-3 text-center"
-        style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-        <p class="font-display text-xl" style="color:#4ADE80">{{winsAsDefence}}V - {{lossesAsDefence}}S</p>
-        <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">DIFESA</p>
-        <p class="font-body text-xs mt-1" style="color:rgba(255,255,255,0.5)">{{defenceWinRate}}%</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Statistiche Goal ─────────────────────────────────── -->
-<div class="glass-card rounded-xl p-4">
-  <div class="flex items-center gap-2 mb-4">
-    <i data-lucide="target" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-    <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">STATISTICHE GOAL</span>
-  </div>
-  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-    <div class="rounded-lg p-3 text-center" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-      <p class="font-display text-2xl" style="color:var(--color-win)">{{goalsFor}}</p>
-      <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">GOAL FATTI</p>
-    </div>
-    <div class="rounded-lg p-3 text-center" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-      <p class="font-display text-2xl" style="color:var(--color-loss)">{{goalsAgainst}}</p>
-      <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">GOAL SUBITI
-      </p>
-    </div>
-    <div class="rounded-lg p-3 text-center" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-      <p class="font-display text-2xl" style="color:var(--color-gold)">{{goalRatio}}</p>
-      <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">RAPPORTO</p>
-    </div>
-    <div class="rounded-lg p-3 text-center" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-      <p class="font-display text-2xl" style="color:#60A5FA">{{goalsPerMatch}}</p>
-      <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">MEDIA FATTI
-      </p>
-    </div>
-    <div class="rounded-lg p-3 text-center" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-      <p class="font-display text-2xl" style="color:var(--color-loss)">{{concededPerMatch}}</p>
-      <p class="font-ui text-[10px] uppercase tracking-widest mt-1" style="color:var(--color-text-muted)">MEDIA SUBITI
-      </p>
-    </div>
-  </div>
-</div>
-
-<!-- ── Streak Cards ─────────────────────────────────────── -->
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-  <div class="glass-card rounded-xl p-4">
-    <div class="flex items-center gap-2 mb-3">
-      <i data-lucide="zap" class="w-3.5 h-3.5" style="color:var(--color-win)"></i>
-      <span class="font-ui text-[10px] uppercase tracking-widest" style="color:var(--color-gold)">MIGLIORE STRISCIA
-        VITTORIE</span>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <div class="text-center">
-        <p class="font-display text-3xl" style="color:var(--color-win)">{{bestWinStreakDef}}</p>
-        <p class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Difesa</p>
-      </div>
-      <div class="text-center">
-        <p class="font-display text-3xl" style="color:var(--color-win)">{{bestWinStreakAtt}}</p>
-        <p class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Attacco</p>
-      </div>
-    </div>
-  </div>
-  <div class="glass-card rounded-xl p-4">
-    <div class="flex items-center gap-2 mb-3">
-      <i data-lucide="trending-down" class="w-3.5 h-3.5" style="color:var(--color-loss)"></i>
-      <span class="font-ui text-[10px] uppercase tracking-widest" style="color:var(--color-gold)">PEGGIORE STRISCIA
-        SCONFITTE</span>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <div class="text-center">
-        <p class="font-display text-3xl" style="color:var(--color-loss)">{{worstLossStreakDef}}</p>
-        <p class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Difesa</p>
-      </div>
-      <div class="text-center">
-        <p class="font-display text-3xl" style="color:var(--color-loss)">{{worstLossStreakAtt}}</p>
-        <p class="font-body text-[10px] mt-1" style="color:var(--color-text-dim)">Attacco</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Compagni & Avversari ─────────────────────────────── -->
-<div class="glass-card rounded-xl p-4">
-  <div class="flex items-center gap-2 mb-4">
-    <i data-lucide="users" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-    <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">COMPAGNI &amp;
-      AVVERSARI</span>
-  </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-    {{companionCards}}
-  </div>
-</div>
-
-<!-- ── Migliori & Peggiori Partite ──────────────────────── -->
-<div class="glass-card rounded-xl p-4">
-  <div class="flex items-center gap-2 mb-4">
-    <i data-lucide="medal" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-    <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">MIGLIORI &amp; PEGGIORI
-      PARTITE</span>
-  </div>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    {{bestWorstMatches}}
-  </div>
-</div>
-
-<!-- ── Storico Partite (Table) ──────────────────────────── -->
-<div class="glass-card rounded-xl">
-  <div class="flex items-center justify-between p-4 pb-3">
-    <div class="flex items-center gap-2">
-      <i data-lucide="scroll-text" class="w-3.5 h-3.5" style="color:var(--color-gold)"></i>
-      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">STORICO PARTITE</span>
-    </div>
-    <span class="font-body text-[10px]" style="color:var(--color-text-dim)">{{matchCount}} partite</span>
-  </div>
-
-  <!-- Desktop table (hidden on mobile) -->
-  <div class="hidden md:block overflow-x-auto">
-    <table class="w-full text-left" style="border-collapse:separate; border-spacing:0">
-      <thead>
-        <tr style="background:rgba(255,255,255,0.04)">
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2" style="color:var(--color-text-muted)">ELO
-          </th>
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2" style="color:var(--color-text-muted)">ELO
-            TEAM</th>
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-            style="color:var(--color-text-muted)">RUOLO</th>
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2" style="color:var(--color-text-muted)">
-            COMPAGNO</th>
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-            style="color:var(--color-text-muted)">RISULTATO</th>
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2" style="color:var(--color-text-muted)">
-            AVVERSARI</th>
-          <th class="font-ui text-[10px] uppercase tracking-widest px-3 py-2 text-center"
-            style="color:var(--color-text-muted)">ELO OPP</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{tableRows}}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Mobile cards (hidden on desktop) -->
-  <div class="md:hidden flex flex-col gap-2 px-4 pb-4">
-    {{mobileMatchCards}}
-  </div>
-</div>
 
 </div>

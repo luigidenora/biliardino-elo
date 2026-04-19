@@ -65,11 +65,11 @@ function formatFullDate(ms: number): string {
   return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-function movingAverage(data: number[], window: number): (number | null)[] {
+function movingAverage(data: number[], window: number): number[] {
   return data.map((_, i) => {
-    if (i < window - 1) return null;
-    const slice = data.slice(i - window + 1, i + 1);
-    return Math.round(slice.reduce((a, b) => a + b, 0) / window);
+    const actualWindow = Math.min(window, i + 1);
+    const slice = data.slice(i - actualWindow + 1, i + 1);
+    return Math.round(slice.reduce((a, b) => a + b, 0) / actualWindow);
   });
 }
 
@@ -91,15 +91,16 @@ export default class PlayerProfilePage extends Component {
   private radarData: number[] = [];
   private gsapCtx: gsap.Context | null = null;
   private chartRole: 0 | 1 = 0;
-  private showMovingAvg = false;
-  private showTrend = false;
+  private readonly showMovingAvg = true;
+  private readonly showTrend = true;
   private tmSort: RelationSortKey = 'delta';
   private tmSortAsc = false;
   private oppSort: RelationSortKey = 'delta';
   private oppSortAsc = false;
   private relationFilter: RoleFilter = 2;
+  private oppRelationFilter: RoleFilter = 2;
   private historyFilter: RoleFilter = 2;
-  private recordFilter: RoleFilter = 2;
+  private recordSharedFilter: RoleFilter = 2;
 
   // ── Computed stats helpers ────────────────────────────────
 
@@ -115,42 +116,6 @@ export default class PlayerProfilePage extends Component {
         ? 'var(--color-draw)'
         : 'var(--color-loss)';
     return { totalMatches, totalWins, totalLosses, winRate, winRateColor };
-  }
-
-  private computeGoalStats(player: IPlayer, totalMatches: number): { totalGoalsFor: number; totalGoalsAgainst: number; goalRatio: string; goalRatioColor: string; goalsPerMatch: string; concededPerMatch: string } {
-    const totalGoalsFor = player.goalsFor[0] + player.goalsFor[1];
-    const totalGoalsAgainst = player.goalsAgainst[0] + player.goalsAgainst[1];
-    const goalRatioNum = totalGoalsAgainst > 0
-      ? totalGoalsFor / totalGoalsAgainst
-      : (totalGoalsFor > 0 ? Infinity : 0);
-    const goalRatio = totalGoalsAgainst > 0
-      ? (totalGoalsFor / totalGoalsAgainst).toFixed(2)
-      : totalGoalsFor > 0 ? '∞' : '0.00';
-    const goalRatioColor = goalRatioNum > 1
-      ? 'var(--color-win)'
-      : goalRatioNum < 1 ? 'var(--color-loss)' : 'var(--color-draw)';
-    const goalsPerMatch = totalMatches > 0 ? (totalGoalsFor / totalMatches).toFixed(1) : '0.0';
-    const concededPerMatch = totalMatches > 0 ? (totalGoalsAgainst / totalMatches).toFixed(1) : '0.0';
-    return { totalGoalsFor, totalGoalsAgainst, goalRatio, goalRatioColor, goalsPerMatch, concededPerMatch };
-  }
-
-  private computeRoleStats(player: IPlayer, totalMatches: number): { winsAsDefence: number; lossesAsDefence: number; defenceWinRate: number; defenceWinRateColor: string; winsAsAttack: number; lossesAsAttack: number; attackWinRate: number; attackWinRateColor: string; defenceRolePct: number; attackRolePct: number } {
-    const defenceWinRate = player.matches[0] > 0 ? Math.round((player.wins[0] / player.matches[0]) * 100) : 0;
-    const attackWinRate = player.matches[1] > 0 ? Math.round((player.wins[1] / player.matches[1]) * 100) : 0;
-    const defenceRolePct = totalMatches > 0 ? Math.round((player.matches[0] / totalMatches) * 100) : 0;
-    const attackRolePct = totalMatches > 0 ? Math.round((player.matches[1] / totalMatches) * 100) : 0;
-    return {
-      winsAsDefence: player.wins[0],
-      lossesAsDefence: player.matches[0] - player.wins[0],
-      defenceWinRate,
-      defenceWinRateColor: defenceWinRate >= 50 ? 'var(--color-win)' : 'var(--color-loss)',
-      winsAsAttack: player.wins[1],
-      lossesAsAttack: player.matches[1] - player.wins[1],
-      attackWinRate,
-      attackWinRateColor: attackWinRate >= 50 ? 'var(--color-win)' : 'var(--color-loss)',
-      defenceRolePct,
-      attackRolePct
-    };
   }
 
   override render(): string {
@@ -179,26 +144,6 @@ export default class PlayerProfilePage extends Component {
     const rankGeneral = player.rank[2];
     const rankDefence = player.rank[0];
     const rankAttack = player.rank[1];
-
-    // ELO
-    const displayElo = Math.round(player.elo[bestRole]);
-    const eloDef = Math.round(player.elo[0]);
-    const eloAtt = Math.round(player.elo[1]);
-    const bestEloDef = Math.round(player.bestElo[0]);
-    const worstEloDef = Math.round(player.worstElo[0]);
-    const bestEloAtt = Math.round(player.bestElo[1]);
-    const worstEloAtt = Math.round(player.worstElo[1]);
-
-    // Aggregated stats from helpers
-    const { totalMatches, totalWins, totalLosses, winRate, winRateColor } = this.computeBasicStats(player);
-    const { totalGoalsFor, totalGoalsAgainst, goalRatio, goalRatioColor, goalsPerMatch, concededPerMatch } = this.computeGoalStats(player, totalMatches);
-    const { winsAsDefence, lossesAsDefence, defenceWinRate, defenceWinRateColor, winsAsAttack, lossesAsAttack, attackWinRate, attackWinRateColor, defenceRolePct, attackRolePct } = this.computeRoleStats(player, totalMatches);
-
-    // Streaks per role
-    const bestWinStreakDef = player.bestWinStreak[0];
-    const bestWinStreakAtt = player.bestWinStreak[1];
-    const worstLossStreakDef = Math.abs(player.worstLossStreak[0]);
-    const worstLossStreakAtt = Math.abs(player.worstLossStreak[1]);
 
     // Class
     const bestClass = player.class[bestRole];
@@ -238,50 +183,6 @@ export default class PlayerProfilePage extends Component {
       rankGeneral: rankGeneral > 0 ? String(rankGeneral) : '---',
       rankDefence: rankDefence > 0 ? String(rankDefence) : '---',
       rankAttack: rankAttack > 0 ? String(rankAttack) : '---',
-      displayElo,
-      eloColor: color,
-      matches: totalMatches,
-      wins: totalWins,
-      losses: totalLosses,
-      winRate,
-      winRateColor,
-      // ELO per ruolo
-      eloDef,
-      eloAtt,
-      bestEloDef,
-      worstEloDef,
-      bestEloAtt,
-      worstEloAtt,
-      // Ruolo
-      matchesAsDefence: player.matches[0],
-      defenceRolePct,
-      matchesAsAttack: player.matches[1],
-      attackRolePct,
-      winsAsAttack,
-      lossesAsAttack,
-      attackWinRate,
-      attackWinRateColor: attackWinRateColor,
-      winsAsDefence,
-      lossesAsDefence,
-      defenceWinRate,
-      defenceWinRateColor: defenceWinRateColor,
-      // Goals totali
-      goalsFor: totalGoalsFor,
-      goalsAgainst: totalGoalsAgainst,
-      goalRatio,
-      goalRatioColor,
-      goalsPerMatch,
-      concededPerMatch,
-      // Goals per ruolo
-      goalsForDef: player.goalsFor[0],
-      goalsAgainstDef: player.goalsAgainst[0],
-      goalsForAtt: player.goalsFor[1],
-      goalsAgainstAtt: player.goalsAgainst[1],
-      // Streaks
-      bestWinStreakDef,
-      bestWinStreakAtt,
-      worstLossStreakDef,
-      worstLossStreakAtt,
       // Chart toggle initial styles
       chartBtnDefStyle: bestRole === 0
         ? 'background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700'
@@ -290,8 +191,8 @@ export default class PlayerProfilePage extends Component {
         ? 'background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700'
         : 'background:transparent;color:var(--color-text-muted)',
       // Sections
-      companionCards: rawHtml(this.renderCompanionCards(player)),
-      bestWorstMatches: rawHtml(this.renderBestWorstMatches(player, id, this.recordFilter)),
+      companionCards: rawHtml(this.renderCompanionCards(player, this.recordSharedFilter)),
+      bestWorstMatches: rawHtml(this.renderBestWorstMatches(player, id, this.recordSharedFilter)),
       // Relation cards
       teammateTbody: rawHtml(this.renderRelationCards(tmRows)),
       opponentTbody: rawHtml(this.renderRelationCards(oppRows)),
@@ -418,7 +319,7 @@ export default class PlayerProfilePage extends Component {
               <p class="font-display text-sm leading-none"
                  style="color:var(--color-text-primary)">${r.matches}</p>
               <p class="font-ui text-[8px] uppercase"
-                 style="color:var(--color-text-dim)">P</p>
+                 style="color:var(--color-text-dim)">Match</p>
             </div>
             <div>
               <p class="font-display text-sm leading-none"
@@ -495,39 +396,52 @@ export default class PlayerProfilePage extends Component {
 
   // ── Companion Cards ───────────────────────────────────────
 
-  private renderCompanionCards(player: IPlayer): string {
-    const role = player.bestRole as 0 | 1;
-    const cards: { icon: string; label: string; name: string; subtitle: string; color?: string }[] = [];
+  private renderCompanionCards(player: IPlayer, filter: RoleFilter = 2): string {
+    const role: 0 | 1 = filter === 2 ? (player.bestRole as 0 | 1) : filter;
 
-    const addCard = (stat: { player: number; value: number } | null, icon: string, label: string, fmt: (v: number) => string, color?: string): void => {
-      if (!stat) return;
-      const p = getPlayerById(stat.player);
-      if (p) cards.push({ icon, label, name: p.name, subtitle: fmt(stat.value), color });
+    type CardDef = { icon: string; label: string; stat: { player: number; value: number } | null; fmt: (v: number) => string; color?: string };
+
+    // Pairs: [left, right] — rendered as 2-column grid row-by-row
+    const pairs: [CardDef, CardDef][] = [
+      [
+        { icon: 'users', label: 'MIGLIOR COMPAGNO', stat: player.bestTeammate[role], fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' },
+        { icon: 'users', label: 'PEGGIOR COMPAGNO', stat: player.worstTeammate[role], fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' }
+      ],
+      [
+        { icon: 'sword', label: 'MIGLIOR AVVERSARIO', stat: player.bestOpponent[role], fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' },
+        { icon: 'sword', label: 'PEGGIOR AVVERSARIO', stat: player.worstOpponent[role], fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' }
+      ],
+      [
+        { icon: 'user-check', label: 'COMPAGNO FREQ.', stat: player.bestTeammateCount[role], fmt: v => `${Math.round(v)} partite` },
+        { icon: 'repeat', label: 'AVVERSARIO FREQ.', stat: player.bestOpponentCount[role], fmt: v => `${Math.round(v)} partite` }
+      ]
+    ];
+
+    const makeCard = (def: CardDef): string => {
+      const p = def.stat ? getPlayerById(def.stat.player) : null;
+      const avatar = p
+        ? renderPlayerAvatar({ initials: getInitials(p.name), color: getPlayerColor(p), size: 'xs', playerId: p.id, hideFrame: true })
+        : '';
+      const name = p ? p.name : '—';
+      const subtitle = def.stat ? def.fmt(def.stat.value) : '';
+      return `
+        <div class="rounded-xl p-3" style="background:rgba(0,0,0,0.25);border:1px solid var(--glass-border)">
+          <div class="flex items-center gap-1.5 mb-2">
+            <i data-lucide="${def.icon}" style="width:12px;height:12px;color:var(--color-text-muted)" aria-hidden="true"></i>
+            <p class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${def.label}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            ${avatar ? `<div class="shrink-0">${avatar}</div>` : ''}
+            <div class="min-w-0">
+              <p class="font-body text-sm font-medium truncate" style="color:var(--color-text-primary)">${name}</p>
+              <p class="font-body text-xs mt-0.5" style="color:${def.color ?? 'var(--color-text-secondary)'}">${subtitle}</p>
+            </div>
+          </div>
+        </div>
+      `;
     };
 
-    addCard(player.bestTeammate[role], 'users', 'MIGLIOR COMPAGNO', v => `+${Math.round(v)} ELO`, 'var(--color-win)');
-    addCard(player.worstTeammate[role], 'users', 'PEGGIOR COMPAGNO', v => `${Math.round(v)} ELO`, 'var(--color-loss)');
-    addCard(player.bestTeammateCount[role], 'user-check', 'COMPAGNO FREQUENTE', v => `${Math.round(v)} partite`);
-    addCard(player.bestOpponent[role], 'sword', 'AVVERSARIO PIÙ FORTE', v => `${Math.round(v)} ELO`, 'var(--color-loss)');
-    addCard(player.worstOpponent[role], 'sword', 'AVVERSARIO PIÙ DEBOLE', v => `+${Math.round(v)} ELO`, 'var(--color-win)');
-    addCard(player.bestOpponentCount[role], 'repeat', 'AVVERSARIO FREQUENTE', v => `${Math.round(v)} partite`);
-
-    const avgTeam = player.avgTeamElo[role];
-    const avgOpp = player.avgOpponentElo[role];
-    if (avgTeam != null && avgOpp != null) {
-      cards.push({ icon: 'bar-chart-2', label: 'ELO MEDIO', name: `Squadra: ${Math.round(avgTeam)}`, subtitle: `Avversari: ${Math.round(avgOpp)}` });
-    }
-
-    return cards.map(c => `
-      <div class="rounded-xl p-3" style="background:rgba(0,0,0,0.25); border:1px solid var(--glass-border)">
-        <div class="flex items-center gap-1.5 mb-1.5">
-          <i data-lucide="${c.icon}" style="width:12px;height:12px;color:var(--color-text-muted)" aria-hidden="true"></i>
-          <p class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${c.label}</p>
-        </div>
-        <p class="font-body text-sm font-medium" style="color:var(--color-text-primary)">${c.name}</p>
-        <p class="font-body text-xs mt-0.5" style="color:${c.color ?? 'var(--color-text-secondary)'}">${c.subtitle}</p>
-      </div>
-    `).join('');
+    return pairs.map(([left, right]) => makeCard(left) + makeCard(right)).join('');
   }
 
   // ── Best/Worst Matches ────────────────────────────────────
@@ -546,7 +460,7 @@ export default class PlayerProfilePage extends Component {
       { label: 'MIGLIORE VITTORIA (ELO)', icon: 'trending-up', ms: sel(player.bestVictoryByElo, 'max') },
       { label: 'PEGGIORE SCONFITTA (ELO)', icon: 'trending-down', ms: sel(player.worstDefeatByElo, 'min') },
       { label: 'MIGLIORE VITTORIA (SCARTO)', icon: 'award', ms: sel(player.bestVictoryByScore, 'max') },
-      { label: 'PEGGIORE SCONFITTA (SCARTO)', icon: 'alert-circle', ms: sel(player.worstDefeatByScore, 'min') },
+      { label: 'PEGGIORE SCONFITTA (SCARTO)', icon: 'alert-circle', ms: sel(player.worstDefeatByScore, 'max') },
       { label: 'VITTORIA SORPRESA (EXP%)', icon: 'sparkles', ms: sel(player.bestVictoryByPercentage, 'min') },
       { label: 'SCONFITTA DA FAVORITI (EXP%)', icon: 'frown', ms: sel(player.worstDefeatByPercentage, 'max') }
     ];
@@ -622,20 +536,25 @@ export default class PlayerProfilePage extends Component {
     }).join('');
   }
 
-  private bindRecordFilter(id: number, player: IPlayer): void {
-    const btns = this.$$('.js-record-filter') as HTMLButtonElement[];
+  private bindRecordSharedFilter(id: number, player: IPlayer): void {
+    const btns = this.$$('.js-record-shared-filter') as HTMLButtonElement[];
     for (const btn of btns) {
       btn.addEventListener('click', () => {
-        this.recordFilter = Number(btn.dataset.filter) as RoleFilter;
+        this.recordSharedFilter = Number(btn.dataset.filter) as RoleFilter;
         for (const b of btns) {
-          const active = Number(b.dataset.filter) === this.recordFilter;
+          const active = Number(b.dataset.filter) === this.recordSharedFilter;
           b.style.background = active ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'rgba(255,255,255,0.06)';
           b.style.color = active ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
           b.style.fontWeight = active ? '700' : 'normal';
         }
-        const grid = this.$id('record-matches-grid');
-        if (grid) {
-          grid.innerHTML = this.renderBestWorstMatches(player, id, this.recordFilter);
+        const companionGrid = this.$id('companion-cards-grid');
+        if (companionGrid) {
+          companionGrid.innerHTML = this.renderCompanionCards(player, this.recordSharedFilter);
+          refreshIcons();
+        }
+        const matchesGrid = this.$id('record-matches-grid');
+        if (matchesGrid) {
+          matchesGrid.innerHTML = this.renderBestWorstMatches(player, id, this.recordSharedFilter);
           refreshIcons();
         }
       });
@@ -829,13 +748,13 @@ export default class PlayerProfilePage extends Component {
 
     this.chartRole = player.bestRole as 0 | 1;
     this.mountEloChart(id, player, this.chartRole);
+    this.applyChartOverlays(id, player, this.chartRole);
     this.mountRadarChart(id, player);
     this.mountAnimations(player);
     this.bindChartToggle(id, player);
-    this.bindChartOverlays(id, player);
     this.bindRelationTables(player);
     this.bindHistoryFilter(id, player);
-    this.bindRecordFilter(id, player);
+    this.bindRecordSharedFilter(id, player);
   }
 
   private bindChartToggle(id: number, player: IPlayer): void {
@@ -871,35 +790,6 @@ export default class PlayerProfilePage extends Component {
     }
   }
 
-  private bindChartOverlays(id: number, player: IPlayer): void {
-    const maBtn = this.$id('ma-toggle-btn');
-    const trendBtn = this.$id('trend-toggle-btn');
-
-    maBtn?.addEventListener('click', () => {
-      this.showMovingAvg = !this.showMovingAvg;
-      maBtn.style.background = this.showMovingAvg
-        ? 'rgba(96,165,250,0.2)'
-        : 'transparent';
-      maBtn.style.color = this.showMovingAvg
-        ? '#60A5FA'
-        : 'var(--color-text-muted)';
-      maBtn.setAttribute('aria-pressed', String(this.showMovingAvg));
-      this.applyChartOverlays(id, player, this.chartRole);
-    });
-
-    trendBtn?.addEventListener('click', () => {
-      this.showTrend = !this.showTrend;
-      trendBtn.style.background = this.showTrend
-        ? 'rgba(251,191,36,0.2)'
-        : 'transparent';
-      trendBtn.style.color = this.showTrend
-        ? 'var(--color-draw)'
-        : 'var(--color-text-muted)';
-      trendBtn.setAttribute('aria-pressed', String(this.showTrend));
-      this.applyChartOverlays(id, player, this.chartRole);
-    });
-  }
-
   private applyChartOverlays(id: number, player: IPlayer, role: 0 | 1): void {
     if (!this.chart) return;
     const history = player.history[role];
@@ -921,7 +811,7 @@ export default class PlayerProfilePage extends Component {
       const maData = movingAverage(eloData, 10);
       this.chart.data.datasets.push({
         label: 'Media Mobile (10)',
-        data: maData as number[],
+        data: maData,
         borderColor: '#60A5FA',
         backgroundColor: 'transparent',
         borderWidth: 1.5,
@@ -938,7 +828,7 @@ export default class PlayerProfilePage extends Component {
       this.chart.data.datasets.push({
         label: 'Trend',
         data: trendData,
-        borderColor: 'var(--color-draw)',
+        borderColor: '#FB923C',
         backgroundColor: 'transparent',
         borderWidth: 1.5,
         borderDash: [6, 4],
@@ -953,8 +843,8 @@ export default class PlayerProfilePage extends Component {
   }
 
   private bindRelationTables(player: IPlayer): void {
-    // Collapse toggles
-    for (const type of ['tm', 'opp'] as const) {
+    // Collapse toggles (relation tables + record section)
+    for (const type of ['tm', 'opp', 'record', 'chart', 'history'] as const) {
       const btn = this.$id(`${type}-collapse-btn`) as HTMLButtonElement | null;
       const body = this.$id(`${type}-body`);
       const chevron = this.$id(`${type}-chevron`);
@@ -967,18 +857,33 @@ export default class PlayerProfilePage extends Component {
       });
     }
 
-    // Filter buttons (shared between teammates & opponents)
-    const filterBtns = this.$$('.js-relation-filter') as HTMLButtonElement[];
-    for (const btn of filterBtns) {
+    // Filter buttons — teammates
+    const tmFilterBtns = this.$$('.js-tm-relation-filter') as HTMLButtonElement[];
+    for (const btn of tmFilterBtns) {
       btn.addEventListener('click', () => {
         this.relationFilter = Number(btn.dataset.filter) as RoleFilter;
-        for (const b of filterBtns) {
+        for (const b of tmFilterBtns) {
           const isActive = Number(b.dataset.filter) === this.relationFilter;
           b.style.background = isActive ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'rgba(255,255,255,0.06)';
           b.style.color = isActive ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
           b.style.fontWeight = isActive ? '700' : 'normal';
         }
-        this.rerenderRelationTables(player);
+        this.rerenderTeammateTable(player);
+      });
+    }
+
+    // Filter buttons — opponents
+    const oppFilterBtns = this.$$('.js-opp-relation-filter') as HTMLButtonElement[];
+    for (const btn of oppFilterBtns) {
+      btn.addEventListener('click', () => {
+        this.oppRelationFilter = Number(btn.dataset.filter) as RoleFilter;
+        for (const b of oppFilterBtns) {
+          const isActive = Number(b.dataset.filter) === this.oppRelationFilter;
+          b.style.background = isActive ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'rgba(255,255,255,0.06)';
+          b.style.color = isActive ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
+          b.style.fontWeight = isActive ? '700' : 'normal';
+        }
+        this.rerenderOpponentTable(player);
       });
     }
 
@@ -1032,7 +937,7 @@ export default class PlayerProfilePage extends Component {
   private rerenderOpponentTable(player: IPlayer): void {
     const grid = this.$id('opp-grid');
     if (!grid) return;
-    const rows = this.sortRelationRows(this.buildRelationRows(player.opponentsStats, this.relationFilter), this.oppSort, this.oppSortAsc);
+    const rows = this.sortRelationRows(this.buildRelationRows(player.opponentsStats, this.oppRelationFilter), this.oppSort, this.oppSortAsc);
     grid.innerHTML = this.renderRelationCards(rows);
     refreshIcons();
   }
@@ -1344,18 +1249,12 @@ export default class PlayerProfilePage extends Component {
     });
   }
 
-  private mountAnimations(player: IPlayer): void {
-    const totalMatches = player.matches[0] + player.matches[1];
-    const defPct = totalMatches > 0 ? Math.round((player.matches[0] / totalMatches) * 100) : 0;
-    const attPct = totalMatches > 0 ? Math.round((player.matches[1] / totalMatches) * 100) : 0;
-
+  private mountAnimations(_player: IPlayer): void {
     this.gsapCtx = gsap.context(() => {
       gsap.from('#hero-card', { opacity: 0, y: 30, duration: 0.6, ease: 'power3.out' });
       gsap.from('.hero-avatar', { scale: 0.92, opacity: 0, duration: 0.45, ease: 'back.out(1.2)' });
       gsap.from('#elo-stats-row > div', { opacity: 0, y: 20, duration: 0.4, stagger: 0.08, delay: 0.15, ease: 'power2.out' });
       gsap.from('#chart-section', { opacity: 0, y: 25, duration: 0.5, delay: 0.2, ease: 'power3.out' });
-      gsap.to('#defence-role-bar', { width: `${defPct}%`, duration: 0.8, delay: 0.4, ease: 'power2.out' });
-      gsap.to('#attack-role-bar', { width: `${attPct}%`, duration: 0.8, delay: 0.5, ease: 'power2.out' });
     }, this.el ?? undefined);
   }
 
