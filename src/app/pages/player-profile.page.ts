@@ -861,11 +861,15 @@ export default class PlayerProfilePage extends Component {
 
     return matches.map((m, idx) => {
       const c = this.buildRowContext(m, playerId, idx, eloMap);
+      const isWin = c.roundedDelta >= 0;
+      const resultColor = isWin ? 'var(--color-win)' : 'var(--color-loss)';
+      const myExp = c.expectedPct;
+      const oppExp = 100 - myExp;
+      const expBold = (pct: number): boolean => pct >= 60 || pct <= 40;
+      const rowAccent = isWin ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)';
+      const rowBorder = isWin ? 'rgba(74,222,128,0.7)' : 'rgba(248,113,113,0.7)';
       return `
-        <tr style="${c.rowBg}; border-bottom:1px solid rgba(255,255,255,0.04)">
-          <td class="px-3 py-2.5">
-            <span class="font-body text-[10px]" style="color:var(--color-text-muted)">${formatShortDate(m.createdAt)}</span>
-          </td>
+        <tr style="background:${rowAccent}; border-bottom:1px solid rgba(255,255,255,0.04); box-shadow:inset 3px 0 0 ${rowBorder}">
           <td class="px-3 py-2.5">
             <div class="flex items-center gap-1.5">
               <span class="font-body text-xs" style="color:var(--color-text-secondary)">${c.eloInfo?.before ?? '?'} → ${c.eloInfo?.after ?? '?'}</span>
@@ -875,24 +879,26 @@ export default class PlayerProfilePage extends Component {
           <td class="px-3 py-2.5 text-center">
             ${renderRoleBadge({ role: c.isDefence ? 'defence' : 'attack', size: 'base', showPct: false })}
           </td>
-          <td class="px-3 py-2.5">
-            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teammate?.name ?? '?'}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-muted)">(${c.teammateElo})</p>
-          </td>
-          <td class="px-3 py-2.5 text-center">
-            <p class="font-display text-base" style="color:var(--color-text-primary)">${c.score}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-muted)">${c.winPct}%</p>
-          </td>
-          <td class="px-3 py-2.5">
-            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp1?.name ?? '?'} (${c.opp1 ? Math.round(c.opp1.elo[0]) : '?'})</p>
-            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp2?.name ?? '?'} (${c.opp2 ? Math.round(c.opp2.elo[1]) : '?'})</p>
-          </td>
           <td class="px-3 py-2.5 text-center">
             <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teamElo}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-muted)">opp: ${c.oppTeamElo}</p>
+          </td>
+          <td class="px-3 py-2.5">
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teammate?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${c.teammateElo})</span></p>
           </td>
           <td class="px-3 py-2.5 text-center">
-            <span class="font-body text-xs" style="color:var(--color-text-muted)">${c.expectedPct}%</span>
+            <p class="font-display text-base" style="color:${resultColor}">${c.score}</p>
+            <div class="flex items-center justify-center gap-1 mt-0.5">
+              <span class="${expBold(myExp) ? 'font-bold' : 'font-body'} text-[10px]" style="color:${resultColor}">${myExp}%</span>
+              <span class="font-body text-[10px]" style="color:var(--color-text-muted)">–</span>
+              <span class="${expBold(oppExp) ? 'font-bold' : 'font-body'} text-[10px]" style="color:${isWin ? 'var(--color-loss)' : 'var(--color-win)'}">${oppExp}%</span>
+            </div>
+          </td>
+          <td class="px-3 py-2.5">
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp1?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${c.opp1 ? Math.round(c.opp1.elo[0]) : '?'})</span></p>
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp2?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${c.opp2 ? Math.round(c.opp2.elo[1]) : '?'})</span></p>
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.oppTeamElo}</p>
           </td>
         </tr>
       `;
@@ -923,7 +929,6 @@ export default class PlayerProfilePage extends Component {
       const opp1 = getPlayerById(oppTeam.defence);
       const opp2 = getPlayerById(oppTeam.attack);
       const score = inTeamA ? `${m.score[0]}–${m.score[1]}` : `${m.score[1]}–${m.score[0]}`;
-      const expectedPct = Math.round(m.expectedScore[team] * 100);
 
       return `
         <div class="rounded-xl overflow-hidden" style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border)">
@@ -953,10 +958,6 @@ export default class PlayerProfilePage extends Component {
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">AVVERSARI</span>
               <p class="font-body" style="color:var(--color-text-secondary)">${opp1?.name ?? '?'} &amp; ${opp2?.name ?? '?'}</p>
-            </div>
-            <div>
-              <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ATTESO</span>
-              <p class="font-body" style="color:var(--color-text-muted)">${expectedPct}%</p>
             </div>
           </div>
         </div>
@@ -1442,8 +1443,8 @@ export default class PlayerProfilePage extends Component {
         borderWidth: 2,
         pointBackgroundColor: 'rgba(59,130,246,0.9)',
         pointBorderColor: 'rgba(59,130,246,0.9)',
-        pointRadius: 3,
-        pointHoverRadius: 5
+        pointRadius: 1,
+        pointHoverRadius: 3
       });
     }
     if (hasAtt) {
@@ -1455,8 +1456,8 @@ export default class PlayerProfilePage extends Component {
         borderWidth: 2,
         pointBackgroundColor: 'rgba(239,68,68,0.9)',
         pointBorderColor: 'rgba(239,68,68,0.9)',
-        pointRadius: 3,
-        pointHoverRadius: 5
+        pointRadius: 1,
+        pointHoverRadius: 3
       });
     }
 
