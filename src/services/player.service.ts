@@ -23,7 +23,7 @@ export function getAllPlayers(): IPlayer[] {
   return playersArray;
 }
 
-export function createPlayerDTO(name: string, elo: number, role: -1 | 0 | 1): IPlayerDTO {
+export function createPlayerDTO(name: string, role: -1 | 0 | 1): IPlayerDTO {
   const lastId = Math.max(...playersArray.map(p => p.id));
   const id = Number.isFinite(lastId) ? lastId + 1 : 1;
 
