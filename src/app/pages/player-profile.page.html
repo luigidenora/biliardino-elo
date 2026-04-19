@@ -71,6 +71,20 @@
   </article>
 
   <!-- ── ELO Chart ───────────────────────────────────────── -->
+  <!-- ── Statistiche ───────────────────────────────────── -->
+  <section class="glass-card rounded-xl overflow-hidden" aria-label="Statistiche">
+    <button id="stats-collapse-btn" type="button" class="flex items-center gap-2 w-full px-4 py-3.5 text-left"
+      aria-expanded="true" aria-controls="stats-body">
+      <i data-lucide="chart-bar" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)" aria-hidden="true"></i>
+      <span class="font-ui text-xs uppercase tracking-widest" style="color:var(--color-gold)">STATISTICHE</span>
+      <i id="stats-chevron" data-lucide="chevron-down"
+        class="w-4 h-4 transition-transform duration-200 ml-auto shrink-0" style="color:var(--color-text-muted)"
+        aria-hidden="true"></i>
+    </button>
+    {{statsSection}}
+  </section>
+
+  <!-- ── ELO Chart ───────────────────────────────────────── -->
   <section id="chart-section" class="glass-card rounded-xl overflow-hidden" aria-label="Progressione ELO">
     <div class="flex items-center gap-3 px-4 py-3.5">
       <button id="chart-collapse-btn" type="button" class="flex items-center gap-2 flex-1 min-w-0 text-left"

@@ -101,6 +101,7 @@ export default class PlayerProfilePage extends Component {
   private oppRelationFilter: RoleFilter = 2;
   private historyFilter: RoleFilter = 2;
   private recordSharedFilter: RoleFilter = 2;
+  private statsFilter: RoleFilter = 2;
 
   // ── Computed stats helpers ────────────────────────────────
 
@@ -201,11 +202,148 @@ export default class PlayerProfilePage extends Component {
       // History
       matchCount: combinedHistory.length,
       tableRows: rawHtml(this.renderTableRows(combinedHistory, id, player)),
-      mobileMatchCards: rawHtml(this.renderMobileMatchCards(combinedHistory, id, player))
+      mobileMatchCards: rawHtml(this.renderMobileMatchCards(combinedHistory, id, player)),
+      statsSection: rawHtml(this.renderStatsSection(player, this.statsFilter))
     });
   }
 
   // ── Page Header ───────────────────────────────────────────
+
+  private computeStatsData(player: IPlayer, filter: RoleFilter): {
+    matches: number; wins: number; losses: number; winRate: string; wrColor: string;
+    goalsFor: number; goalsAgainst: number; avgFor: string; avgAgainst: string;
+    currentElo: string; bestElo: string; worstElo: string; currentClass: string; bestClass: string;
+    bestWinStreak: number; worstLossStreak: number; currentStreak: number;
+    avgTeamElo: number; avgOppElo: number;
+  } {
+    const roles: Array<0 | 1> = filter === 2 ? [0, 1] : [filter];
+    const sumR = (arr: [number, number]): number => roles.reduce<number>((s, r) => s + arr[r], 0);
+
+    const matches = sumR(player.matches);
+    const wins = sumR(player.wins);
+    const losses = matches - wins;
+    const winRate = matches > 0 ? ((wins / matches) * 100).toFixed(1) : '–';
+    const goalsFor = sumR(player.goalsFor);
+    const goalsAgainst = sumR(player.goalsAgainst);
+    const avgFor = matches > 0 ? (goalsFor / matches).toFixed(2) : '–';
+    const avgAgainst = matches > 0 ? (goalsAgainst / matches).toFixed(2) : '–';
+
+    const eloRole: 0 | 1 = filter === 2 ? player.bestRole as 0 | 1 : filter;
+    const eloStr = (v: number): string => v > 0 ? String(Math.round(v)) : '–';
+
+    const bestWinStreak = Math.max(...roles.map(r => player.bestWinStreak[r]));
+    const worstLossStreak = Math.max(...roles.map(r => player.worstLossStreak[r]));
+    const currentStreak = player.streak[eloRole];
+    const avgTeamElo = sumR(player.avgTeamElo) / roles.length;
+    const avgOppElo = sumR(player.avgOpponentElo) / roles.length;
+    const wrColor = matches > 0
+      ? (Number(winRate) >= 50 ? 'var(--color-win)' : Number(winRate) >= 40 ? 'var(--color-draw)' : 'var(--color-loss)')
+      : 'var(--color-text-muted)';
+
+    return {
+      matches, wins, losses, winRate, wrColor,
+      goalsFor, goalsAgainst, avgFor, avgAgainst,
+      currentElo: eloStr(player.elo[eloRole]),
+      bestElo: eloStr(player.bestElo[eloRole]),
+      worstElo: eloStr(player.worstElo[eloRole]),
+      currentClass: player.class[eloRole] >= 0 ? getClassName(player.class[eloRole]).toUpperCase() : '–',
+      bestClass: player.bestClass[eloRole] >= 0 ? getClassName(player.bestClass[eloRole]).toUpperCase() : '–',
+      bestWinStreak, worstLossStreak, currentStreak, avgTeamElo, avgOppElo
+    };
+  }
+
+  private renderStatsSection(player: IPlayer, _filter: RoleFilter): string {
+    const dif = this.computeStatsData(player, 0);
+    const att = this.computeStatsData(player, 1);
+    const tot = this.computeStatsData(player, 2);
+
+    const ratioC = (gf: number, ga: number): string =>
+      ga > 0 ? (gf >= ga ? 'var(--color-win)' : 'var(--color-loss)') : 'var(--color-text-muted)';
+    const ratio = (gf: number, ga: number): string => ga > 0 ? (gf / ga).toFixed(2) : '–';
+
+    // Column headers — 2 cols (DIF/ATT) for ELO card, 3 cols (DIF/ATT/TOT) for others
+    const colHeader2 = (): string =>
+      `<div class="grid grid-cols-3 gap-2 mb-2">
+        <div></div>
+        <span class="font-ui text-[9px] uppercase tracking-widest text-center" style="color:var(--color-text-muted)">DIF</span>
+        <span class="font-ui text-[9px] uppercase tracking-widest text-center" style="color:var(--color-text-muted)">ATT</span>
+      </div>`;
+
+    const colHeader3 = (): string =>
+      `<div class="grid grid-cols-4 gap-2 mb-2">
+        <div></div>
+        <span class="font-ui text-[9px] uppercase tracking-widest text-center" style="color:var(--color-text-muted)">DIF</span>
+        <span class="font-ui text-[9px] uppercase tracking-widest text-center" style="color:var(--color-text-muted)">ATT</span>
+        <span class="font-ui text-[9px] uppercase tracking-widest text-center" style="color:var(--color-gold)">TOT</span>
+      </div>`;
+
+    // 2-col row (no TOT)
+    const row2 = (label: string, vDif: string, vAtt: string, cDif = 'var(--color-text-primary)', cAtt = 'var(--color-text-primary)'): string =>
+      `<div class="grid grid-cols-3 items-center gap-2 py-1.5" style="border-top:1px solid rgba(255,255,255,0.05)">
+        <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${label}</span>
+        <span class="font-display text-sm text-center" style="color:${cDif}">${vDif}</span>
+        <span class="font-display text-sm text-center" style="color:${cAtt}">${vAtt}</span>
+      </div>`;
+
+    // 3-col row (with TOT)
+    const row = (label: string, vDif: string, vAtt: string, vTot: string, cDif = 'var(--color-text-primary)', cAtt = 'var(--color-text-primary)', cTot = 'var(--color-text-primary)'): string =>
+      `<div class="grid grid-cols-4 items-center gap-2 py-1.5" style="border-top:1px solid rgba(255,255,255,0.05)">
+        <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${label}</span>
+        <span class="font-display text-sm text-center" style="color:${cDif}">${vDif}</span>
+        <span class="font-display text-sm text-center" style="color:${cAtt}">${vAtt}</span>
+        <span class="font-display text-sm text-center font-semibold" style="color:${cTot}">${vTot}</span>
+      </div>`;
+
+    // Card with custom header/rows HTML
+    const groupCard = (icon: string, title: string, header: string, rows: string): string =>
+      `<div class="rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);min-width:0">
+        <div class="flex items-center gap-1.5 mb-2">
+          <i data-lucide="${icon}" class="w-3.5 h-3.5 shrink-0" style="color:var(--color-gold)" aria-hidden="true"></i>
+          <span class="font-ui text-[10px] uppercase tracking-widest" style="color:var(--color-gold)">${title}</span>
+        </div>
+        ${header}
+        ${rows}
+      </div>`;
+
+    const win = 'var(--color-win)';
+    const loss = 'var(--color-loss)';
+    const gold = 'var(--color-gold)';
+
+    const eloRows = [
+      row2('Attuale', dif.currentElo, att.currentElo),
+      row2('Massimo', dif.bestElo, att.bestElo, win, win),
+      row2('Minimo', dif.worstElo, att.worstElo, loss, loss),
+      row2('Classe', dif.currentClass, att.currentClass, gold, gold),
+      row2('ELO Compagno', dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–', att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–'),
+      row2('ELO Avversario', dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–', att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–')
+    ].join('');
+
+    const matchRows = [
+      row('Partite', String(dif.matches), String(att.matches), String(tot.matches)),
+      row('Vittorie', String(dif.wins), String(att.wins), String(tot.wins), win, win, win),
+      row('Sconfitte', String(dif.losses), String(att.losses), String(tot.losses), loss, loss, loss),
+      row('Win Rate', `${dif.winRate}%`, `${att.winRate}%`, `${tot.winRate}%`, dif.wrColor, att.wrColor, tot.wrColor),
+      row('Best Streak', dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–', att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–', '–', win, win, win),
+      row('Worst Streak', dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–', att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–', '–', loss, loss, loss)
+    ].join('');
+
+    const goalRows = [
+      row('Fatti', String(dif.goalsFor), String(att.goalsFor), String(tot.goalsFor), win, win, win),
+      row('Subiti', String(dif.goalsAgainst), String(att.goalsAgainst), String(tot.goalsAgainst), loss, loss, loss),
+      row('Ratio', ratio(dif.goalsFor, dif.goalsAgainst), ratio(att.goalsFor, att.goalsAgainst), ratio(tot.goalsFor, tot.goalsAgainst), ratioC(dif.goalsFor, dif.goalsAgainst), ratioC(att.goalsFor, att.goalsAgainst), ratioC(tot.goalsFor, tot.goalsAgainst)),
+      row('Media Fatti', dif.avgFor, att.avgFor, tot.avgFor, win, win, win),
+      row('Media Subiti', dif.avgAgainst, att.avgAgainst, tot.avgAgainst, loss, loss, loss)
+    ].join('');
+
+    return `
+      <div id="stats-body" class="p-3" style="border-top:1px solid var(--glass-border)">
+        <div class="grid grid-cols-3 gap-2 items-start">
+          ${groupCard('bar-chart-2', 'ELO', colHeader2(), eloRows)}
+          ${groupCard('activity', 'Partite', colHeader3(), matchRows)}
+          ${groupCard('target', 'Goal', colHeader3(), goalRows)}
+        </div>
+      </div>`;
+  }
 
   private renderPageHeader(): string {
     return `
@@ -561,6 +699,26 @@ export default class PlayerProfilePage extends Component {
     }
   }
 
+  private bindStatsFilter(player: IPlayer): void {
+    const btns = this.$$('.js-stats-filter') as HTMLButtonElement[];
+    for (const btn of btns) {
+      btn.addEventListener('click', () => {
+        this.statsFilter = Number(btn.dataset.filter) as RoleFilter;
+        for (const b of btns) {
+          const active = Number(b.dataset.filter) === this.statsFilter;
+          b.style.background = active ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'rgba(255,255,255,0.06)';
+          b.style.color = active ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
+          b.style.fontWeight = active ? '700' : 'normal';
+        }
+        const body = this.$id('stats-body');
+        if (body) {
+          body.outerHTML = this.renderStatsSection(player, this.statsFilter);
+          refreshIcons();
+        }
+      });
+    }
+  }
+
   // ── ELO start computation ─────────────────────────────────
 
   private computeStartElo(player: IPlayer, role: 0 | 1): number {
@@ -755,6 +913,7 @@ export default class PlayerProfilePage extends Component {
     this.bindRelationTables(player);
     this.bindHistoryFilter(id, player);
     this.bindRecordSharedFilter(id, player);
+    this.bindStatsFilter(player);
   }
 
   private bindChartToggle(id: number, player: IPlayer): void {
@@ -844,7 +1003,7 @@ export default class PlayerProfilePage extends Component {
 
   private bindRelationTables(player: IPlayer): void {
     // Collapse toggles (relation tables + record section)
-    for (const type of ['tm', 'opp', 'record', 'chart', 'history'] as const) {
+    for (const type of ['tm', 'opp', 'record', 'chart', 'history', 'stats'] as const) {
       const btn = this.$id(`${type}-collapse-btn`) as HTMLButtonElement | null;
       const body = this.$id(`${type}-body`);
       const chevron = this.$id(`${type}-chevron`);
