@@ -12,6 +12,7 @@ import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
+import { getAvgAgainstColor, getAvgForColor, getBestStreakColor, getGoalRatioColor, getOppEloColor, getTeamEloColor, getWinRateColor, getWorstStreakColor } from '@/utils/stats-thresholds.util';
 import { Chart, registerables } from 'chart.js';
 import gsap from 'gsap';
 import { Component } from '../components/component.base';
@@ -257,8 +258,6 @@ export default class PlayerProfilePage extends Component {
     const att = this.computeStatsData(player, 1);
     const tot = this.computeStatsData(player, 2);
 
-    const ratioC = (gf: number, ga: number): string =>
-      ga > 0 ? (gf >= ga ? 'var(--color-win)' : 'var(--color-loss)') : 'var(--color-text-muted)';
     const ratio = (gf: number, ga: number): string => ga > 0 ? (gf / ga).toFixed(2) : '–';
 
     // Column headers — 2 cols (DIF/ATT) for ELO card, 3 cols (DIF/ATT/TOT) for others
@@ -314,25 +313,25 @@ export default class PlayerProfilePage extends Component {
       row2('Massimo', dif.bestElo, att.bestElo, win, win),
       row2('Minimo', dif.worstElo, att.worstElo, loss, loss),
       row2('Classe', dif.currentClass, att.currentClass, gold, gold),
-      row2('ELO Compagno', dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–', att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–'),
-      row2('ELO Avversario', dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–', att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–')
+      row2('ELO Compagno', dif.avgTeamElo > 0 ? Math.round(dif.avgTeamElo).toString() : '–', att.avgTeamElo > 0 ? Math.round(att.avgTeamElo).toString() : '–', getTeamEloColor(dif.avgTeamElo), getTeamEloColor(att.avgTeamElo)),
+      row2('ELO Avversario', dif.avgOppElo > 0 ? Math.round(dif.avgOppElo).toString() : '–', att.avgOppElo > 0 ? Math.round(att.avgOppElo).toString() : '–', getOppEloColor(dif.avgOppElo), getOppEloColor(att.avgOppElo))
     ].join('');
 
     const matchRows = [
       row('Partite', String(dif.matches), String(att.matches), String(tot.matches)),
       row('Vittorie', String(dif.wins), String(att.wins), String(tot.wins), win, win, win),
       row('Sconfitte', String(dif.losses), String(att.losses), String(tot.losses), loss, loss, loss),
-      row('Win Rate', `${dif.winRate}%`, `${att.winRate}%`, `${tot.winRate}%`, dif.wrColor, att.wrColor, tot.wrColor),
-      row('Best Streak', dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–', att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–', '–', win, win, win),
-      row('Worst Streak', dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–', att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–', '–', loss, loss, loss)
+      row('Win Rate', `${dif.winRate}%`, `${att.winRate}%`, `${tot.winRate}%`, getWinRateColor(Number(dif.winRate)), getWinRateColor(Number(att.winRate)), getWinRateColor(Number(tot.winRate))),
+      row('Best Streak', dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–', att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–', '–', getBestStreakColor(dif.bestWinStreak), getBestStreakColor(att.bestWinStreak)),
+      row('Worst Streak', dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–', att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–', '–', getWorstStreakColor(dif.worstLossStreak), getWorstStreakColor(att.worstLossStreak))
     ].join('');
 
     const goalRows = [
       row('Fatti', String(dif.goalsFor), String(att.goalsFor), String(tot.goalsFor), win, win, win),
       row('Subiti', String(dif.goalsAgainst), String(att.goalsAgainst), String(tot.goalsAgainst), loss, loss, loss),
-      row('Ratio', ratio(dif.goalsFor, dif.goalsAgainst), ratio(att.goalsFor, att.goalsAgainst), ratio(tot.goalsFor, tot.goalsAgainst), ratioC(dif.goalsFor, dif.goalsAgainst), ratioC(att.goalsFor, att.goalsAgainst), ratioC(tot.goalsFor, tot.goalsAgainst)),
-      row('Media Fatti', dif.avgFor, att.avgFor, tot.avgFor, win, win, win),
-      row('Media Subiti', dif.avgAgainst, att.avgAgainst, tot.avgAgainst, loss, loss, loss)
+      row('Ratio', ratio(dif.goalsFor, dif.goalsAgainst), ratio(att.goalsFor, att.goalsAgainst), ratio(tot.goalsFor, tot.goalsAgainst), getGoalRatioColor(dif.goalsAgainst > 0 ? dif.goalsFor / dif.goalsAgainst : 0), getGoalRatioColor(att.goalsAgainst > 0 ? att.goalsFor / att.goalsAgainst : 0), getGoalRatioColor(tot.goalsAgainst > 0 ? tot.goalsFor / tot.goalsAgainst : 0)),
+      row('Media Fatti', dif.avgFor, att.avgFor, tot.avgFor, getAvgForColor(Number(dif.avgFor)), getAvgForColor(Number(att.avgFor)), getAvgForColor(Number(tot.avgFor))),
+      row('Media Subiti', dif.avgAgainst, att.avgAgainst, tot.avgAgainst, getAvgAgainstColor(Number(dif.avgAgainst)), getAvgAgainstColor(Number(att.avgAgainst)), getAvgAgainstColor(Number(tot.avgAgainst)))
     ].join('');
 
     return `
