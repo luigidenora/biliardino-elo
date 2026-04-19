@@ -1,9 +1,11 @@
 /**
- * PlayerProfilePage -- Full-screen profile for a single player.
+ * PlayerProfilePage — Full-screen profile for a single player.
  *
  * Route: /profile/:id
- * Displays hero card, ELO stats, chart, role stats, goal stats,
- * streaks, teammates/opponents, best/worst matches, and full match history table.
+ * Redesigned for the new design system; logic and data identical to legacy.
+ * Additions: relation tables (teammates/opponents) with role filter + sort,
+ * history role filter, ELO chart with moving-average and trend overlays,
+ * full 6-item highlight grid (incl. by expected%), accessibility improvements.
  */
 
 import { IMatch } from '@/models/match.interface';
@@ -19,12 +21,26 @@ import { refreshIcons } from '../icons';
 import { html, rawHtml } from '../utils/html-template.util';
 import template from './player-profile.page.html?raw';
 
+// ── Types ─────────────────────────────────────────────────────
+
+type RelationSortKey = 'name' | 'matches' | 'winrate' | 'delta' | 'avgDelta';
+type RoleFilter = 0 | 1 | 2; // 0=defence, 1=attack, 2=total
+
+interface RelationRow {
+  id: number;
+  name: string;
+  matches: number;
+  wins: number;
+  losses: number;
+  winrate: number;
+  delta: number;
+  avgDelta: number;
+}
+
+// ── Constants ─────────────────────────────────────────────────
+
 const CLASS_COLORS: Record<number, string> = {
-  0: '#12d9ff',
-  1: '#008fff',
-  2: '#FFD700',
-  3: '#C0C0C0',
-  4: '#8B7D6B'
+  0: '#FFD700', 1: '#4A90D9', 2: '#27AE60', 3: '#C0C0C0', 4: '#8B7D6B'
 };
 
 function getPlayerColor(player: IPlayer): string {
@@ -49,6 +65,24 @@ function formatFullDate(ms: number): string {
   return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+function movingAverage(data: number[], window: number): (number | null)[] {
+  return data.map((_, i) => {
+    if (i < window - 1) return null;
+    const slice = data.slice(i - window + 1, i + 1);
+    return Math.round(slice.reduce((a, b) => a + b, 0) / window);
+  });
+}
+
+function linearRegressionPoints(data: number[]): number[] {
+  const n = data.length;
+  if (n < 2) return data.slice();
+  const xMean = (n - 1) / 2;
+  const yMean = data.reduce((a, b) => a + b, 0) / n;
+  const denom = data.reduce((acc, _, i) => acc + (i - xMean) ** 2, 0);
+  const slope = denom === 0 ? 0 : data.reduce((acc, y, i) => acc + (i - xMean) * (y - yMean), 0) / denom;
+  return data.map((_, i) => Math.round(yMean + slope * (i - xMean)));
+}
+
 // ── Page Component ────────────────────────────────────────────
 
 export default class PlayerProfilePage extends Component {
@@ -57,6 +91,67 @@ export default class PlayerProfilePage extends Component {
   private radarData: number[] = [];
   private gsapCtx: gsap.Context | null = null;
   private chartRole: 0 | 1 = 0;
+  private showMovingAvg = false;
+  private showTrend = false;
+  private tmSort: RelationSortKey = 'delta';
+  private tmSortAsc = false;
+  private oppSort: RelationSortKey = 'delta';
+  private oppSortAsc = false;
+  private relationFilter: RoleFilter = 2;
+  private historyFilter: RoleFilter = 2;
+  private recordFilter: RoleFilter = 2;
+
+  // ── Computed stats helpers ────────────────────────────────
+
+  private computeBasicStats(player: IPlayer): { totalMatches: number; totalWins: number; totalLosses: number; winRate: string; winRateColor: string } {
+    const totalMatches = player.matches[0] + player.matches[1];
+    const totalWins = player.wins[0] + player.wins[1];
+    const totalLosses = totalMatches - totalWins;
+    const winRate = totalMatches > 0 ? ((totalWins / totalMatches) * 100).toFixed(1) : '0.0';
+    const winRateNum = Number.parseFloat(winRate);
+    const winRateColor = winRateNum >= 50
+      ? 'var(--color-win)'
+      : winRateNum >= 40
+        ? 'var(--color-draw)'
+        : 'var(--color-loss)';
+    return { totalMatches, totalWins, totalLosses, winRate, winRateColor };
+  }
+
+  private computeGoalStats(player: IPlayer, totalMatches: number): { totalGoalsFor: number; totalGoalsAgainst: number; goalRatio: string; goalRatioColor: string; goalsPerMatch: string; concededPerMatch: string } {
+    const totalGoalsFor = player.goalsFor[0] + player.goalsFor[1];
+    const totalGoalsAgainst = player.goalsAgainst[0] + player.goalsAgainst[1];
+    const goalRatioNum = totalGoalsAgainst > 0
+      ? totalGoalsFor / totalGoalsAgainst
+      : (totalGoalsFor > 0 ? Infinity : 0);
+    const goalRatio = totalGoalsAgainst > 0
+      ? (totalGoalsFor / totalGoalsAgainst).toFixed(2)
+      : totalGoalsFor > 0 ? '∞' : '0.00';
+    const goalRatioColor = goalRatioNum > 1
+      ? 'var(--color-win)'
+      : goalRatioNum < 1 ? 'var(--color-loss)' : 'var(--color-draw)';
+    const goalsPerMatch = totalMatches > 0 ? (totalGoalsFor / totalMatches).toFixed(1) : '0.0';
+    const concededPerMatch = totalMatches > 0 ? (totalGoalsAgainst / totalMatches).toFixed(1) : '0.0';
+    return { totalGoalsFor, totalGoalsAgainst, goalRatio, goalRatioColor, goalsPerMatch, concededPerMatch };
+  }
+
+  private computeRoleStats(player: IPlayer, totalMatches: number): { winsAsDefence: number; lossesAsDefence: number; defenceWinRate: number; defenceWinRateColor: string; winsAsAttack: number; lossesAsAttack: number; attackWinRate: number; attackWinRateColor: string; defenceRolePct: number; attackRolePct: number } {
+    const defenceWinRate = player.matches[0] > 0 ? Math.round((player.wins[0] / player.matches[0]) * 100) : 0;
+    const attackWinRate = player.matches[1] > 0 ? Math.round((player.wins[1] / player.matches[1]) * 100) : 0;
+    const defenceRolePct = totalMatches > 0 ? Math.round((player.matches[0] / totalMatches) * 100) : 0;
+    const attackRolePct = totalMatches > 0 ? Math.round((player.matches[1] / totalMatches) * 100) : 0;
+    return {
+      winsAsDefence: player.wins[0],
+      lossesAsDefence: player.matches[0] - player.wins[0],
+      defenceWinRate,
+      defenceWinRateColor: defenceWinRate >= 50 ? 'var(--color-win)' : 'var(--color-loss)',
+      winsAsAttack: player.wins[1],
+      lossesAsAttack: player.matches[1] - player.wins[1],
+      attackWinRate,
+      attackWinRateColor: attackWinRate >= 50 ? 'var(--color-win)' : 'var(--color-loss)',
+      defenceRolePct,
+      attackRolePct
+    };
+  }
 
   override render(): string {
     const id = Number(this.params.id);
@@ -64,13 +159,13 @@ export default class PlayerProfilePage extends Component {
 
     if (!player) {
       return `
-        <div class="text-center py-20">
-          <p class="font-display text-4xl" style="color: var(--color-gold)">GIOCATORE NON TROVATO</p>
-          <p class="font-body mt-2" style="color: var(--color-text-secondary)">
+        <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
+          <i data-lucide="user-x" style="width:52px;height:52px;color:var(--color-gold)"></i>
+          <p class="font-display text-4xl tracking-wide" style="color:var(--color-gold)">GIOCATORE NON TROVATO</p>
+          <p class="font-body text-sm" style="color:var(--color-text-secondary)">
             Il giocatore con ID ${id} non esiste.
           </p>
-          <a href="/" class="inline-block mt-6 font-ui text-sm px-5 py-2 rounded-lg"
-             style="background: var(--color-gold-muted); color: var(--color-gold); letter-spacing: 0.08em">
+          <a href="/" class="btn-gold px-6 py-2.5 text-sm rounded-lg">
             TORNA ALLA CLASSIFICA
           </a>
         </div>
@@ -87,14 +182,6 @@ export default class PlayerProfilePage extends Component {
 
     // ELO
     const displayElo = Math.round(player.elo[bestRole]);
-
-    // Totals
-    const totalMatches = player.matches[0] + player.matches[1];
-    const totalWins = player.wins[0] + player.wins[1];
-    const totalLosses = totalMatches - totalWins;
-    const winRate = totalMatches > 0 ? ((totalWins / totalMatches) * 100).toFixed(1) : '0.0';
-
-    // ELO per ruolo
     const eloDef = Math.round(player.elo[0]);
     const eloAtt = Math.round(player.elo[1]);
     const bestEloDef = Math.round(player.bestElo[0]);
@@ -102,24 +189,10 @@ export default class PlayerProfilePage extends Component {
     const bestEloAtt = Math.round(player.bestElo[1]);
     const worstEloAtt = Math.round(player.worstElo[1]);
 
-    // Role stats
-    const winsAsDefence = player.wins[0];
-    const lossesAsDefence = player.matches[0] - player.wins[0];
-    const defenceWinRate = player.matches[0] > 0 ? Math.round((player.wins[0] / player.matches[0]) * 100) : 0;
-    const winsAsAttack = player.wins[1];
-    const lossesAsAttack = player.matches[1] - player.wins[1];
-    const attackWinRate = player.matches[1] > 0 ? Math.round((player.wins[1] / player.matches[1]) * 100) : 0;
-    const defenceRolePct = totalMatches > 0 ? Math.round((player.matches[0] / totalMatches) * 100) : 0;
-    const attackRolePct = totalMatches > 0 ? Math.round((player.matches[1] / totalMatches) * 100) : 0;
-
-    // Goals
-    const totalGoalsFor = player.goalsFor[0] + player.goalsFor[1];
-    const totalGoalsAgainst = player.goalsAgainst[0] + player.goalsAgainst[1];
-    const goalRatio = totalGoalsAgainst > 0
-      ? (totalGoalsFor / totalGoalsAgainst).toFixed(2)
-      : totalGoalsFor > 0 ? '∞' : '0.00';
-    const goalsPerMatch = totalMatches > 0 ? (totalGoalsFor / totalMatches).toFixed(1) : '0.0';
-    const concededPerMatch = totalMatches > 0 ? (totalGoalsAgainst / totalMatches).toFixed(1) : '0.0';
+    // Aggregated stats from helpers
+    const { totalMatches, totalWins, totalLosses, winRate, winRateColor } = this.computeBasicStats(player);
+    const { totalGoalsFor, totalGoalsAgainst, goalRatio, goalRatioColor, goalsPerMatch, concededPerMatch } = this.computeGoalStats(player, totalMatches);
+    const { winsAsDefence, lossesAsDefence, defenceWinRate, defenceWinRateColor, winsAsAttack, lossesAsAttack, attackWinRate, attackWinRateColor, defenceRolePct, attackRolePct } = this.computeRoleStats(player, totalMatches);
 
     // Streaks per role
     const bestWinStreakDef = player.bestWinStreak[0];
@@ -142,6 +215,10 @@ export default class PlayerProfilePage extends Component {
       .sort((a, b) => a.createdAt - b.createdAt)
       .reverse();
 
+    // Relation tables (initial render with default filter=total)
+    const tmRows = this.sortRelationRows(this.buildRelationRows(player.teammatesStats, 2), this.tmSort, this.tmSortAsc);
+    const oppRows = this.sortRelationRows(this.buildRelationRows(player.opponentsStats, 2), this.oppSort, this.oppSortAsc);
+
     return html(template, {
       pageHeader: rawHtml(this.renderPageHeader()),
       playerColor: color,
@@ -156,17 +233,18 @@ export default class PlayerProfilePage extends Component {
         ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rankGeneral)}</span>`
         : ''),
       playerName: player.name.toUpperCase(),
-      onlineBadge: rawHtml(''),
       className: className.toUpperCase(),
       rankWatermark: rankGeneral > 0 ? String(rankGeneral) : '---',
       rankGeneral: rankGeneral > 0 ? String(rankGeneral) : '---',
       rankDefence: rankDefence > 0 ? String(rankDefence) : '---',
       rankAttack: rankAttack > 0 ? String(rankAttack) : '---',
       displayElo,
+      eloColor: color,
       matches: totalMatches,
       wins: totalWins,
       losses: totalLosses,
       winRate,
+      winRateColor,
       // ELO per ruolo
       eloDef,
       eloAtt,
@@ -182,13 +260,16 @@ export default class PlayerProfilePage extends Component {
       winsAsAttack,
       lossesAsAttack,
       attackWinRate,
+      attackWinRateColor: attackWinRateColor,
       winsAsDefence,
       lossesAsDefence,
       defenceWinRate,
+      defenceWinRateColor: defenceWinRateColor,
       // Goals totali
       goalsFor: totalGoalsFor,
       goalsAgainst: totalGoalsAgainst,
       goalRatio,
+      goalRatioColor,
       goalsPerMatch,
       concededPerMatch,
       // Goals per ruolo
@@ -203,14 +284,20 @@ export default class PlayerProfilePage extends Component {
       worstLossStreakAtt,
       // Chart toggle initial styles
       chartBtnDefStyle: bestRole === 0
-        ? 'background:linear-gradient(135deg,#FFD700,#F0A500);color:var(--color-bg-deep);font-weight:700'
-        : 'background:transparent;color:rgba(255,255,255,0.6)',
+        ? 'background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700'
+        : 'background:transparent;color:var(--color-text-muted)',
       chartBtnAttStyle: bestRole === 1
-        ? 'background:linear-gradient(135deg,#FFD700,#F0A500);color:var(--color-bg-deep);font-weight:700'
-        : 'background:transparent;color:rgba(255,255,255,0.6)',
+        ? 'background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700'
+        : 'background:transparent;color:var(--color-text-muted)',
       // Sections
       companionCards: rawHtml(this.renderCompanionCards(player)),
-      bestWorstMatches: rawHtml(this.renderBestWorstMatches(player, id)),
+      bestWorstMatches: rawHtml(this.renderBestWorstMatches(player, id, this.recordFilter)),
+      // Relation cards
+      teammateTbody: rawHtml(this.renderRelationCards(tmRows)),
+      opponentTbody: rawHtml(this.renderRelationCards(oppRows)),
+      tmCount: tmRows.length,
+      oppCount: oppRows.length,
+      // History
       matchCount: combinedHistory.length,
       tableRows: rawHtml(this.renderTableRows(combinedHistory, id, player)),
       mobileMatchCards: rawHtml(this.renderMobileMatchCards(combinedHistory, id, player))
@@ -222,20 +309,133 @@ export default class PlayerProfilePage extends Component {
   private renderPageHeader(): string {
     return `
       <div class="page-header flex items-center gap-3">
-        <i data-lucide="circle-user" class="text-(--color-gold)"
-           style="width:26px;height:26px"></i>
+        <i data-lucide="circle-user" style="width:26px;height:26px;color:var(--color-gold)" aria-hidden="true"></i>
         <div>
           <h1 class="text-white font-display"
               style="font-size:clamp(28px,6vw,42px); letter-spacing:0.12em; line-height:1">
             PROFILO GIOCATORE
           </h1>
           <p class="font-ui"
-             style="font-size:12px; color:rgba(255,255,255,0.5); letter-spacing:0.1em">
+             style="font-size:12px; color:var(--color-text-muted); letter-spacing:0.1em">
             STATISTICHE COMPLETE · STAGIONE 2025–2026
           </p>
         </div>
       </div>
     `;
+  }
+
+  // ── Relation Table Helpers ────────────────────────────────
+
+  private buildRelationRows(
+    statsPerRole: [{ [x: number]: any }, { [x: number]: any }],
+    filter: RoleFilter
+  ): RelationRow[] {
+    const merged = new Map<number, { matches: number; wins: number; delta: number }>();
+    const roles: Array<0 | 1> = filter === 2 ? [0, 1] : [filter];
+
+    for (const role of roles) {
+      for (const [idStr, stats] of Object.entries(statsPerRole[role])) {
+        if (!stats || typeof stats !== 'object' || !('matches' in stats)) continue;
+        const id = Number(idStr);
+        if (!Number.isInteger(id) || id <= 0) continue;
+        const s = stats as { matches: number; wins: number; delta: number };
+        const existing = merged.get(id);
+        if (existing) {
+          existing.matches += s.matches;
+          existing.wins += s.wins;
+          existing.delta += s.delta;
+        } else {
+          merged.set(id, { matches: s.matches, wins: s.wins, delta: s.delta });
+        }
+      }
+    }
+
+    return Array.from(merged.entries())
+      .filter(([id]) => getPlayerById(id) !== undefined)
+      .map(([id, s]) => {
+        const p = getPlayerById(id)!;
+        return {
+          id,
+          name: p.name,
+          matches: s.matches,
+          wins: s.wins,
+          losses: s.matches - s.wins,
+          winrate: s.matches > 0 ? (s.wins / s.matches) * 100 : 0,
+          delta: s.delta,
+          avgDelta: s.matches > 0 ? s.delta / s.matches : 0
+        };
+      });
+  }
+
+  private sortRelationRows(rows: RelationRow[], sort: RelationSortKey, asc: boolean): RelationRow[] {
+    return [...rows].sort((a, b) => {
+      let diff = 0;
+      switch (sort) {
+        case 'name':
+          diff = a.name.localeCompare(b.name);
+          break;
+        case 'matches':
+          diff = a.matches - b.matches;
+          break;
+        case 'winrate':
+          diff = a.winrate - b.winrate;
+          break;
+        case 'delta':
+          diff = a.delta - b.delta;
+          break;
+        case 'avgDelta':
+          diff = a.avgDelta - b.avgDelta;
+          break;
+      }
+      return asc ? diff : -diff;
+    });
+  }
+
+  private renderRelationCards(rows: RelationRow[]): string {
+    if (rows.length === 0) {
+      return `<p class="col-span-full py-6 text-center font-body text-sm"
+               style="color:var(--color-text-muted)">Nessun dato disponibile</p>`;
+    }
+
+    return rows.map((r) => {
+      const deltaColor = r.delta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
+      const deltaSign = r.delta >= 0 ? '+' : '';
+      const wrColor = r.winrate >= 50 ? 'var(--color-win)' : r.winrate >= 40 ? 'var(--color-draw)' : 'var(--color-loss)';
+      const p = getPlayerById(r.id);
+      const avatarHtml = p
+        ? renderPlayerAvatar({ initials: getInitials(p.name), color: getPlayerColor(p), size: 'sm', playerId: r.id })
+        : '';
+      return `
+        <a href="/profile/${r.id}"
+           class="flex flex-col items-center gap-1 p-2 rounded-lg transition-all"
+           style="background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)">
+          <div class="shrink-0 mt-1">${avatarHtml}</div>
+          <p class="font-body text-[10px] text-center leading-tight w-full truncate"
+             style="color:var(--color-text-secondary)">${r.name}</p>
+          <div class="grid grid-cols-3 gap-0 w-full text-center border-t pt-1 mt-0.5"
+               style="border-color:rgba(255,255,255,0.07)">
+            <div>
+              <p class="font-display text-sm leading-none"
+                 style="color:var(--color-text-primary)">${r.matches}</p>
+              <p class="font-ui text-[8px] uppercase"
+                 style="color:var(--color-text-dim)">P</p>
+            </div>
+            <div>
+              <p class="font-display text-sm leading-none"
+                 style="color:${wrColor}">${r.winrate.toFixed(0)}%</p>
+              <p class="font-ui text-[8px] uppercase"
+                 style="color:var(--color-text-dim)">WIN</p>
+            </div>
+            <div>
+              <p class="font-display text-sm leading-none"
+                 style="color:${deltaColor}">${deltaSign}${Math.round(r.delta)}</p>
+              <p class="font-ui text-[8px] uppercase"
+                 style="color:var(--color-text-dim)">\u0394ELO</p>
+            </div>
+          </div>
+        </a>
+      `;
+    }).join('');
   }
 
   // ── Radar data ────────────────────────────────────────────
@@ -297,70 +497,79 @@ export default class PlayerProfilePage extends Component {
 
   private renderCompanionCards(player: IPlayer): string {
     const role = player.bestRole as 0 | 1;
-    const cards: { label: string; name: string; subtitle: string; color?: string }[] = [];
+    const cards: { icon: string; label: string; name: string; subtitle: string; color?: string }[] = [];
 
-    const bt = player.bestTeammate[role];
-    if (bt) {
-      const p = getPlayerById(bt.player);
-      if (p) cards.push({ label: 'MIGLIOR COMPAGNO', name: p.name, subtitle: `+${Math.round(bt.value)}`, color: 'var(--color-win)' });
-    }
-    const wt = player.worstTeammate[role];
-    if (wt) {
-      const p = getPlayerById(wt.player);
-      if (p) cards.push({ label: 'PEGGIOR COMPAGNO', name: p.name, subtitle: `${Math.round(wt.value)}`, color: 'var(--color-loss)' });
-    }
-    const btc = player.bestTeammateCount[role];
-    if (btc) {
-      const p = getPlayerById(btc.player);
-      if (p) cards.push({ label: 'COMPAGNO FREQUENTE', name: p.name, subtitle: `${Math.round(btc.value)} partite` });
-    }
-    const bo = player.bestOpponent[role];
-    if (bo) {
-      const p = getPlayerById(bo.player);
-      if (p) cards.push({ label: 'AVVERSARIO PIÙ FORTE', name: p.name, subtitle: `${Math.round(bo.value)}`, color: 'var(--color-loss)' });
-    }
-    const wo = player.worstOpponent[role];
-    if (wo) {
-      const p = getPlayerById(wo.player);
-      if (p) cards.push({ label: 'AVVERSARIO PIÙ SCARSO', name: p.name, subtitle: `+${Math.round(wo.value)}`, color: 'var(--color-win)' });
-    }
+    const addCard = (stat: { player: number; value: number } | null, icon: string, label: string, fmt: (v: number) => string, color?: string): void => {
+      if (!stat) return;
+      const p = getPlayerById(stat.player);
+      if (p) cards.push({ icon, label, name: p.name, subtitle: fmt(stat.value), color });
+    };
+
+    addCard(player.bestTeammate[role], 'users', 'MIGLIOR COMPAGNO', v => `+${Math.round(v)} ELO`, 'var(--color-win)');
+    addCard(player.worstTeammate[role], 'users', 'PEGGIOR COMPAGNO', v => `${Math.round(v)} ELO`, 'var(--color-loss)');
+    addCard(player.bestTeammateCount[role], 'user-check', 'COMPAGNO FREQUENTE', v => `${Math.round(v)} partite`);
+    addCard(player.bestOpponent[role], 'sword', 'AVVERSARIO PIÙ FORTE', v => `${Math.round(v)} ELO`, 'var(--color-loss)');
+    addCard(player.worstOpponent[role], 'sword', 'AVVERSARIO PIÙ DEBOLE', v => `+${Math.round(v)} ELO`, 'var(--color-win)');
+    addCard(player.bestOpponentCount[role], 'repeat', 'AVVERSARIO FREQUENTE', v => `${Math.round(v)} partite`);
+
     const avgTeam = player.avgTeamElo[role];
     const avgOpp = player.avgOpponentElo[role];
     if (avgTeam != null && avgOpp != null) {
-      cards.push({ label: 'ELO MEDIO', name: `Squadra: ${Math.round(avgTeam)}`, subtitle: `Avversari: ${Math.round(avgOpp)}` });
+      cards.push({ icon: 'bar-chart-2', label: 'ELO MEDIO', name: `Squadra: ${Math.round(avgTeam)}`, subtitle: `Avversari: ${Math.round(avgOpp)}` });
     }
 
     return cards.map(c => `
-      <div class="rounded-lg p-3" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-        <p class="font-ui text-[10px] uppercase tracking-widest mb-1" style="color:var(--color-text-muted)">${c.label}</p>
-        <p class="font-body text-sm" style="color:#fff">${c.name}</p>
-        <p class="font-body text-xs mt-0.5" style="color:${c.color ?? 'var(--color-text-dim)'}">${c.subtitle}</p>
+      <div class="rounded-xl p-3" style="background:rgba(0,0,0,0.25); border:1px solid var(--glass-border)">
+        <div class="flex items-center gap-1.5 mb-1.5">
+          <i data-lucide="${c.icon}" style="width:12px;height:12px;color:var(--color-text-muted)" aria-hidden="true"></i>
+          <p class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${c.label}</p>
+        </div>
+        <p class="font-body text-sm font-medium" style="color:var(--color-text-primary)">${c.name}</p>
+        <p class="font-body text-xs mt-0.5" style="color:${c.color ?? 'var(--color-text-secondary)'}">${c.subtitle}</p>
       </div>
     `).join('');
   }
 
   // ── Best/Worst Matches ────────────────────────────────────
 
-  private renderBestWorstMatches(player: IPlayer, playerId: number): string {
+  private renderBestWorstMatches(player: IPlayer, playerId: number, filter: RoleFilter = 2): string {
     type MS = { match: IMatch; value: number } | null;
     const pick = (a: MS, b: MS, dir: 'max' | 'min'): MS => {
       if (!a) return b;
       if (!b) return a;
       return dir === 'max' ? (a.value >= b.value ? a : b) : (a.value <= b.value ? a : b);
     };
+    const sel = (arr: [MS, MS], dir: 'max' | 'min'): MS =>
+      filter === 2 ? pick(arr[0], arr[1], dir) : arr[filter];
 
-    const items: { label: string; ms: MS }[] = [
-      { label: 'MIGLIORE VITTORIA (ELO)', ms: pick(player.bestVictoryByElo[0], player.bestVictoryByElo[1], 'max') },
-      { label: 'PEGGIORE SCONFITTA (ELO)', ms: pick(player.worstDefeatByElo[0], player.worstDefeatByElo[1], 'min') },
-      { label: 'MIGLIORE VITTORIA (PUNTEGGIO)', ms: pick(player.bestVictoryByScore[0], player.bestVictoryByScore[1], 'max') },
-      { label: 'PEGGIORE SCONFITTA (PUNTEGGIO)', ms: pick(player.worstDefeatByScore[0], player.worstDefeatByScore[1], 'min') }
+    const items: { label: string; icon: string; ms: MS }[] = [
+      { label: 'MIGLIORE VITTORIA (ELO)', icon: 'trending-up', ms: sel(player.bestVictoryByElo, 'max') },
+      { label: 'PEGGIORE SCONFITTA (ELO)', icon: 'trending-down', ms: sel(player.worstDefeatByElo, 'min') },
+      { label: 'MIGLIORE VITTORIA (SCARTO)', icon: 'award', ms: sel(player.bestVictoryByScore, 'max') },
+      { label: 'PEGGIORE SCONFITTA (SCARTO)', icon: 'alert-circle', ms: sel(player.worstDefeatByScore, 'min') },
+      { label: 'VITTORIA SORPRESA (EXP%)', icon: 'sparkles', ms: sel(player.bestVictoryByPercentage, 'min') },
+      { label: 'SCONFITTA DA FAVORITI (EXP%)', icon: 'frown', ms: sel(player.worstDefeatByPercentage, 'max') }
     ];
+
+    const makeAvatar = (pid: number): string => {
+      const p = getPlayerById(pid);
+      return renderPlayerAvatar({
+        initials: getInitials(p?.name ?? '?'),
+        color: p ? getPlayerColor(p) : '#888',
+        size: 'xs',
+        playerId: pid,
+        hideFrame: true
+      });
+    };
 
     return items.map((item) => {
       if (!item.ms) {
         return `
-          <div class="rounded-lg p-3" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-            <p class="font-ui text-[10px] uppercase tracking-widest mb-1" style="color:var(--color-text-muted)">${item.label}</p>
+          <div class="rounded-xl p-3" style="background:rgba(0,0,0,0.25);border:1px solid var(--glass-border)">
+            <div class="flex items-center gap-1.5 mb-2">
+              <i data-lucide="${item.icon}" style="width:11px;height:11px;color:var(--color-text-muted)" aria-hidden="true"></i>
+              <p class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${item.label}</p>
+            </div>
             <p class="font-body text-xs" style="color:var(--color-text-dim)">Nessun dato</p>
           </div>
         `;
@@ -372,30 +581,65 @@ export default class PlayerProfilePage extends Component {
       const delta = Math.round(m.deltaELO[team]);
       const deltaSign = delta >= 0 ? '+' : '';
       const deltaColor = delta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
-
+      const deltaBg = delta >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
+      const expectedPct = Math.round(m.expectedScore[team] * 100);
       const myTeam = inTeamA ? m.teamA : m.teamB;
       const oppTeam = inTeamA ? m.teamB : m.teamA;
-      const teammate = myTeam.defence === playerId
-        ? getPlayerById(myTeam.attack)
-        : getPlayerById(myTeam.defence);
-      const opp1 = getPlayerById(oppTeam.defence);
-      const opp2 = getPlayerById(oppTeam.attack);
+      const myScore = inTeamA ? m.score[0] : m.score[1];
+      const oppScore = inTeamA ? m.score[1] : m.score[0];
+      const myElo = Math.round(inTeamA ? m.teamELO[0] : m.teamELO[1]);
+      const oppElo = Math.round(inTeamA ? m.teamELO[1] : m.teamELO[0]);
 
+      const oppExpectedPct = Math.round(m.expectedScore[team === 0 ? 1 : 0] * 100);
       return `
-        <div class="rounded-lg p-3" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.04)">
-          <p class="font-ui text-[10px] uppercase tracking-widest mb-2" style="color:var(--color-text-muted)">${item.label}</p>
-          <div class="flex items-center justify-between mb-2">
-            <span class="font-display text-2xl" style="color:#fff">${m.score[0]}-${m.score[1]}</span>
-            <span class="font-ui text-xs px-2 py-0.5 rounded"
-                  style="background:${delta >= 0 ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'}; color:${deltaColor}">
-              ${deltaSign}${delta}
-            </span>
+        <div class="rounded-xl p-2.5 flex flex-col gap-2" style="background:rgba(0,0,0,0.25);border:1px solid var(--glass-border)">
+          <div class="flex items-center justify-between gap-1.5">
+            <div class="flex items-center gap-1 min-w-0">
+              <i data-lucide="${item.icon}" style="width:10px;height:10px;color:var(--color-text-muted);flex-shrink:0" aria-hidden="true"></i>
+              <p class="font-ui text-[8px] uppercase tracking-widest truncate" style="color:var(--color-text-muted)">${item.label}</p>
+            </div>
+            <span class="font-ui text-[9px] px-1.5 py-0.5 rounded shrink-0"
+                  style="background:${deltaBg};color:${deltaColor}">${deltaSign}${delta} ELO</span>
           </div>
-          <p class="font-body text-xs" style="color:rgba(255,255,255,0.6)">vs ${opp1?.name ?? '?'} &amp; ${opp2?.name ?? '?'}</p>
-          <p class="font-body text-xs" style="color:var(--color-text-dim)">con ${teammate?.name ?? '?'}</p>
+          <div class="flex items-center justify-between gap-1.5">
+            <div class="flex items-center gap-0.5 shrink-0">
+              ${makeAvatar(myTeam.defence)}${makeAvatar(myTeam.attack)}
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="font-display text-xl leading-none" style="color:var(--color-text-primary)">${myScore}\u2013${oppScore}</span>
+              <span class="font-body text-[9px]" style="color:rgba(255,255,255,0.35)">${expectedPct}% \u00b7 ${oppExpectedPct}%</span>
+            </div>
+            <div class="flex items-center gap-0.5 shrink-0">
+              ${makeAvatar(oppTeam.defence)}${makeAvatar(oppTeam.attack)}
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="font-ui text-[9px]" style="color:rgba(255,255,255,0.35)">${myElo} ELO</span>
+            <span class="font-ui text-[9px]" style="color:rgba(255,255,255,0.35)">${oppElo} ELO</span>
+          </div>
         </div>
       `;
     }).join('');
+  }
+
+  private bindRecordFilter(id: number, player: IPlayer): void {
+    const btns = this.$$('.js-record-filter') as HTMLButtonElement[];
+    for (const btn of btns) {
+      btn.addEventListener('click', () => {
+        this.recordFilter = Number(btn.dataset.filter) as RoleFilter;
+        for (const b of btns) {
+          const active = Number(b.dataset.filter) === this.recordFilter;
+          b.style.background = active ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'rgba(255,255,255,0.06)';
+          b.style.color = active ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
+          b.style.fontWeight = active ? '700' : 'normal';
+        }
+        const grid = this.$id('record-matches-grid');
+        if (grid) {
+          grid.innerHTML = this.renderBestWorstMatches(player, id, this.recordFilter);
+          refreshIcons();
+        }
+      });
+    }
   }
 
   // ── ELO start computation ─────────────────────────────────
@@ -434,67 +678,74 @@ export default class PlayerProfilePage extends Component {
 
   // ── Desktop Table Rows ────────────────────────────────────
 
+  private buildRowContext(m: IMatch, playerId: number, idx: number, eloMap: Map<number, { before: number; after: number }>): {
+    inTeamA: boolean; team: number; roundedDelta: number; deltaSign: string; deltaColor: string; deltaBg: string;
+    eloInfo: { before: number; after: number } | undefined; teamElo: number; oppTeamElo: number; isDefence: boolean;
+    teammate: IPlayer | null | undefined; opp1: IPlayer | null | undefined; opp2: IPlayer | null | undefined; teammateElo: number;
+    score: string; winPct: number; expectedPct: number; rowBg: string;
+  } {
+    const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
+    const team = inTeamA ? 0 : 1;
+    const roundedDelta = Math.round(m.deltaELO[team]);
+    const deltaSign = roundedDelta >= 0 ? '+' : '';
+    const deltaColor = roundedDelta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
+    const deltaBg = roundedDelta >= 0 ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
+    const eloInfo = eloMap.get(m.id);
+    const teamElo = Math.round(m.teamELO[team]);
+    const oppTeamElo = Math.round(m.teamELO[team ^ 1]);
+    const myTeam = inTeamA ? m.teamA : m.teamB;
+    const oppTeam = inTeamA ? m.teamB : m.teamA;
+    const isDefence = myTeam.defence === playerId;
+    const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
+    const opp1 = getPlayerById(oppTeam.defence);
+    const opp2 = getPlayerById(oppTeam.attack);
+    const teammateElo = teammate ? Math.round(teammate.elo[isDefence ? 1 : 0]) : 0;
+    const score = inTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
+    const totalGoals = m.score[0] + m.score[1];
+    const myGoals = inTeamA ? m.score[0] : m.score[1];
+    const winPct = totalGoals > 0 ? Math.round((myGoals / totalGoals) * 100) : 0;
+    const expectedPct = Math.round(m.expectedScore[team] * 100);
+    const rowBg = idx % 2 === 0 ? 'background:transparent' : 'background:rgba(255,255,255,0.02)';
+    return { inTeamA, team, roundedDelta, deltaSign, deltaColor, deltaBg, eloInfo, teamElo, oppTeamElo, isDefence, teammate, opp1, opp2, teammateElo, score, winPct, expectedPct, rowBg };
+  }
+
   private renderTableRows(matches: IMatch[], playerId: number, player: IPlayer): string {
     const eloMap = this.buildEloMap(player, playerId);
 
     return matches.map((m, idx) => {
-      const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
-      const team = inTeamA ? 0 : 1;
-      const delta = m.deltaELO[team];
-      const roundedDelta = Math.round(delta);
-      const deltaSign = roundedDelta >= 0 ? '+' : '';
-      const deltaColor = roundedDelta >= 0 ? 'var(--color-win)' : 'var(--color-loss)';
-      const deltaBg = roundedDelta >= 0 ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
-
-      const eloInfo = eloMap.get(m.id);
-      const teamElo = Math.round(m.teamELO[team]);
-      const oppTeamElo = Math.round(m.teamELO[team ^ 1]);
-      const kMultiplier = teamElo > 0 ? (oppTeamElo / teamElo).toFixed(2) : '1.00';
-
-      const myTeam = inTeamA ? m.teamA : m.teamB;
-      const oppTeam = inTeamA ? m.teamB : m.teamA;
-      const isDefence = myTeam.defence === playerId;
-      const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
-      const opp1 = getPlayerById(oppTeam.defence);
-      const opp2 = getPlayerById(oppTeam.attack);
-      const teammateElo = teammate ? Math.round(teammate.elo[isDefence ? 1 : 0]) : 0;
-
-      const score = inTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
-      const totalGoals = m.score[0] + m.score[1];
-      const myGoals = inTeamA ? m.score[0] : m.score[1];
-      const winPct = totalGoals > 0 ? Math.round((myGoals / totalGoals) * 100) : 0;
-
-      const rowBg = idx % 2 === 0 ? 'background:transparent' : 'background:rgba(255,255,255,0.02)';
-
+      const c = this.buildRowContext(m, playerId, idx, eloMap);
       return `
-        <tr style="${rowBg}; border-bottom:1px solid rgba(255,255,255,0.04)">
-          <td class="px-3 py-3">
+        <tr style="${c.rowBg}; border-bottom:1px solid rgba(255,255,255,0.04)">
+          <td class="px-3 py-2.5">
+            <span class="font-body text-[10px]" style="color:var(--color-text-muted)">${formatShortDate(m.createdAt)}</span>
+          </td>
+          <td class="px-3 py-2.5">
             <div class="flex items-center gap-1.5">
-              <span class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${eloInfo?.before ?? '?'} → ${eloInfo?.after ?? '?'}</span>
-              <span class="font-ui text-[10px] px-1.5 py-0.5 rounded" style="background:${deltaBg}; color:${deltaColor}">${deltaSign}${roundedDelta}</span>
+              <span class="font-body text-xs" style="color:var(--color-text-secondary)">${c.eloInfo?.before ?? '?'} → ${c.eloInfo?.after ?? '?'}</span>
+              <span class="font-ui text-[10px] px-1.5 py-0.5 rounded-md" style="background:${c.deltaBg};color:${c.deltaColor}">${c.deltaSign}${c.roundedDelta}</span>
             </div>
           </td>
-          <td class="px-3 py-3">
-            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${teamElo}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-dim)">x${kMultiplier}</p>
+          <td class="px-3 py-2.5 text-center">
+            ${renderRoleBadge({ role: c.isDefence ? 'defence' : 'attack', size: 'base', showPct: false })}
           </td>
-          <td class="px-3 py-3 text-center">
-            ${renderRoleBadge({ role: isDefence ? 'defence' : 'attack', size: 'base', showPct: false })}
+          <td class="px-3 py-2.5">
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teammate?.name ?? '?'}</p>
+            <p class="font-body text-[10px]" style="color:var(--color-text-muted)">(${c.teammateElo})</p>
           </td>
-          <td class="px-3 py-3">
-            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${teammate?.name ?? '?'}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-dim)">(${teammateElo})</p>
+          <td class="px-3 py-2.5 text-center">
+            <p class="font-display text-base" style="color:var(--color-text-primary)">${c.score}</p>
+            <p class="font-body text-[10px]" style="color:var(--color-text-muted)">${c.winPct}%</p>
           </td>
-          <td class="px-3 py-3 text-center">
-            <p class="font-display text-base" style="color:#fff">${score}</p>
-            <p class="font-body text-[10px]" style="color:var(--color-text-dim)">${winPct}%</p>
+          <td class="px-3 py-2.5">
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp1?.name ?? '?'} (${c.opp1 ? Math.round(c.opp1.elo[0]) : '?'})</p>
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp2?.name ?? '?'} (${c.opp2 ? Math.round(c.opp2.elo[1]) : '?'})</p>
           </td>
-          <td class="px-3 py-3">
-            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${opp1?.name ?? '?'} (${opp1 ? Math.round(opp1.elo[0]) : '?'})</p>
-            <p class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${opp2?.name ?? '?'} (${opp2 ? Math.round(opp2.elo[1]) : '?'})</p>
+          <td class="px-3 py-2.5 text-center">
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teamElo}</p>
+            <p class="font-body text-[10px]" style="color:var(--color-text-muted)">opp: ${c.oppTeamElo}</p>
           </td>
-          <td class="px-3 py-3 text-center">
-            <span class="font-body text-xs" style="color:rgba(255,255,255,0.7)">${oppTeamElo}</span>
+          <td class="px-3 py-2.5 text-center">
+            <span class="font-body text-xs" style="color:var(--color-text-muted)">${c.expectedPct}%</span>
           </td>
         </tr>
       `;
@@ -524,24 +775,25 @@ export default class PlayerProfilePage extends Component {
       const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
       const opp1 = getPlayerById(oppTeam.defence);
       const opp2 = getPlayerById(oppTeam.attack);
-      const score = inTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
+      const score = inTeamA ? `${m.score[0]}–${m.score[1]}` : `${m.score[1]}–${m.score[0]}`;
+      const expectedPct = Math.round(m.expectedScore[team] * 100);
 
       return `
-        <div class="rounded-lg overflow-hidden" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05)">
-          <div class="flex items-center gap-2 px-3 py-2" style="border-bottom:1px solid rgba(255,255,255,0.04)">
-            <span class="font-ui text-[9px] font-bold px-1.5 py-0.5 rounded"
+        <div class="rounded-xl overflow-hidden" style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border)">
+          <div class="flex items-center gap-2 px-3 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.05)">
+            <span class="font-ui text-[9px] font-bold px-1.5 py-0.5 rounded-md"
                   style="background:${winBg}; color:${winColor}; letter-spacing:0.08em">
               ${isWin ? 'WIN' : 'LOSS'}
             </span>
-            <span class="font-display text-lg flex-1" style="color:#fff">${score}</span>
-            <span class="font-ui text-[10px] px-1.5 py-0.5 rounded"
-                  style="background:${deltaBg}; color:${winColor}">${deltaSign}${roundedDelta}</span>
-            <span class="font-body text-[10px]" style="color:var(--color-text-dim)">${formatFullDate(m.createdAt)}</span>
+            <span class="font-display text-lg flex-1" style="color:var(--color-text-primary)">${score}</span>
+            <span class="font-ui text-[10px] px-1.5 py-0.5 rounded-md"
+                  style="background:${deltaBg};color:${winColor}">${deltaSign}${roundedDelta}</span>
+            <span class="font-body text-[10px]" style="color:var(--color-text-muted)">${formatFullDate(m.createdAt)}</span>
           </div>
-          <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px]">
+          <div class="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-2.5 text-[11px]">
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ELO</span>
-              <p class="font-body" style="color:rgba(255,255,255,0.7)">${eloInfo?.before ?? '?'} → ${eloInfo?.after ?? '?'}</p>
+              <p class="font-body" style="color:var(--color-text-secondary)">${eloInfo?.before ?? '?'} → ${eloInfo?.after ?? '?'}</p>
             </div>
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">RUOLO</span>
@@ -549,11 +801,15 @@ export default class PlayerProfilePage extends Component {
             </div>
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">COMPAGNO</span>
-              <p class="font-body" style="color:rgba(255,255,255,0.7)">${teammate?.name ?? '?'}</p>
+              <p class="font-body" style="color:var(--color-text-secondary)">${teammate?.name ?? '?'}</p>
             </div>
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">AVVERSARI</span>
-              <p class="font-body" style="color:rgba(255,255,255,0.7)">${opp1?.name ?? '?'} &amp; ${opp2?.name ?? '?'}</p>
+              <p class="font-body" style="color:var(--color-text-secondary)">${opp1?.name ?? '?'} &amp; ${opp2?.name ?? '?'}</p>
+            </div>
+            <div>
+              <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">ATTESO</span>
+              <p class="font-body" style="color:var(--color-text-muted)">${expectedPct}%</p>
             </div>
           </div>
         </div>
@@ -576,10 +832,14 @@ export default class PlayerProfilePage extends Component {
     this.mountRadarChart(id, player);
     this.mountAnimations(player);
     this.bindChartToggle(id, player);
+    this.bindChartOverlays(id, player);
+    this.bindRelationTables(player);
+    this.bindHistoryFilter(id, player);
+    this.bindRecordFilter(id, player);
   }
 
   private bindChartToggle(id: number, player: IPlayer): void {
-    const btns = this.$$<HTMLButtonElement>('.js-chart-role-btn');
+    const btns = this.$$('.js-chart-role-btn') as HTMLButtonElement[];
     for (const btn of btns) {
       btn.addEventListener('click', () => {
         const role = Number(btn.dataset.role) as 0 | 1;
@@ -588,8 +848,8 @@ export default class PlayerProfilePage extends Component {
 
         for (const b of btns) {
           const isActive = Number(b.dataset.role) === role;
-          b.style.background = isActive ? 'linear-gradient(135deg,#FFD700,#F0A500)' : 'transparent';
-          b.style.color = isActive ? 'var(--color-bg-deep)' : 'rgba(255,255,255,0.6)';
+          b.style.background = isActive ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'transparent';
+          b.style.color = isActive ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
           b.style.fontWeight = isActive ? '700' : 'normal';
         }
 
@@ -597,9 +857,265 @@ export default class PlayerProfilePage extends Component {
           this.chart.destroy();
           this.chart = null;
         }
+        // Tooltip was created inside the old canvas parent — let mountEloChart re-create it
+        if (this.tooltipEl) {
+          this.tooltipEl.remove();
+          this.tooltipEl = null;
+        }
         this.mountEloChart(id, player, role);
+        // Re-apply overlays after chart rebuild
+        if (this.showMovingAvg || this.showTrend) {
+          this.applyChartOverlays(id, player, this.chartRole);
+        }
       });
     }
+  }
+
+  private bindChartOverlays(id: number, player: IPlayer): void {
+    const maBtn = this.$id('ma-toggle-btn');
+    const trendBtn = this.$id('trend-toggle-btn');
+
+    maBtn?.addEventListener('click', () => {
+      this.showMovingAvg = !this.showMovingAvg;
+      maBtn.style.background = this.showMovingAvg
+        ? 'rgba(96,165,250,0.2)'
+        : 'transparent';
+      maBtn.style.color = this.showMovingAvg
+        ? '#60A5FA'
+        : 'var(--color-text-muted)';
+      maBtn.setAttribute('aria-pressed', String(this.showMovingAvg));
+      this.applyChartOverlays(id, player, this.chartRole);
+    });
+
+    trendBtn?.addEventListener('click', () => {
+      this.showTrend = !this.showTrend;
+      trendBtn.style.background = this.showTrend
+        ? 'rgba(251,191,36,0.2)'
+        : 'transparent';
+      trendBtn.style.color = this.showTrend
+        ? 'var(--color-draw)'
+        : 'var(--color-text-muted)';
+      trendBtn.setAttribute('aria-pressed', String(this.showTrend));
+      this.applyChartOverlays(id, player, this.chartRole);
+    });
+  }
+
+  private applyChartOverlays(id: number, player: IPlayer, role: 0 | 1): void {
+    if (!this.chart) return;
+    const history = player.history[role];
+    const startElo = this.computeStartElo(player, role);
+    const eloData: number[] = [Math.round(startElo)];
+    let currentElo = startElo;
+    for (let i = 0; i < history.length; i++) {
+      const match = history[i];
+      const isTeamA = match.teamA.defence === id || match.teamA.attack === id;
+      const delta = (isTeamA ? match.deltaELO[0] : match.deltaELO[1]) * getBonusK(i);
+      currentElo += delta;
+      eloData.push(Math.round(currentElo));
+    }
+
+    // Keep only the main dataset (index 0)
+    this.chart.data.datasets = [this.chart.data.datasets[0]];
+
+    if (this.showMovingAvg) {
+      const maData = movingAverage(eloData, 10);
+      this.chart.data.datasets.push({
+        label: 'Media Mobile (10)',
+        data: maData as number[],
+        borderColor: '#60A5FA',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [4, 3],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        fill: false,
+        tension: 0.3
+      } as any);
+    }
+
+    if (this.showTrend) {
+      const trendData = linearRegressionPoints(eloData);
+      this.chart.data.datasets.push({
+        label: 'Trend',
+        data: trendData,
+        borderColor: 'var(--color-draw)',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        fill: false,
+        tension: 0
+      } as any);
+    }
+
+    this.chart.update('none');
+  }
+
+  private bindRelationTables(player: IPlayer): void {
+    // Collapse toggles
+    for (const type of ['tm', 'opp'] as const) {
+      const btn = this.$id(`${type}-collapse-btn`) as HTMLButtonElement | null;
+      const body = this.$id(`${type}-body`);
+      const chevron = this.$id(`${type}-chevron`);
+      if (!btn || !body) continue;
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        body.style.display = expanded ? 'none' : '';
+        if (chevron) chevron.style.transform = expanded ? 'rotate(-90deg)' : 'rotate(0deg)';
+      });
+    }
+
+    // Filter buttons (shared between teammates & opponents)
+    const filterBtns = this.$$('.js-relation-filter') as HTMLButtonElement[];
+    for (const btn of filterBtns) {
+      btn.addEventListener('click', () => {
+        this.relationFilter = Number(btn.dataset.filter) as RoleFilter;
+        for (const b of filterBtns) {
+          const isActive = Number(b.dataset.filter) === this.relationFilter;
+          b.style.background = isActive ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'rgba(255,255,255,0.06)';
+          b.style.color = isActive ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
+          b.style.fontWeight = isActive ? '700' : 'normal';
+        }
+        this.rerenderRelationTables(player);
+      });
+    }
+
+    // Teammate sort buttons
+    for (const btn of this.$$('[data-tm-sort]')) {
+      btn.addEventListener('click', () => {
+        const col = btn.dataset['tmSort'] as RelationSortKey;
+        if (this.tmSort === col) {
+          this.tmSortAsc = !this.tmSortAsc;
+        } else {
+          this.tmSort = col;
+          this.tmSortAsc = false;
+        }
+        this.rerenderTeammateTable(player);
+        this.updateSortIndicators('tm', this.tmSort, this.tmSortAsc);
+      });
+    }
+
+    // Opponent sort buttons
+    for (const btn of this.$$('[data-opp-sort]')) {
+      btn.addEventListener('click', () => {
+        const col = btn.dataset['oppSort'] as RelationSortKey;
+        if (this.oppSort === col) {
+          this.oppSortAsc = !this.oppSortAsc;
+        } else {
+          this.oppSort = col;
+          this.oppSortAsc = false;
+        }
+        this.rerenderOpponentTable(player);
+        this.updateSortIndicators('opp', this.oppSort, this.oppSortAsc);
+      });
+    }
+
+    this.updateSortIndicators('tm', this.tmSort, this.tmSortAsc);
+    this.updateSortIndicators('opp', this.oppSort, this.oppSortAsc);
+  }
+
+  private rerenderRelationTables(player: IPlayer): void {
+    this.rerenderTeammateTable(player);
+    this.rerenderOpponentTable(player);
+  }
+
+  private rerenderTeammateTable(player: IPlayer): void {
+    const grid = this.$id('tm-grid');
+    if (!grid) return;
+    const rows = this.sortRelationRows(this.buildRelationRows(player.teammatesStats, this.relationFilter), this.tmSort, this.tmSortAsc);
+    grid.innerHTML = this.renderRelationCards(rows);
+    refreshIcons();
+  }
+
+  private rerenderOpponentTable(player: IPlayer): void {
+    const grid = this.$id('opp-grid');
+    if (!grid) return;
+    const rows = this.sortRelationRows(this.buildRelationRows(player.opponentsStats, this.relationFilter), this.oppSort, this.oppSortAsc);
+    grid.innerHTML = this.renderRelationCards(rows);
+    refreshIcons();
+  }
+
+  private applyRelationSortStyle(el: HTMLElement, isActive: boolean, asc: boolean): void {
+    const arrow = el.querySelector<HTMLElement>('.sort-arrow');
+    let arrowText = '↕';
+    if (isActive) arrowText = asc ? '↑' : '↓';
+    if (arrow) arrow.textContent = arrowText;
+    el.style.background = isActive ? 'rgba(255,215,0,0.1)' : 'transparent';
+    el.style.color = isActive ? 'var(--color-gold)' : 'var(--color-text-muted)';
+    el.style.borderColor = isActive ? 'rgba(255,215,0,0.3)' : 'var(--glass-border)';
+  }
+
+  private updateSortIndicators(type: 'tm' | 'opp', activeSort: RelationSortKey, asc: boolean): void {
+    const attr = type === 'tm' ? 'data-tm-sort' : 'data-opp-sort';
+    const getCol = (el: HTMLElement): RelationSortKey =>
+      (type === 'tm' ? el.dataset['tmSort'] : el.dataset['oppSort']) as RelationSortKey;
+    for (const el of this.$$(`[${attr}]`)) {
+      this.applyRelationSortStyle(el, getCol(el) === activeSort, asc);
+    }
+  }
+
+  private bindHistoryFilter(id: number, player: IPlayer): void {
+    const btns = this.$$('.js-history-filter') as HTMLButtonElement[];
+    for (const btn of btns) {
+      btn.addEventListener('click', () => {
+        this.historyFilter = Number(btn.dataset.filter) as RoleFilter;
+        for (const b of btns) {
+          const isActive = Number(b.dataset.filter) === this.historyFilter;
+          b.style.background = isActive ? 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))' : 'transparent';
+          b.style.color = isActive ? 'var(--color-bg-deep)' : 'var(--color-text-muted)';
+          b.style.fontWeight = isActive ? '700' : 'normal';
+        }
+        this.rerenderHistory(id, player);
+      });
+    }
+  }
+
+  private rerenderHistory(id: number, player: IPlayer): void {
+    let history: IMatch[];
+    if (this.historyFilter === 2) {
+      history = [...player.history[0], ...player.history[1]];
+    } else {
+      history = [...player.history[this.historyFilter]];
+    }
+    history = history.toSorted((a, b) => a.createdAt - b.createdAt).reverse();
+
+    const countEl = this.$id('history-match-count');
+    if (countEl) countEl.textContent = `${history.length} partite`;
+
+    const desktopTbody = this.$id('history-desktop-tbody');
+    if (desktopTbody) desktopTbody.innerHTML = this.renderTableRows(history, id, player);
+
+    const mobileContainer = this.$id('history-mobile-cards');
+    if (mobileContainer) mobileContainer.innerHTML = this.renderMobileMatchCards(history, id, player);
+
+    refreshIcons();
+  }
+
+  private tooltipEl: HTMLElement | null = null;
+
+  private getOrCreateTooltipEl(): HTMLElement {
+    if (!this.tooltipEl || !document.body.contains(this.tooltipEl)) {
+      this.tooltipEl?.remove();
+      const el = document.createElement('div');
+      el.style.cssText = [
+        'position:fixed',
+        'pointer-events:none',
+        'opacity:0',
+        'transition:opacity 0.12s ease',
+        'z-index:9999',
+        'background:rgba(9,25,18,0.97)',
+        'border:1px solid rgba(255,215,0,0.25)',
+        'border-radius:10px',
+        'padding:10px',
+        'min-width:180px',
+        'max-width:240px'
+      ].join(';');
+      document.body.appendChild(el);
+      this.tooltipEl = el;
+    }
+    return this.tooltipEl;
   }
 
   private mountEloChart(id: number, player: IPlayer, role: 0 | 1): void {
@@ -608,26 +1124,46 @@ export default class PlayerProfilePage extends Component {
 
     const labels: string[] = ['Inizio'];
     const eloData: number[] = [Math.round(startElo)];
+    const matchMeta: Array<{ match: IMatch; delta: number; expectedPct: number } | null> = [null];
     let currentElo = startElo;
 
     for (let i = 0; i < history.length; i++) {
       const match = history[i];
       const isTeamA = match.teamA.defence === id || match.teamA.attack === id;
+      const teamIdx = isTeamA ? 0 : 1;
       const delta = (isTeamA ? match.deltaELO[0] : match.deltaELO[1]) * getBonusK(i);
       currentElo += delta;
-      labels.push(formatShortDate(match.createdAt));
+      labels.push(`${i + 1}`);
       eloData.push(Math.round(currentElo));
+      matchMeta.push({
+        match,
+        delta: Math.round(match.deltaELO[teamIdx]),
+        expectedPct: Math.round(match.expectedScore[teamIdx] * 100)
+      });
     }
 
     const canvas = this.$id('elo-chart') as HTMLCanvasElement | null;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-    gradient.addColorStop(0, 'rgba(255, 215, 0, 0.25)');
-    gradient.addColorStop(1, 'rgba(240, 165, 0, 0.02)');
+    const tooltipEl = this.getOrCreateTooltipEl();
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+    gradient.addColorStop(0, 'rgba(255,215,0,0.22)');
+    gradient.addColorStop(1, 'rgba(255,215,0,0.02)');
+
+    const makeAvatarRow = (playerId: number): string => {
+      const p = getPlayerById(playerId);
+      const name = p?.name ?? '?';
+      return renderPlayerAvatar({
+        initials: getInitials(name),
+        color: p ? getPlayerColor(p) : '#888888',
+        size: 'xs',
+        playerId,
+        hideFrame: true
+      });
+    };
 
     this.chart = new Chart(ctx, {
       type: 'line',
@@ -654,16 +1190,81 @@ export default class PlayerProfilePage extends Component {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(15, 42, 32, 0.95)',
-            titleFont: { family: 'Oswald', size: 11 },
-            bodyFont: { family: 'Inter', size: 12 },
-            titleColor: 'rgba(255,255,255,0.5)',
-            bodyColor: '#FFD700',
-            borderColor: 'rgba(255,215,0,0.2)',
-            borderWidth: 1,
-            padding: 10,
-            displayColors: false,
-            callbacks: { label: context => `ELO: ${context.parsed.y}` }
+            enabled: false,
+            external: (context) => {
+              const tooltipModel = context.tooltip;
+
+              if (tooltipModel.opacity === 0 || !tooltipModel.dataPoints?.length) {
+                tooltipEl.style.opacity = '0';
+                return;
+              }
+
+              const dataIndex = tooltipModel.dataPoints[0].dataIndex;
+              const meta = matchMeta[dataIndex];
+
+              if (!meta) {
+                tooltipEl.style.opacity = '0';
+                return;
+              }
+
+              const m = meta.match;
+              const inTeamA = m.teamA.defence === id || m.teamA.attack === id;
+              const myTeam = inTeamA ? m.teamA : m.teamB;
+              const oppTeam = inTeamA ? m.teamB : m.teamA;
+              const sign = meta.delta >= 0 ? '+' : '';
+              const deltaColor = meta.delta >= 0 ? '#4ADE80' : '#F87171';
+              const deltaBg = meta.delta >= 0 ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
+              const myScore = inTeamA ? m.score[0] : m.score[1];
+              const oppScore = inTeamA ? m.score[1] : m.score[0];
+              const won = myScore > oppScore;
+              const resultText = won ? 'VITTORIA' : 'SCONFITTA';
+              const myTeamElo = Math.round(inTeamA ? m.teamELO[0] : m.teamELO[1]);
+              const oppTeamElo = Math.round(inTeamA ? m.teamELO[1] : m.teamELO[0]);
+              const oppExpectedPct = 100 - meta.expectedPct;
+
+              tooltipEl.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:7px">
+                  <span style="font-family:Oswald,sans-serif;font-size:8px;letter-spacing:0.08em;color:rgba(255,255,255,0.35)">${resultText}</span>
+                  <span style="font-family:Oswald,sans-serif;font-size:10px;padding:2px 6px;border-radius:4px;background:${deltaBg};color:${deltaColor};white-space:nowrap">${sign}${meta.delta} ELO</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+                  <div style="display:flex;align-items:center;gap:2px">
+                    ${makeAvatarRow(myTeam.defence)}${makeAvatarRow(myTeam.attack)}
+                  </div>
+                  <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;line-height:1">${myScore}–${oppScore}</span>
+                  <div style="display:flex;align-items:center;gap:2px">
+                    ${makeAvatarRow(oppTeam.defence)}${makeAvatarRow(oppTeam.attack)}
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:6px">
+                  <span style="font-family:Inter,sans-serif;font-size:9px;color:rgba(255,255,255,0.35)">${meta.expectedPct}% · ${oppExpectedPct}%</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08);padding-top:5px">
+                  <span style="font-family:Oswald,sans-serif;font-size:9px;color:rgba(255,255,255,0.3)">${myTeamElo} ELO</span>
+                  <span style="font-family:Oswald,sans-serif;font-size:9px;color:rgba(255,255,255,0.3)">${oppTeamElo} ELO</span>
+                </div>
+              `;
+
+              // Fixed viewport positioning
+              const rect = canvas.getBoundingClientRect();
+              const caretX = tooltipModel.caretX;
+              const caretY = tooltipModel.caretY;
+              const absX = rect.left + caretX;
+              const absY = rect.top + caretY;
+              const vw = window.innerWidth;
+              const tooltipW = 180;
+              const tooltipH = 130;
+
+              let left = absX - tooltipW / 2;
+              if (left < 6) left = 6;
+              if (left + tooltipW > vw - 6) left = vw - tooltipW - 6;
+
+              const top = absY > tooltipH + 12 ? absY - tooltipH - 12 : absY + 20;
+
+              tooltipEl.style.left = `${left}px`;
+              tooltipEl.style.top = `${top}px`;
+              tooltipEl.style.opacity = '1';
+            }
           }
         },
         scales: {
@@ -772,6 +1373,10 @@ export default class PlayerProfilePage extends Component {
     if (this.gsapCtx) {
       this.gsapCtx.revert();
       this.gsapCtx = null;
+    }
+    if (this.tooltipEl) {
+      this.tooltipEl.remove();
+      this.tooltipEl = null;
     }
   }
 }
