@@ -3,13 +3,7 @@ import dotenv from 'dotenv';
 
 // Carica variabili come fa Vite: prima .env.local (override), poi .env
 dotenv.config({ path: ['.env.local', '.env'] });
-/**
- * Playwright e2e configuration.
- *
- * La suite avvia il dev server con __DEV_MODE__=true così il repository
- * usa dati mock in memoria. Auth e admin funzionano normalmente.
- * Le chiamate API vengono intercettate dal test stesso via page.route().
- */
+
 export default defineConfig({
   testDir: './e2e',
 

@@ -73,7 +73,6 @@ K-factor dinamico (StartK=72 → FinalK=24). Formula: `1 / (1 + 10^((eloB - eloA
 - `@/*` path alias → `src/*`
 - Single quotes, 2-space indent, semicolons (ESLint)
 - `noImplicitAny: false` nel tsconfig (strict ma flessibile)
-- Dev mode: `__DEV_MODE__` compile-time constant (vite.config.ts `devModePlugin`)
 - Admin IDs hardcodati in `src/config/admin.config.ts`
 - Firebase config in `src/utils/firebase.util.ts`
 

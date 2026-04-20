@@ -53,13 +53,6 @@ export function withAuthentication(
   action: () => void | Promise<void>,
   requireAdmin: boolean = false
 ): Promise<boolean> {
-  // In dev mode (__DEV_MODE__) salta completamente l'autenticazione Firebase.
-  // In produzione questo blocco viene eliminato da Rollup (dead-code elimination).
-  if (__DEV_MODE__) {
-    console.log('[DEV] Skipping authentication, executing action directly');
-    return Promise.resolve(action()).then(() => true);
-  }
-
   return new Promise<boolean>((resolve) => {
     let started = false;
     let unsubscribed = false;

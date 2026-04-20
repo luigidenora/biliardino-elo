@@ -1,5 +1,3 @@
-// Import condizionale: in produzione (__DEV_MODE__ = false) il mock non viene mai importato
-// e Rollup lo elimina completamente dal bundle.
 const repo = await import('./repository.firebase.js');
 
 export const updatePlayersHash = repo.updatePlayersHash;

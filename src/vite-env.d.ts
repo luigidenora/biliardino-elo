@@ -1,12 +1,5 @@
 /// <reference types="vite/client" />
 
-/**
- * Costante compile-time iniettata dal plugin devModePlugin.
- * `true` quando VITE_DEV_MODE=true.
- * In produzione viene sostituita con `false` (dead-code elimination).
- */
-declare const __DEV_MODE__: boolean;
-
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string;

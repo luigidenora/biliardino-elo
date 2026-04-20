@@ -201,16 +201,6 @@ override async render(): Promise<string> {
 
 ### Repository pattern
 
-`repository.service.ts` uses `__DEV_MODE__` (Vite compile-time constant) to switch between mock and Firebase:
-
-```ts
-const repo = __DEV_MODE__
-  ? await import('./repository.mock')
-  : await import('./repository.firebase.js');
-
-export const fetchPlayers = repo.fetchPlayers;
-// ...
-```
 
 In dev mode usa dati in memoria (`repository.mock.ts`). In produzione usa Firebase (`repository.firebase.ts`). Rollup elimina il ramo non usato (dead-code elimination).
 
