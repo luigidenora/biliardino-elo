@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Updated automatically by scripts/generate-sw-version.js
 const VERSION = '2.1.2604202101+20260420210146';
-const CACHE_NAME = `calcio-biliardino-${VERSION}`;
+const CACHE_NAME = `calcio-balilla-${VERSION}`;
 
 // Static assets safe to cache: same URL = same content forever
 const PRECACHE_ASSETS = [
@@ -30,7 +30,7 @@ self.addEventListener('activate', (event) => {
     const keys = await caches.keys();
     await Promise.all(
       keys
-        .filter(k => k.startsWith('calcio-biliardino-') && k !== CACHE_NAME)
+        .filter(k => k.startsWith('calcio-balilla-') && k !== CACHE_NAME)
         .map((k) => {
           console.log('[SW] Deleting old cache:', k);
           return caches.delete(k);
@@ -125,7 +125,7 @@ async function staleWhileRevalidate(request) {
   return cached || fresh;
 }
 
-const OFFLINE_PAGE = `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CAlcio biliardino</title><style>html,body{margin:0;min-height:100%;background:#0F2A20;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}.offline{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;letter-spacing:.08em;font-size:13px;opacity:.85}</style></head><body><div class="offline"><div style="font-size:2rem">⚽</div><div>SEI OFFLINE — riprova tra poco</div></div></body></html>`;
+const OFFLINE_PAGE = `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CAlcio Balilla</title><style>html,body{margin:0;min-height:100%;background:#0F2A20;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}.offline{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;letter-spacing:.08em;font-size:13px;opacity:.85}</style></head><body><div class="offline"><div style="font-size:2rem">⚽</div><div>SEI OFFLINE — riprova tra poco</div></div></body></html>`;
 
 // ── Push Notifications ───────────────────────────────────────
 

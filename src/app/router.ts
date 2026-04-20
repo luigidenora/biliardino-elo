@@ -19,7 +19,7 @@ interface RouteDefinition {
   path: string;
   /** Lazy loader that returns a module with a default export of a Component class. */
   load: () => Promise<{ default: new () => Component }>;
-  /** Page title suffix (appended to "CAlcio biliardino"). */
+  /** Page title suffix (appended to "CAlcio Balilla"). */
   title: string;
   /** Requires Firebase auth. */
   requireAuth?: boolean;
@@ -306,7 +306,7 @@ class Router {
       this.currentComponent = component;
 
       // 6. Update page title
-      document.title = `${match.route.title} — CAlcio biliardino`;
+      document.title = `${match.route.title} — CAlcio Balilla`;
 
       // 6b. Scroll to top if the route requests it
       if (match.route.scrollToTop) {
