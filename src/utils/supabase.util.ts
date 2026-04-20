@@ -46,3 +46,24 @@ export const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
+
+export async function login(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+}
+
+export async function logout(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+export function onAuthStateChange(callback: (isLoggedIn: boolean) => void): () => void {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    callback(!!session?.user);
+  });
+  return () => subscription.unsubscribe();
+}
+
+export async function isLoggedIn(): Promise<boolean> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return !!session?.user;
+}

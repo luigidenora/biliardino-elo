@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Updated automatically by scripts/generate-sw-version.js
-const VERSION = '2.1.2604202040+20260420204048';
+const VERSION = '2.1.2604202101+20260420210146';
 const CACHE_NAME = `calcio-biliardino-${VERSION}`;
 
 // Static assets safe to cache: same URL = same content forever

@@ -18,10 +18,9 @@
 import { API_BASE_URL, VAPID_PUBLIC_KEY } from '@/config/env.config';
 import { subscribeToPushNotifications } from '@/notifications';
 import { getAllPlayers, getPlayerById } from '@/services/player.service';
-import { AUTH, login } from '@/utils/firebase.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { login, logout, onAuthStateChange } from '@/utils/supabase.util';
 import gsap from 'gsap';
 import { html, rawHtml } from '../utils/html-template.util';
 import { CLASS_COLORS, getInitials, renderPlayerAvatar } from './player-avatar.component';
@@ -129,12 +128,11 @@ class UserDropdownComponent {
     this.onOpenLogin = () => this.open(true);
     window.addEventListener('user-dropdown:open-login', this.onOpenLogin);
 
-    /* Firebase auth state */
-    this.authUnsubscribe = onAuthStateChanged(AUTH, (user) => {
-      this.isAuthenticated = !!user;
+    this.authUnsubscribe = onAuthStateChange((loggedIn) => {
+      this.isAuthenticated = loggedIn;
       if (this.isOpen) this.updateAdminSection();
       this.updateHeader();
-    }) as unknown as () => void;
+    });
 
     /* Initial pill dot from localStorage */
     this.notifState = this.getQuickNotifState();
@@ -434,9 +432,7 @@ class UserDropdownComponent {
   }
 
   private async handleLogout(): Promise<void> {
-    if (AUTH) {
-      try { await signOut(AUTH); } catch { /* ignore */ }
-    }
+    try { await logout(); } catch { /* ignore */ }
     this.isAuthenticated = false;
     this.showingAdminTokenForm = false;
     this.adminTokenFeedback = '';

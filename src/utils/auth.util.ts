@@ -1,17 +1,6 @@
 import { isPlayerAdmin } from '@/config/admin.config';
-import { onAuthStateChanged } from 'firebase/auth';
-import { AUTH } from './firebase.util';
+import { isLoggedIn } from './supabase.util';
 
-/**
- * Prompts the user to log in via the UserDropdown event bus.
- *
- * Dispatches 'user-dropdown:open-login' to expand the admin login form
- * inside the unified user dropdown. Resolves when 'user-dropdown:login-success'
- * fires, rejects when 'user-dropdown:login-cancel' fires.
- *
- * @returns A promise that resolves once the user has successfully logged in.
- * @throws An error if the user cancels.
- */
 async function promptLogin(): Promise<void> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -39,64 +28,30 @@ async function promptLogin(): Promise<void> {
   });
 }
 
-/**
- * Ensures that the given action is executed once the user is authenticated.
- *
- * If the user is not authenticated when this function is called, a login
- * prompt is shown. The action is executed exactly once after authentication
- * is confirmed.
- *
- * @param action - A function to execute after the user is authenticated. May be synchronous or return a Promise.
- * @param requireAdmin - If true, verify user is in admin list via API
- */
-export function withAuthentication(
+export async function withAuthentication(
   action: () => void | Promise<void>,
   requireAdmin: boolean = false
 ): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
-    let started = false;
-    let unsubscribed = false;
+  try {
+    if (!(await isLoggedIn())) {
+      await promptLogin();
+    }
 
-    const resolveOnce = (value: boolean): void => {
-      if (started) return;
-      started = true;
-      resolve(value);
-    };
-
-    const unsubscribe = onAuthStateChanged(AUTH, async (user) => {
-      if (unsubscribed || started) return;
-
-      try {
-        if (!user) {
-          await promptLogin();
-          return;
-        }
-
-        // Verifica admin se richiesto (check locale, sicurezza reale via JWT sulle API admin)
-        if (requireAdmin) {
-          const playerId = localStorage.getItem('biliardino_player_id');
-
-          if (!playerId || !isPlayerAdmin(Number(playerId))) {
-            showAdminDenied(!playerId
-              ? 'Utente non riconosciuto. Effettua il login come giocatore prima.'
-              : 'Accesso negato. Solo gli admin possono accedere a questa pagina.');
-            resolveOnce(false);
-            return;
-          }
-        }
-
-        await action();
-        resolveOnce(true);
-      } catch {
-        resolveOnce(false);
-      } finally {
-        if (!unsubscribed) {
-          unsubscribe();
-          unsubscribed = true;
-        }
+    if (requireAdmin) {
+      const playerId = localStorage.getItem('biliardino_player_id');
+      if (!playerId || !isPlayerAdmin(Number(playerId))) {
+        showAdminDenied(!playerId
+          ? 'Utente non riconosciuto. Effettua il login come giocatore prima.'
+          : 'Accesso negato. Solo gli admin possono accedere a questa pagina.');
+        return false;
       }
-    });
-  });
+    }
+
+    await action();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function showAdminDenied(message: string): void {
@@ -122,8 +77,5 @@ function showAdminDenied(message: string): void {
     `;
   }
 
-  // Redirect automatico dopo 5 secondi
-  setTimeout(() => {
-    window.location.assign('/');
-  }, 5000);
+  setTimeout(() => { window.location.assign('/'); }, 5000);
 }

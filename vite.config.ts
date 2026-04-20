@@ -36,7 +36,7 @@ export default defineConfig(config => ({
       },
       output: {
         manualChunks: {
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore/lite'],
+          supabase: ['@supabase/supabase-js'],
           gsap: ['gsap'],
           chartjs: ['chart.js'],
           lucide: ['lucide']
