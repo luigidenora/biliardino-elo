@@ -182,8 +182,8 @@ export default class PlayerProfilePage extends Component {
       className: className.toUpperCase(),
       rankWatermark: rankGeneral > 0 ? String(rankGeneral) : '---',
       rankGeneral: rankGeneral > 0 ? String(rankGeneral) : '---',
-      rankDefence: rankDefence > 0 ? String(rankDefence) : '---',
-      rankAttack: rankAttack > 0 ? String(rankAttack) : '---',
+      rankDefence: (rankDefence > 0 && player.matches[0] >= MatchesToRank) ? String(rankDefence) : '---',
+      rankAttack: (rankAttack > 0 && player.matches[1] >= MatchesToRank) ? String(rankAttack) : '---',
       // Chart toggle initial styles
       chartBtnDefStyle: bestRole === 0
         ? 'background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700'
@@ -331,7 +331,7 @@ export default class PlayerProfilePage extends Component {
       row('Sconfitte', dv(String(dif.losses)), av(String(att.losses)), String(tot.losses), dc(loss), ac(loss), loss),
       row('Win Rate', dv(`${dif.winRate}%`), av(`${att.winRate}%`), `${tot.winRate}%`, dc(getWinRateColor(Number(dif.winRate))), ac(getWinRateColor(Number(att.winRate))), getWinRateColor(Number(tot.winRate))),
       row('Best Streak', dv(dif.bestWinStreak > 0 ? `+${dif.bestWinStreak}` : '–'), av(att.bestWinStreak > 0 ? `+${att.bestWinStreak}` : '–'), '–', dc(win), ac(win)),
-      row('Worst Streak', dv(dif.worstLossStreak > 0 ? `-${dif.worstLossStreak}` : '–'), av(att.worstLossStreak > 0 ? `-${att.worstLossStreak}` : '–'), '–', dc(loss), ac(loss))
+      row('Worst Streak', dv(dif.worstLossStreak !== 0 ? `${dif.worstLossStreak}` : '–'), av(att.worstLossStreak !== 0 ? `${att.worstLossStreak}` : '–'), '–', dc(loss), ac(loss))
     ].join('');
 
     const goalRows = [

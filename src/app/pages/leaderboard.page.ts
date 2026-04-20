@@ -11,12 +11,13 @@
 
 import { MatchHistoryComponent, renderMatchHistory } from '@/app/components/match-history.component';
 import { refreshCoreData, registerAppRefreshHandler } from '@/services/app-refresh.service';
-import { expectedScore } from '@/services/elo.service';
+import { expectedScore, MatchesToRank } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
 import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { fetchRunningMatch } from '@/services/repository.service';
-import gsap from 'gsap';
 import { animateVisible } from '@/utils/animate-visible.util';
+import { getClassName } from '@/utils/get-class-name.util';
+import gsap from 'gsap';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
 import { renderRoleBadge } from '../components/role-badge.component';
@@ -95,7 +96,7 @@ class LeaderboardPage extends Component {
     refreshIcons();
 
     // Leaderboard selector buttons
-    document.querySelectorAll<HTMLButtonElement>('[data-leaderboard]').forEach(btn => {
+    document.querySelectorAll<HTMLButtonElement>('[data-leaderboard]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.leaderboard as LeaderboardType | undefined;
         if (!key || this.currentLeaderboard === key) return;
@@ -239,7 +240,7 @@ class LeaderboardPage extends Component {
 
   private getAllRankedPlayers(): IPlayer[] {
     const roleIdx = this.getRoleIndex();
-    return getAllPlayers().filter(p => {
+    return getAllPlayers().filter((p) => {
       if (roleIdx === null) {
         // General: include players with non-zero rank[2]
         return p.rank[2] > 0;
@@ -287,7 +288,7 @@ class LeaderboardPage extends Component {
     return filtered;
   }
 
-private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
+  private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -357,30 +358,32 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
   // ── Section Renderers ──────────────────────────────────────
 
   private renderLeaderboardSelector(): string {
-    const options: Array<{ key: LeaderboardType; label: string }> = [
-      { key: 'overall', label: 'Generale' },
-      { key: 'defence', label: 'Difesa' },
-      { key: 'attack', label: 'Attacco' }
+    const options: Array<{ key: LeaderboardType; label: string; icon: string }> = [
+      { key: 'overall', label: 'GENERALE', icon: 'trophy' },
+      { key: 'defence', label: 'DIFESA', icon: 'shield' },
+      { key: 'attack', label: 'ATTACCO', icon: 'sword' }
     ];
 
     return `
       <div class="flex justify-center">
-        <div class="inline-flex gap-2 p-1 rounded-xl"
-             style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px)">
-          ${options.map(({ key, label }) => `
+        <div class="inline-flex gap-1 p-1 rounded-xl"
+             style="background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); backdrop-filter:blur(8px)">
+          ${options.map(({ key, label, icon }) => {
+            const isActive = this.currentLeaderboard === key;
+            return `
             <button
               type="button"
               data-leaderboard="${key}"
-              class="leaderboard-selector-btn px-4 py-2 rounded-lg font-ui text-sm transition-all"
-              style="
-                ${this.currentLeaderboard === key
-                  ? 'background:linear-gradient(135deg,#FFD700,#F0A500); color:var(--color-bg-deep); font-weight:700'
-                  : 'background:transparent; color:rgba(255,255,255,0.6); hover:color:rgba(255,255,255,0.9)'}
-              "
+              class="leaderboard-selector-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-ui transition-all"
+              style="font-size:11px; letter-spacing:0.08em;
+                ${isActive
+                  ? 'background:linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary));color:var(--color-bg-deep);font-weight:700;box-shadow:0 2px 12px rgba(255,215,0,0.25)'
+                  : 'background:transparent;color:var(--color-text-muted);border:1px solid transparent'}"
             >
+              <i data-lucide="${icon}" style="width:13px;height:13px" aria-hidden="true"></i>
               ${label}
-            </button>
-          `).join('')}
+            </button>`;
+          }).join('')}
         </div>
       </div>
     `;
@@ -847,24 +850,30 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
         </div>`;
     }
 
-    const rankDisplay = rank <= 3
-      ? `<div class="flex flex-col items-center gap-0.5"><span style="font-size:${rank === 1 ? '18px' : '16px'}">${MEDALS[rank]}</span>${rankDeltaBadge}</div>`
-      : `<div class="flex flex-col items-center gap-0.5"><span style="font-family:var(--font-display);font-size:16px;color:rgba(255,255,255,0.5)">${rank}</span>${rankDeltaBadge}</div>`;
+    const matchesForRank = roleForDisplay === null ? player.matches[player.bestRole] : player.matches[roleForDisplay];
+    const hasEnoughMatches = matchesForRank >= MatchesToRank;
+    const rankDisplay = !hasEnoughMatches
+      ? `<div class="flex flex-col items-center gap-0.5"><span style="font-family:var(--font-ui);font-size:14px;color:rgba(255,255,255,0.2)">\u2014</span></div>`
+      : rank <= 3
+        ? `<div class="flex flex-col items-center gap-0.5"><span style="font-size:${rank === 1 ? '18px' : '16px'}">${MEDALS[rank]}</span>${rankDeltaBadge}</div>`
+        : `<div class="flex flex-col items-center gap-0.5"><span style="font-family:var(--font-display);font-size:16px;color:rgba(255,255,255,0.5)">${rank}</span>${rankDeltaBadge}</div>`;
 
     // ── Role: icona + % su una riga sola ─────────────────
-    const roleCell = renderRoleBadge({ defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'base' });
+    const roleCell = renderRoleBadge({ playerRole: player.role, defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'base' });
 
     const isOverall = roleForDisplay === null;
     const isBest = (r: 0 | 1) => player.bestRole === r;
     const opacity = (r: 0 | 1) => isBest(r) ? '1' : '0.5';
     const fw = (r: 0 | 1) => isBest(r) ? '600' : '400';
+    const noRole = (r: 0 | 1) => player.matches[r] === 0;
+    const dash = `<span style="font-family:var(--font-ui);font-size:12px;color:rgba(255,255,255,0.2)">—</span>`;
 
     // ── Matches cell ──────────────────────────────────────
     const matchesCell = isOverall
       ? `
         <div class="flex flex-col gap-0.5 text-center">
-          <span style="font-family:var(--font-ui);font-size:13px;color:rgba(255,255,255,0.7);opacity:${opacity(0)};font-weight:${fw(0)}">${player.matches[0]}</span>
-          <span style="font-family:var(--font-ui);font-size:13px;color:rgba(255,255,255,0.7);opacity:${opacity(1)};font-weight:${fw(1)}">${player.matches[1]}</span>
+          <div style="opacity:${opacity(0)}">${noRole(0) ? dash : `<span style="font-family:var(--font-ui);font-size:13px;color:rgba(255,255,255,0.7);font-weight:${fw(0)}">${player.matches[0]}</span>`}</div>
+          <div style="opacity:${opacity(1)}">${noRole(1) ? dash : `<span style="font-family:var(--font-ui);font-size:13px;color:rgba(255,255,255,0.7);font-weight:${fw(1)}">${player.matches[1]}</span>`}</div>
         </div>`
       : `<span style="font-family:var(--font-ui);font-size:14px;color:rgba(255,255,255,0.7)">${matches}</span>`;
 
@@ -872,15 +881,11 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
     const winLoss = isOverall
       ? `
         <div class="flex flex-col gap-0.5">
-          <div class="flex items-center gap-1" style="opacity:${opacity(0)};font-weight:${fw(0)}">
-            <span style="font-family:var(--font-ui);font-size:12px;color:#4ADE80">${player.wins[0]}W</span>
-            <span style="color:rgba(255,255,255,0.3);font-size:11px">/</span>
-            <span style="font-family:var(--font-ui);font-size:12px;color:#F87171">${player.matches[0] - player.wins[0]}S</span>
+          <div class="flex items-center gap-1" style="opacity:${opacity(0)}">
+            ${noRole(0) ? dash : `<span style="font-family:var(--font-ui);font-size:12px;color:#4ADE80;font-weight:${fw(0)}">${player.wins[0]}W</span><span style="color:rgba(255,255,255,0.3);font-size:11px">/</span><span style="font-family:var(--font-ui);font-size:12px;color:#F87171;font-weight:${fw(0)}">${player.matches[0] - player.wins[0]}S</span>`}
           </div>
-          <div class="flex items-center gap-1" style="opacity:${opacity(1)};font-weight:${fw(1)}">
-            <span style="font-family:var(--font-ui);font-size:12px;color:#4ADE80">${player.wins[1]}W</span>
-            <span style="color:rgba(255,255,255,0.3);font-size:11px">/</span>
-            <span style="font-family:var(--font-ui);font-size:12px;color:#F87171">${player.matches[1] - player.wins[1]}S</span>
+          <div class="flex items-center gap-1" style="opacity:${opacity(1)}">
+            ${noRole(1) ? dash : `<span style="font-family:var(--font-ui);font-size:12px;color:#4ADE80;font-weight:${fw(1)}">${player.wins[1]}W</span><span style="color:rgba(255,255,255,0.3);font-size:11px">/</span><span style="font-family:var(--font-ui);font-size:12px;color:#F87171;font-weight:${fw(1)}">${player.matches[1] - player.wins[1]}S</span>`}
           </div>
         </div>`
       : `
@@ -899,16 +904,10 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
       ? `
         <div class="flex flex-col gap-1">
           <div class="flex items-center gap-1.5" style="opacity:${opacity(0)}">
-            <div class="flex-1 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
-              <div class="h-full rounded-full" style="width:${wr0}%;background:${wrc0}"></div>
-            </div>
-            <span style="font-family:var(--font-ui);font-size:11px;color:${wrc0};min-width:28px;font-weight:${fw(0)}">${wr0}%</span>
+            ${noRole(0) ? dash : `<div class="flex-1 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)"><div class="h-full rounded-full" style="width:${wr0}%;background:${wrc0}"></div></div><span style="font-family:var(--font-ui);font-size:11px;color:${wrc0};min-width:28px;font-weight:${fw(0)}">${wr0}%</span>`}
           </div>
           <div class="flex items-center gap-1.5" style="opacity:${opacity(1)}">
-            <div class="flex-1 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)">
-              <div class="h-full rounded-full" style="width:${wr1}%;background:${wrc1}"></div>
-            </div>
-            <span style="font-family:var(--font-ui);font-size:11px;color:${wrc1};min-width:28px;font-weight:${fw(1)}">${wr1}%</span>
+            ${noRole(1) ? dash : `<div class="flex-1 h-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.1)"><div class="h-full rounded-full" style="width:${wr1}%;background:${wrc1}"></div></div><span style="font-family:var(--font-ui);font-size:11px;color:${wrc1};min-width:28px;font-weight:${fw(1)}">${wr1}%</span>`}
           </div>
         </div>`
       : `
@@ -922,32 +921,30 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
     // ── Goal ratio cell ────────────────────────────────────
     const gf0 = player.goalsFor[0]; const ga0 = player.goalsAgainst[0];
     const gf1 = player.goalsFor[1]; const ga1 = player.goalsAgainst[1];
-    const gr0 = (gf0 + ga0) > 0 ? Math.round((gf0 / (gf0 + ga0)) * 100) : 0;
-    const gr1 = (gf1 + ga1) > 0 ? Math.round((gf1 / (gf1 + ga1)) * 100) : 0;
-    const grc0 = gr0 >= 55 ? '#4ADE80' : gr0 >= 45 ? '#FFD700' : '#F87171';
-    const grc1 = gr1 >= 55 ? '#4ADE80' : gr1 >= 45 ? '#FFD700' : '#F87171';
+    const gr0 = ga0 > 0 ? gf0 / ga0 : (gf0 > 0 ? 99 : 0);
+    const gr1 = ga1 > 0 ? gf1 / ga1 : (gf1 > 0 ? 99 : 0);
+    const grFmt = (v: number): string => v === 99 ? '∞' : v.toFixed(2);
+    const grc0 = gr0 >= 1.1 ? '#4ADE80' : gr0 >= 0.9 ? '#FFD700' : '#F87171';
+    const grc1 = gr1 >= 1.1 ? '#4ADE80' : gr1 >= 0.9 ? '#FFD700' : '#F87171';
     const goalsCell = isOverall
       ? `
         <div class="flex flex-col gap-0.5 text-center">
           <div style="opacity:${opacity(0)}">
-            <span style="font-family:var(--font-display);font-size:13px;color:${grc0};letter-spacing:0.04em;font-weight:${fw(0)}">${gr0}%</span>
-            <span style="font-family:var(--font-ui);font-size:8px;color:rgba(255,255,255,0.3);display:block">${gf0}/${ga0}</span>
+            ${noRole(0) ? dash : `<span style="font-family:var(--font-display);font-size:13px;color:${grc0};letter-spacing:0.04em;font-weight:${fw(0)}">${grFmt(gr0)}</span><span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.35);display:block">${gf0} / ${ga0}</span>`}
           </div>
           <div style="opacity:${opacity(1)}">
-            <span style="font-family:var(--font-display);font-size:13px;color:${grc1};letter-spacing:0.04em;font-weight:${fw(1)}">${gr1}%</span>
-            <span style="font-family:var(--font-ui);font-size:8px;color:rgba(255,255,255,0.3);display:block">${gf1}/${ga1}</span>
+            ${noRole(1) ? dash : `<span style="font-family:var(--font-display);font-size:13px;color:${grc1};letter-spacing:0.04em;font-weight:${fw(1)}">${grFmt(gr1)}</span><span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.35);display:block">${gf1} / ${ga1}</span>`}
           </div>
         </div>`
       : (() => {
           const goalsFor = player.goalsFor[roleForDisplay!];
           const goalsAgainst = player.goalsAgainst[roleForDisplay!];
-          const totalGoals = goalsFor + goalsAgainst;
-          const goalRatioPct = totalGoals > 0 ? Math.round((goalsFor / totalGoals) * 100) : 0;
-          const goalRatioColor = goalRatioPct >= 55 ? '#4ADE80' : goalRatioPct >= 45 ? '#FFD700' : '#F87171';
+          const ratio = goalsAgainst > 0 ? goalsFor / goalsAgainst : (goalsFor > 0 ? 99 : 0);
+          const ratioColor = ratio >= 1.1 ? '#4ADE80' : ratio >= 0.9 ? '#FFD700' : '#F87171';
           return `
             <div class="flex flex-col gap-0.5 text-center">
-              <span style="font-family:var(--font-display);font-size:15px;color:${goalRatioColor};letter-spacing:0.05em;line-height:1">${goalRatioPct}%</span>
-              <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.3)">${goalsFor}/${goalsAgainst}</span>
+              <span style="font-family:var(--font-display);font-size:15px;color:${ratioColor};letter-spacing:0.05em;line-height:1">${grFmt(ratio)}</span>
+              <span style="font-family:var(--font-ui);font-size:10px;color:rgba(255,255,255,0.35)">${goalsFor} / ${goalsAgainst}</span>
             </div>`;
         })();
 
@@ -956,6 +953,7 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
       `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${d > 0 ? '#4ADE80' : '#F87171'};flex-shrink:0"></div>`
     ).join('');
     const makeFormaRow = (arr: number[], r: 0 | 1) => {
+      if (noRole(r)) return `<div style="opacity:${opacity(r)}">${dash}</div>`;
       const last = arr.slice(-5);
       const sum = Math.round(last.reduce((a, d) => a + d, 0));
       const fc = sum > 0 ? '#4ADE80' : sum < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
@@ -974,7 +972,7 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
     const formaEloStr = formaEloRounded > 0 ? `+${formaEloRounded}` : `${formaEloRounded}`;
     const formaCell = isOverall
       ? `
-        <div class="flex flex-col justify-center gap-1">
+        <div class="flex flex-col justify-center gap-3">
           ${makeFormaRow(player.matchesDelta[0] || [], 0)}
           ${makeFormaRow(player.matchesDelta[1] || [], 1)}
         </div>`
@@ -1008,11 +1006,11 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
         <div class="flex flex-col gap-0.5">
           <div class="flex items-center gap-1.5">
             <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.4);width:20px">DIF</span>
-            <span style="font-family:var(--font-display);font-size:${player.bestRole === 0 ? '17px' : '14px'};color:${player.bestRole === 0 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 0 ? 700 : 400}">${Math.round(player.elo[0])}</span>
+            ${noRole(0) ? dash : `<span style="font-family:var(--font-display);font-size:${player.bestRole === 0 ? '17px' : '14px'};color:${player.bestRole === 0 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 0 ? 700 : 400}">${Math.round(player.elo[0])}</span>`}
           </div>
           <div class="flex items-center gap-1.5">
             <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.4);width:20px">ATT</span>
-            <span style="font-family:var(--font-display);font-size:${player.bestRole === 1 ? '17px' : '14px'};color:${player.bestRole === 1 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 1 ? 700 : 400}">${Math.round(player.elo[1])}</span>
+            ${noRole(1) ? dash : `<span style="font-family:var(--font-display);font-size:${player.bestRole === 1 ? '17px' : '14px'};color:${player.bestRole === 1 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 1 ? 700 : 400}">${Math.round(player.elo[1])}</span>`}
           </div>
         </div>`
       : `<div class="flex items-baseline gap-1"><span style="font-family:var(--font-display);font-size:20px;color:${eloColor};letter-spacing:0.05em">${elo}</span>${todayBadge}</div>`;
@@ -1020,15 +1018,18 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
     // Mobile: subrow — badge ruolo + pallini forma
     const mobileSubRow = `
       <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-        ${renderRoleBadge({ defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'sm' })}
+        ${renderRoleBadge({ playerRole: player.role, defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'sm' })}
         <div class="flex items-center gap-px">${mobileFormaDots}</div>
         ${mobileLast5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:7px;color:${mobileFormaColor};font-weight:600">${mobileFormaStr}</span>` : ''}
       </div>`;
 
+    const className = playerClass >= 0 ? getClassName(playerClass) : '';
     const nameRow = (sz: 'sm' | 'base', withSubrow: boolean) => `
-      <div class="flex items-center gap-2.5 min-w-0">
-        ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: sz, playerId: player.id, playerClass: playerClass })}
-        <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-3.5 min-w-0">
+        <div data-tooltip="${className}">
+          ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: sz, playerId: player.id, playerClass: playerClass })}
+        </div>
+        <div class="min-w-0 flex-1 relative z-10">
           <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
                style="font-family:var(--font-ui); font-size:${sz === 'sm' ? '13px' : '14px'}; font-weight:600">
             ${player.name}
@@ -1205,15 +1206,20 @@ private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
       const key = htmlBtn.dataset.leaderboard as LeaderboardType | undefined;
       if (!key) continue;
       if (this.currentLeaderboard === key) {
-        htmlBtn.style.background = 'linear-gradient(135deg,#FFD700,#F0A500)';
+        htmlBtn.style.background = 'linear-gradient(135deg,var(--color-gold),var(--color-gold-secondary))';
         htmlBtn.style.color = 'var(--color-bg-deep)';
         htmlBtn.style.fontWeight = '700';
+        htmlBtn.style.boxShadow = '0 2px 12px rgba(255,215,0,0.25)';
+        htmlBtn.style.border = '1px solid transparent';
       } else {
         htmlBtn.style.background = 'transparent';
-        htmlBtn.style.color = 'rgba(255,255,255,0.6)';
+        htmlBtn.style.color = 'var(--color-text-muted)';
         htmlBtn.style.fontWeight = 'normal';
+        htmlBtn.style.boxShadow = 'none';
+        htmlBtn.style.border = '1px solid transparent';
       }
     }
+    refreshIcons();
   }
 
   private updateSortIndicators(): void {

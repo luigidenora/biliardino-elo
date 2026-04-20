@@ -15,6 +15,8 @@ export type RoleBadgeSize = 'sm' | 'base' | 'lg';
 export interface RoleBadgeOptions {
   /** Explicit role — if omitted, computed from defenceMatches/attackMatches. */
   role?: 'defence' | 'attack';
+  /** Role from player.role field: -1=defence, 0=both, 1=attack. Takes priority over defenceMatches/attackMatches. */
+  playerRole?: -1 | 0 | 1;
   /** Matches played as defender. Used when role is auto-detected. */
   defenceMatches?: number;
   /** Matches played as attacker. Used when role is auto-detected. */
@@ -67,7 +69,13 @@ function resolveRole(opts: RoleBadgeOptions): { style: RoleStyle; pct: string } 
   let style: RoleStyle;
   let dominant = 0;
 
-  if (opts.role === 'defence') {
+  if (opts.playerRole === -1) {
+    style = DEFENCE; dominant = def;
+  } else if (opts.playerRole === 1) {
+    style = ATTACK; dominant = att;
+  } else if (opts.playerRole === 0) {
+    style = BALANCED; dominant = def;
+  } else if (opts.role === 'defence') {
     style = DEFENCE;
     dominant = def;
   } else if (opts.role === 'attack') {

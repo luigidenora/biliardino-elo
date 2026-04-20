@@ -1,7 +1,6 @@
 import { getPlayerById } from '@/services/player.service';
 import gsap from 'gsap';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
-import { Component } from '../components/component.base';
 import { html, rawHtml } from '../utils/html-template.util';
 import cardTemplate from './match-history-card.component.html?raw';
 import historyTemplate from './match-history.component.html?raw';
@@ -200,16 +199,16 @@ export function renderMatchCard(
   });
 }
 
-export function renderMatchPlayerAvatar(player: IPlayer | undefined): string {
+export function renderMatchPlayerAvatar(player: IPlayer | undefined, role: 0 | 1 = player?.bestRole as 0 | 1 ?? 0): string {
   if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
 
-  const color = CLASS_COLORS[player.class[player.bestRole]] ?? '#8B7D6B';
+  const color = CLASS_COLORS[player.class[role]] ?? '#8B7D6B';
   return renderPlayerAvatar({
     initials: getInitials(player.name),
     color,
     size: 'sm',
     playerId: player.id,
-    playerClass: player.class[player.bestRole]
+    playerClass: player.class[role]
   });
 }
 
@@ -254,8 +253,25 @@ function renderTeamAvatars(
   const originClass = options.side === 'left' ? 'origin-left' : 'origin-right';
   const stackW = AVATAR_STACK_OFFSET + CLOSED_AVATAR_SIZE;
   const stackH = CLOSED_AVATAR_SIZE;
+  const isRight = options.side === 'right';
 
-  return `
+  const nameEl = (p: IPlayer | undefined, align: 'left' | 'right') => {
+    if (!p) return '';
+    return `<span class="font-ui" style="font-size:12px;color:rgba(255,255,255,0.85);text-align:${align};display:block;white-space:nowrap">${p.name}</span>`;
+  };
+
+  // Desktop: show names next to the avatar stack
+  const namesHtml = isRight
+    ? `<div class="hidden sm:flex flex-col gap-1.5 justify-center items-end mr-2">
+        ${nameEl(p1, 'right')}
+        ${nameEl(p2, 'right')}
+      </div>`
+    : `<div class="hidden sm:flex flex-col gap-1.5 justify-center items-start ml-2">
+        ${nameEl(p1, 'left')}
+        ${nameEl(p2, 'left')}
+      </div>`;
+
+  const stack = `
     <div class="relative shrink-0 ${originClass} scale-[0.82] sm:scale-100 transition-transform duration-300"
          data-avatar-stack
          data-side="${options.side}"
@@ -263,18 +279,22 @@ function renderTeamAvatars(
       <div class="absolute transition-all duration-300 ease-out"
            data-avatar-slot="back"
          style="left:${AVATAR_STACK_OFFSET}px;top:0px">
-        ${renderProfileAvatarLink(p2)}
+        ${renderProfileAvatarLink(p2, 1)}
       </div>
       <div class="absolute transition-all duration-300 ease-out"
            data-avatar-slot="front"
            style="left:0px;top:0px">
-        ${renderProfileAvatarLink(p1)}
+        ${renderProfileAvatarLink(p1, 0)}
       </div>
     </div>
   `;
+
+  return isRight
+    ? `${namesHtml}${stack}`
+    : `${stack}${namesHtml}`;
 }
 
-function renderProfileAvatarLink(player: IPlayer | undefined): string {
+function renderProfileAvatarLink(player: IPlayer | undefined, role: 0 | 1 = 0): string {
   if (!player) return `<div style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px"></div>`;
 
   return `
@@ -282,7 +302,7 @@ function renderProfileAvatarLink(player: IPlayer | undefined): string {
        style="width:${CLOSED_AVATAR_SIZE}px;height:${CLOSED_AVATAR_SIZE}px;transition:translate 220ms ease"
        onmouseenter="this.style.translate='0 -2px'"
        onmouseleave="this.style.translate='0 0'">
-      ${renderMatchPlayerAvatar(player)}
+      ${renderMatchPlayerAvatar(player, role)}
     </a>
   `;
 }
@@ -338,13 +358,14 @@ function getMatchCardData(match: IMatch, selectedPlayerId: number): MatchCardDat
 function renderDetailPlayer(player: IPlayer | undefined, index: number): string {
   if (!player) return '<div style="width:110px"></div>';
 
-  const color = CLASS_COLORS[player.class[player.bestRole]] ?? '#8B7D6B';
+  const matchRole: 0 | 1 = (index % 2) as 0 | 1;
+  const color = CLASS_COLORS[player.class[matchRole]] ?? '#8B7D6B';
   const avatarHtml = renderPlayerAvatar({
     initials: getInitials(player.name),
     color,
     size: 'lg',
     playerId: player.id,
-    playerClass: player.class[player.bestRole]
+    playerClass: player.class[matchRole]
   });
 
   return `

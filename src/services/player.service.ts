@@ -80,7 +80,7 @@ export function updatePlayer(id: number, idMate: number, opponentTeam: ITeam, ro
     player.bestWinStreak[role] = player.streak[role];
   }
 
-  if (Math.abs(player.streak[role]) > Math.abs(player.worstLossStreak[role])) {
+  if (player.streak[role] < player.worstLossStreak[role]) {
     player.worstLossStreak[role] = player.streak[role];
   }
 

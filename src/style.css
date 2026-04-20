@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+/* ── Tooltip ────────────────────────────────────────── */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.92);
+  background: rgba(15, 20, 15, 0.95);
+  color: #FFD700;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 100;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
 /* ── Foosball cursor (white ball) ─────────────────────────── */
 *,
 *::before,

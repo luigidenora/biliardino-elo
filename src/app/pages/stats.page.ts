@@ -54,7 +54,7 @@ function bestStreak(p: IPlayer): number {
   return Math.max(p.bestWinStreak[0], p.bestWinStreak[1]);
 }
 function worstStreak(p: IPlayer): number {
-  return Math.max(p.worstLossStreak[0], p.worstLossStreak[1]);
+  return Math.min(p.worstLossStreak[0], p.worstLossStreak[1]);
 }
 function playerClass(p: IPlayer): number {
   return Math.min(p.class[0], p.class[1]);
@@ -85,7 +85,7 @@ function rBestStreak(p: IPlayer, role: Role): number {
   return role === null ? Math.max(p.bestWinStreak[0], p.bestWinStreak[1]) : p.bestWinStreak[role];
 }
 function rWorstStreak(p: IPlayer, role: Role): number {
-  return role === null ? Math.max(p.worstLossStreak[0], p.worstLossStreak[1]) : p.worstLossStreak[role];
+  return role === null ? Math.min(p.worstLossStreak[0], p.worstLossStreak[1]) : p.worstLossStreak[role];
 }
 
 class StatsPage extends Component {
@@ -315,7 +315,7 @@ class StatsPage extends Component {
     const byBestElo = top5([...filteredRanked].sort((a, b) => rBestElo(b, role) - rBestElo(a, role)));
     const byWR = top5([...filteredRanked].sort((a, b) => (rWins(b, role) / rMatches(b, role)) - (rWins(a, role) / rMatches(a, role))));
     const byStreak = top5([...filteredRanked].sort((a, b) => rBestStreak(b, role) - rBestStreak(a, role)));
-    const byLossStreak = top5([...filteredRanked].sort((a, b) => rWorstStreak(b, role) - rWorstStreak(a, role)));
+    const byLossStreak = top5([...filteredRanked].sort((a, b) => rWorstStreak(a, role) - rWorstStreak(b, role)));
     const byGoalRatio = top5([...filteredRanked].sort((a, b) =>
       (rGoalsFor(b, role) / Math.max(1, rGoalsAgainst(b, role))) - (rGoalsFor(a, role) / Math.max(1, rGoalsAgainst(a, role)))
     ));
@@ -336,7 +336,7 @@ class StatsPage extends Component {
         p => `${rBestStreak(p, role)}`,
         p => `${rMatches(p, role)}P · ${Math.round((rWins(p, role) / rMatches(p, role)) * 100)}% WR`, role)}
       ${this.renderLeaderboardSection('skull', 'LOSS STREAK', 'var(--color-loss)', byLossStreak,
-        p => `${rWorstStreak(p, role)}`,
+        p => rWorstStreak(p, role) !== 0 ? `${rWorstStreak(p, role)}` : '–',
         p => `${rMatches(p, role)}P · ${Math.round((rWins(p, role) / rMatches(p, role)) * 100)}% WR`, role)}
       ${this.renderLeaderboardSection('crosshair', 'GOAL RATIO', '#F0A500', byGoalRatio,
         p => (rGoalsFor(p, role) / Math.max(1, rGoalsAgainst(p, role))).toFixed(2),
