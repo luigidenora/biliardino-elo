@@ -523,8 +523,10 @@ class StatsPage extends Component {
             </div>
             ${avatars(defB ?? null, attB ?? null, true)}
           </div>
-          <div class="px-2.5 py-1 font-body text-center" style="font-size:8px; color:rgba(255,255,255,0.2); border-top:1px solid rgba(255,255,255,0.04); background:rgba(0,0,0,0.15)">
-            ELO ±${Math.round(Math.abs(delta))}
+          <div class="px-2.5 py-1 font-body flex items-center justify-between" style="font-size:8px; color:rgba(255,255,255,0.2); border-top:1px solid rgba(255,255,255,0.04); background:rgba(0,0,0,0.15)">
+            <span>${Math.round(m.teamELO[0])}</span>
+            <span>ELO ±${Math.round(Math.abs(delta))}</span>
+            <span>${Math.round(m.teamELO[1])}</span>
           </div>
         </div>
       `;

@@ -61,8 +61,8 @@ export function updatePlayer(id: number, idMate: number, opponentTeam: ITeam, ro
   updatePlayersOccurency(player, idMate, idOppoA, idOppoB, won, role, delta);
   updateMatchesRecord(player, match, role, teamId, won);
 
-  player.avgTeamElo[role] = updateAverage(player.avgTeamElo[role], player.matches[role], match.teamELO[teamId]); // TODO consider only the mate instead of both?
-  player.avgOpponentElo[role] = updateAverage(player.avgOpponentElo[role], player.matches[role], match.teamELO[teamId ^ 1]);
+  player.avgTeamElo[role] = updateAverage(player.avgTeamElo[role], player.matches[role] - 1, match.teamELO[teamId]); // TODO consider only the mate instead of both?
+  player.avgOpponentElo[role] = updateAverage(player.avgOpponentElo[role], player.matches[role] - 1, match.teamELO[teamId ^ 1]);
 
   if (player.matches[role] >= MatchesToRank) {
     player.bestElo[role] = Math.max(player.bestElo[role], player.elo[role]);

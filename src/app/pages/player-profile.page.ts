@@ -10,6 +10,7 @@
 
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
+import { MatchesToRank } from '@/services/elo.service';
 import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getAvgAgainstColor, getAvgForColor, getGoalRatioColor, getWinRateColor } from '@/utils/stats-thresholds.util';
@@ -49,10 +50,7 @@ function getPlayerColor(player: IPlayer): string {
   return CLASS_COLORS[cls] ?? '#FFFFFF';
 }
 
-function getRankMedal(rank: number): string {
-  if (rank === 1) return '&#x1F947;';
-  if (rank === 2) return '&#x1F948;';
-  if (rank === 3) return '&#x1F949;';
+function getRankMedal(_rank: number): string {
   return '';
 }
 
@@ -179,9 +177,7 @@ export default class PlayerProfilePage extends Component {
         playerId: id,
         playerClass: player.class[bestRole]
       })),
-      rankBadge: rawHtml(rankGeneral <= 3 && rankGeneral > 0
-        ? `<span class="absolute -top-1 -right-1 text-xl leading-none">${getRankMedal(rankGeneral)}</span>`
-        : ''),
+      rankBadge: rawHtml(''),
       playerName: player.name.toUpperCase(),
       className: className.toUpperCase(),
       rankWatermark: rankGeneral > 0 ? String(rankGeneral) : '---',
@@ -199,7 +195,7 @@ export default class PlayerProfilePage extends Component {
       companionCards: rawHtml(this.renderCompanionCards(player, this.recordSharedFilter)),
       bestWorstMatches: rawHtml(this.renderBestWorstMatches(player, id, this.recordSharedFilter)),
       // Relation cards
-      teammateTbody: rawHtml(this.renderRelationCards(tmRows)),
+      teammateTbody: rawHtml(this.renderRelationCards(tmRows, this.tmAvatarRole())),
       opponentTbody: rawHtml(this.renderRelationCards(oppRows)),
       tmCount: tmRows.length,
       oppCount: oppRows.length,
@@ -233,7 +229,7 @@ export default class PlayerProfilePage extends Component {
     const avgAgainst = matches > 0 ? (goalsAgainst / matches).toFixed(2) : '–';
 
     const eloRole: 0 | 1 = filter === 2 ? player.bestRole as 0 | 1 : filter;
-    const eloStr = (v: number): string => v > 0 ? String(Math.round(v)) : '–';
+    const eloStr = (v: number): string => isFinite(v) && v > 0 ? String(Math.round(v)) : '–';
 
     const bestWinStreak = Math.max(...roles.map(r => player.bestWinStreak[r]));
     const worstLossStreak = Math.max(...roles.map(r => player.worstLossStreak[r]));
@@ -349,7 +345,7 @@ export default class PlayerProfilePage extends Component {
     return `
       <div id="stats-body" class="p-3" style="border-top:1px solid var(--glass-border)">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start">
-          ${groupCard('bar-chart-2', 'ELO', colHeader2(), eloRows)}
+          ${groupCard('trending-up', 'ELO', colHeader2(), eloRows)}
           ${groupCard('activity', 'Partite', colHeader3(), matchRows)}
           ${groupCard('target', 'Goal', colHeader3(), goalRows)}
         </div>
@@ -427,7 +423,7 @@ export default class PlayerProfilePage extends Component {
     });
   }
 
-  private renderRelationCards(rows: RelationRow[]): string {
+  private renderRelationCards(rows: RelationRow[], avatarRole: 0 | 1 | null = null): string {
     if (rows.length === 0) {
       return `<p class="col-span-full py-6 text-center font-body text-sm"
                style="color:var(--color-text-muted)">Nessun dato disponibile</p>`;
@@ -438,34 +434,36 @@ export default class PlayerProfilePage extends Component {
       const deltaSign = r.delta >= 0 ? '+' : '';
       const wrColor = r.winrate >= 50 ? 'var(--color-win)' : r.winrate >= 40 ? 'var(--color-draw)' : 'var(--color-loss)';
       const p = getPlayerById(r.id);
+      const role: 0 | 1 = avatarRole !== null ? avatarRole : (p ? p.bestRole as 0 | 1 : 0);
+      const avatarColor = p ? (CLASS_COLORS[p.class[role]] ?? '#FFFFFF') : '#888888';
       const avatarHtml = p
-        ? renderPlayerAvatar({ initials: getInitials(p.name), color: getPlayerColor(p), size: 'sm', playerId: r.id })
+        ? renderPlayerAvatar({ initials: getInitials(p.name), color: avatarColor, size: 'md', playerId: r.id, playerClass: p.class[role] })
         : '';
       return `
         <a href="/profile/${r.id}"
            class="flex flex-col items-center gap-1 p-2 rounded-lg transition-all"
            style="background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)">
           <div class="shrink-0 mt-1">${avatarHtml}</div>
-          <p class="font-body text-[10px] text-center leading-tight w-full truncate"
+          <p class="font-body text-xs text-center leading-tight w-full truncate"
              style="color:var(--color-text-secondary)">${r.name}</p>
           <div class="grid grid-cols-3 gap-0 w-full text-center border-t pt-1 mt-0.5"
                style="border-color:rgba(255,255,255,0.07)">
             <div>
               <p class="font-display text-sm leading-none"
                  style="color:var(--color-text-primary)">${r.matches}</p>
-              <p class="font-ui text-[8px] uppercase"
+              <p class="font-ui text-[10px] uppercase"
                  style="color:var(--color-text-dim)">Match</p>
             </div>
             <div>
               <p class="font-display text-sm leading-none"
                  style="color:${wrColor}">${r.winrate.toFixed(0)}%</p>
-              <p class="font-ui text-[8px] uppercase"
+              <p class="font-ui text-[10px] uppercase"
                  style="color:var(--color-text-dim)">WIN</p>
             </div>
             <div>
               <p class="font-display text-sm leading-none"
                  style="color:${deltaColor}">${deltaSign}${Math.round(r.delta)}</p>
-              <p class="font-ui text-[8px] uppercase"
+              <p class="font-ui text-[10px] uppercase"
                  style="color:var(--color-text-dim)">\u0394ELO</p>
             </div>
           </div>
@@ -481,23 +479,37 @@ export default class PlayerProfilePage extends Component {
     minWR: [number, number]; maxWR: [number, number];
     minRatio: [number, number]; maxRatio: [number, number];
     minOppElo: [number, number]; maxOppElo: [number, number];
+    minForma: [number, number]; maxForma: [number, number];
   } {
     const all = getAllPlayers();
     const toRatio = (p: IPlayer, r: 0 | 1): number =>
       p.goalsAgainst[r] > 0 ? p.goalsFor[r] / p.goalsAgainst[r] : (p.goalsFor[r] > 0 ? 999 : 1);
 
+    const recentWinRate = (p: IPlayer, r: 0 | 1): number => {
+      const recent = [...(p.history[r] ?? [])].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+      if (recent.length === 0) return 0;
+      const wins = recent.filter((m) => {
+        const inTeamA = m.teamA.defence === p.id || m.teamA.attack === p.id;
+        const ti = inTeamA ? 0 : 1;
+        return m.score[ti] > m.score[ti ^ 1];
+      }).length;
+      return wins / recent.length;
+    };
+
     const ranges = [0, 1].map((r) => {
-      const pool = all.filter(p => p.matches[r as 0 | 1] >= 10);
-      if (pool.length === 0) return { minElo: 0, maxElo: 0, minWR: 0, maxWR: 0, minRatio: 0, maxRatio: 0, minOppElo: 0, maxOppElo: 0 };
+      const pool = all.filter(p => p.matches[r as 0 | 1] >= MatchesToRank);
+      if (pool.length === 0) return { minElo: 0, maxElo: 0, minWR: 0, maxWR: 0, minRatio: 0, maxRatio: 0, minOppElo: 0, maxOppElo: 0, minForma: 0, maxForma: 1 };
       const elos = pool.map(p => p.elo[r as 0 | 1]);
       const wrs = pool.map(p => p.wins[r as 0 | 1] / p.matches[r as 0 | 1]);
       const ratios = pool.map(p => toRatio(p, r as 0 | 1));
       const oppElos = pool.map(p => p.avgOpponentElo[r as 0 | 1]);
+      const formas = pool.map(p => recentWinRate(p, r as 0 | 1));
       return {
         minElo: Math.min(...elos), maxElo: Math.max(...elos),
         minWR: Math.min(...wrs), maxWR: Math.max(...wrs),
         minRatio: Math.min(...ratios), maxRatio: Math.max(...ratios),
-        minOppElo: Math.min(...oppElos), maxOppElo: Math.max(...oppElos)
+        minOppElo: Math.min(...oppElos), maxOppElo: Math.max(...oppElos),
+        minForma: Math.min(...formas), maxForma: Math.max(...formas)
       };
     });
 
@@ -510,6 +522,8 @@ export default class PlayerProfilePage extends Component {
       minRatio: [ranges[0].minRatio, ranges[1].minRatio],
       maxRatio: [ranges[0].maxRatio, ranges[1].maxRatio],
       minOppElo: [ranges[0].minOppElo, ranges[1].minOppElo],
+      minForma: [ranges[0].minForma, ranges[1].minForma],
+      maxForma: [ranges[0].maxForma, ranges[1].maxForma],
       maxOppElo: [ranges[0].maxOppElo, ranges[1].maxOppElo]
     };
   }
@@ -526,6 +540,8 @@ export default class PlayerProfilePage extends Component {
     const globalMaxRatio = Math.max(ranges.maxRatio[0], ranges.maxRatio[1]);
     const globalMinOppElo = Math.min(ranges.minOppElo[0], ranges.minOppElo[1]);
     const globalMaxOppElo = Math.max(ranges.maxOppElo[0], ranges.maxOppElo[1]);
+    const globalMinForma = Math.min(ranges.minForma[0], ranges.minForma[1]);
+    const globalMaxForma = Math.max(ranges.maxForma[0], ranges.maxForma[1]);
 
     const eloScore = norm(player.elo[role], globalMinElo, globalMaxElo);
 
@@ -537,7 +553,7 @@ export default class PlayerProfilePage extends Component {
       : (player.goalsFor[role] > 0 ? 999 : 1);
     const goalRatioScore = norm(myRatio, globalMinRatio, globalMaxRatio);
 
-    // Forma: win rate nelle ultime 10 partite per questo ruolo
+    // Forma: win rate nelle ultime 10 partite per questo ruolo, normalizzata sul range globale
     const recentHistory = [...(player.history[role] ?? [])]
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 10);
@@ -546,7 +562,8 @@ export default class PlayerProfilePage extends Component {
       const teamIdx = inTeamA ? 0 : 1;
       return m.score[teamIdx] > m.score[teamIdx ^ 1];
     }).length;
-    const formaScore = recentHistory.length > 0 ? Math.round((recentWins / recentHistory.length) * 100) : 50;
+    const myForma = recentHistory.length > 0 ? recentWins / recentHistory.length : 0;
+    const formaScore = Math.round(norm(myForma, globalMinForma, globalMaxForma));
 
     // Difficoltà: ELO medio degli avversari affrontati, normalizzato
     const difficoltaScore = norm(player.avgOpponentElo[role], globalMinOppElo, globalMaxOppElo);
@@ -687,21 +704,22 @@ export default class PlayerProfilePage extends Component {
     const makeCard = (def: CardDef): string => {
       const p = def.stat ? getPlayerById(def.stat.player) : null;
       const avatar = p
-        ? renderPlayerAvatar({ initials: getInitials(p.name), color: getPlayerColor(p), size: 'xs', playerId: p.id, hideFrame: true })
+        ? renderPlayerAvatar({ initials: getInitials(p.name), color: getPlayerColor(p), size: 'sm', playerId: p.id, hideFrame: true })
         : '';
       const name = p ? p.name : '—';
       const subtitle = def.stat ? def.fmt(def.stat.value) : '';
+      const avatarEl = avatar ? `<a href="/profile/${p!.id}" class="shrink-0">${avatar}</a>` : '';
       return `
         <div class="rounded-xl p-3" style="background:rgba(0,0,0,0.25);border:1px solid var(--glass-border)">
           <div class="flex items-center gap-1.5 mb-2">
-            <i data-lucide="${def.icon}" style="width:12px;height:12px;color:var(--color-text-muted)" aria-hidden="true"></i>
-            <p class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">${def.label}</p>
+            <i data-lucide="${def.icon}" style="width:11px;height:11px;color:var(--color-text-muted)" aria-hidden="true"></i>
+            <p class="font-ui text-[10px] uppercase tracking-widest" style="color:var(--color-text-muted)">${def.label}</p>
           </div>
           <div class="flex items-center gap-2">
-            ${avatar ? `<div class="shrink-0">${avatar}</div>` : ''}
+            ${avatarEl}
             <div class="min-w-0">
-              <p class="font-body text-sm font-medium truncate" style="color:var(--color-text-primary)">${name}</p>
-              <p class="font-body text-xs mt-0.5" style="color:${def.color ?? 'var(--color-text-secondary)'}">${subtitle}</p>
+              <a href="/profile/${p?.id ?? ''}" class="font-body text-xs font-medium truncate block" style="color:var(--color-text-primary)">${name}</a>
+              <p class="font-body text-[10px] mt-0.5" style="color:${def.color ?? 'var(--color-text-secondary)'}">${subtitle}</p>
             </div>
           </div>
         </div>
@@ -734,13 +752,14 @@ export default class PlayerProfilePage extends Component {
 
     const makeAvatar = (pid: number): string => {
       const p = getPlayerById(pid);
-      return renderPlayerAvatar({
+      const avatar = renderPlayerAvatar({
         initials: getInitials(p?.name ?? '?'),
         color: p ? getPlayerColor(p) : '#888',
-        size: 'xs',
+        size: 'sm',
         playerId: pid,
         hideFrame: true
       });
+      return `<a href="/profile/${pid}" class="shrink-0">${avatar}</a>`;
     };
 
     return items.map((item) => {
@@ -776,8 +795,8 @@ export default class PlayerProfilePage extends Component {
         <div class="rounded-xl p-2.5 flex flex-col gap-2" style="background:rgba(0,0,0,0.25);border:1px solid var(--glass-border)">
           <div class="flex items-center justify-between gap-1.5">
             <div class="flex items-center gap-1 min-w-0">
-              <i data-lucide="${item.icon}" style="width:10px;height:10px;color:var(--color-text-muted);flex-shrink:0" aria-hidden="true"></i>
-              <p class="font-ui text-[8px] uppercase tracking-widest truncate" style="color:var(--color-text-muted)">${item.label}</p>
+              <i data-lucide="${item.icon}" style="width:11px;height:11px;color:var(--color-text-muted);flex-shrink:0" aria-hidden="true"></i>
+              <p class="font-ui text-[10px] uppercase tracking-widest truncate" style="color:var(--color-text-muted)">${item.label}</p>
             </div>
             <span class="font-ui text-[9px] px-1.5 py-0.5 rounded shrink-0"
                   style="background:${deltaBg};color:${deltaColor}">${deltaSign}${delta} ELO</span>
@@ -788,15 +807,15 @@ export default class PlayerProfilePage extends Component {
             </div>
             <div class="flex flex-col items-center gap-0.5">
               <span class="font-display text-xl leading-none" style="color:var(--color-text-primary)">${myScore}\u2013${oppScore}</span>
-              <span class="font-body text-[9px]" style="color:rgba(255,255,255,0.35)">${expectedPct}% \u00b7 ${oppExpectedPct}%</span>
+              <span class="font-body text-[10px]" style="color:rgba(255,255,255,0.35)">${expectedPct}% \u00b7 ${oppExpectedPct}%</span>
             </div>
             <div class="flex items-center gap-0.5 shrink-0">
               ${makeAvatar(oppTeam.defence)}${makeAvatar(oppTeam.attack)}
             </div>
           </div>
           <div class="flex items-center justify-between">
-            <span class="font-ui text-[9px]" style="color:rgba(255,255,255,0.35)">${myElo} ELO</span>
-            <span class="font-ui text-[9px]" style="color:rgba(255,255,255,0.35)">${oppElo} ELO</span>
+            <span class="font-ui text-[10px]" style="color:rgba(255,255,255,0.35)">${myElo} ELO</span>
+            <span class="font-ui text-[10px]" style="color:rgba(255,255,255,0.35)">${oppElo} ELO</span>
           </div>
         </div>
       `;
@@ -1234,11 +1253,16 @@ export default class PlayerProfilePage extends Component {
     this.rerenderOpponentTable(player);
   }
 
+  private tmAvatarRole(): 0 | 1 | null {
+    if (this.relationFilter === 2) return null; // total → bestRole
+    return this.relationFilter === 0 ? 1 : 0; // player is DIF → teammate is ATT, and vice-versa
+  }
+
   private rerenderTeammateTable(player: IPlayer): void {
     const grid = this.$id('tm-grid');
     if (!grid) return;
     const rows = this.sortRelationRows(this.buildRelationRows(player.teammatesStats, this.relationFilter), this.tmSort, this.tmSortAsc);
-    grid.innerHTML = this.renderRelationCards(rows);
+    grid.innerHTML = this.renderRelationCards(rows, this.tmAvatarRole());
     refreshIcons();
   }
 
@@ -1494,6 +1518,11 @@ export default class PlayerProfilePage extends Component {
         }
       }
     });
+
+    // On mobile, hide tooltip when the finger is lifted
+    const hideTooltip = (): void => { tooltipEl.style.opacity = '0'; };
+    canvas.addEventListener('touchend', hideTooltip, { passive: true });
+    canvas.addEventListener('touchcancel', hideTooltip, { passive: true });
   }
 
   private mountRadarChart(id: number, player: IPlayer): void {
