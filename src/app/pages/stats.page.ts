@@ -34,6 +34,20 @@ const CLASS_COLORS: Record<number, string> = {
   4: '#8B7D6B'
 };
 
+/** Only consider matches where at least one team scored exactly 8 goals
+ *  and all 4 players exist in the player map (getPlayerById). */
+function isValidMatch(m: IMatch): boolean {
+  if (!m || !m.teamA || !m.teamB) return false;
+  const a = Array.isArray(m.score) ? (m.score[0] ?? 0) : 0;
+  const b = Array.isArray(m.score) ? (m.score[1] ?? 0) : 0;
+  // Match must have at least one team with exactly 8 goals (user requested === 8)
+  if (!(a === 8 || b === 8)) return false;
+  // All four players must exist in the player map
+  if (!getPlayerById(m.teamA.defence) || !getPlayerById(m.teamA.attack)) return false;
+  if (!getPlayerById(m.teamB.defence) || !getPlayerById(m.teamB.attack)) return false;
+  return true;
+}
+
 /** Total matches + wins across both roles */
 function totalMatches(p: IPlayer): number {
   return p.matches[0] + p.matches[1];
@@ -95,16 +109,17 @@ class StatsPage extends Component {
   async render(): Promise<string> {
     const allPlayers = getAllPlayers();
     const allMatches = getAllMatches();
+    const filteredMatches = allMatches.filter(isValidMatch);
     const ranked = allPlayers.filter(p => totalMatches(p) > 0);
 
     return `
       <div class="space-y-5 md:space-y-6" id="stats-page">
         ${this.renderPageHeader()}
-        ${this.renderOverviewCards(allPlayers, allMatches)}
+        ${this.renderOverviewCards(allPlayers, filteredMatches)}
         ${this.renderClassDistribution(ranked, null)}
         ${this.renderHallOfFame(ranked, null)}
         ${this.renderPairs(allPlayers, null)}
-        ${this.renderBestWorstMatches(ranked, allMatches)}
+        ${this.renderBestWorstMatches(ranked, filteredMatches)}
       </div>
     `;
   }
