@@ -74,7 +74,7 @@ export function validateHost(host: string | undefined): string {
     return host === allowedHost || hostWithoutPort === allowedHostWithoutPort;
   });
 
-  if (!isAllowed && !host.includes('vercel.app')) {
+  if (!isAllowed) {
     console.warn(`⚠️ Host non permesso: ${host}`);
     throw new Error('Host non autorizzato');
   }
@@ -115,10 +115,15 @@ export function validateNumber(
 export function validateString(
   value: unknown,
   fieldName: string,
-  maxLength = 1000
+  maxLength = 1000,
+  minLength = 1
 ): string {
   if (typeof value !== 'string') {
     throw new Error(`${fieldName} deve essere una stringa`);
+  }
+
+  if (value.length < minLength) {
+    throw new Error(`${fieldName} non può essere vuoto`);
   }
 
   if (value.length > maxLength) {

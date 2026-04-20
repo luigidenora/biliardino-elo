@@ -3,7 +3,7 @@ import type { IMessage } from '../src/models/message.interface.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { generateFishName } from './_fishNames.js';
 import { withSecurityMiddleware } from './_middleware.js';
-import { prefixed, redis, redisRaw } from './_redisClient.js';
+import { prefixed, redis, redisMget, redisRaw } from './_redisClient.js';
 
 interface Confirmation {
   playerId: number;
@@ -73,8 +73,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     phase = 'caricamento messaggi';
     const messages: IMessage[] = [];
     if (messageIds.length > 0) {
-      const messagePromises = messageIds.map(id => redis.get<IMessage>(`message:${id}`));
-      const results = await Promise.all(messagePromises);
+      const results = await redisMget<IMessage>(...messageIds.map(id => `message:${id}`));
       for (const msg of results) {
         if (msg) messages.push(msg);
       }

@@ -73,64 +73,6 @@ export function withSecurityMiddleware(handler: Handler, options?: {
 }
 
 /**
- * Middleware per rate limiting a livello di memoria
- * Previene abusi limitando richieste per IP
- */
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
-
-export function withRateLimiting(
-  handler: Handler,
-  options?: {
-    maxRequests?: number;
-    windowMs?: number;
-  }
-): Handler {
-  const maxRequests = options?.maxRequests || 100;
-  const windowMs = options?.windowMs || 60000; // 1 minuto
-
-  return async (req: VercelRequest, res: VercelResponse) => {
-    // Ottieni IP (considera proxy headers)
-    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]
-      || req.headers['x-real-ip'] as string
-      || 'unknown';
-
-    const now = Date.now();
-    const record = requestCounts.get(ip);
-
-    if (record && record.resetAt > now) {
-      // Finestra attiva
-      if (record.count >= maxRequests) {
-        console.warn(`⚠️ Rate limit exceeded for IP: ${ip}`);
-        return res.status(429).json({
-          error: 'Too many requests',
-          message: 'Limite richieste raggiunto, riprova tra poco',
-          retryAfter: Math.ceil((record.resetAt - now) / 1000)
-        });
-      }
-      record.count++;
-    } else {
-      // Nuova finestra
-      requestCounts.set(ip, {
-        count: 1,
-        resetAt: now + windowMs
-      });
-    }
-
-    // Pulizia periodica della mappa (ogni 5 minuti)
-    if (Math.random() < 0.01) { // 1% chance su ogni richiesta
-      const cutoff = now - windowMs * 2;
-      for (const [key, value] of requestCounts.entries()) {
-        if (value.resetAt < cutoff) {
-          requestCounts.delete(key);
-        }
-      }
-    }
-
-    return handler(req, res);
-  };
-}
-
-/**
  * Combina multiple middlewares in uno
  */
 export function combineMiddlewares(

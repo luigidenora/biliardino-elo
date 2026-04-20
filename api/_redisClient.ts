@@ -36,3 +36,6 @@ const methodsToWrap = [
 
 export const redisRaw = _redis;
 export const redis = wrap(_redis as any, methodsToWrap) as unknown as typeof _redis;
+
+export const redisMget = <T>(...keys: string[]): Promise<(T | null)[]> =>
+  (_redis.mget as (...args: string[]) => Promise<(T | null)[]>)(...keys.map(prefixed));

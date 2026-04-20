@@ -2,7 +2,7 @@ import { del, list, put } from '@vercel/blob';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'crypto';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
-import { combineMiddlewares, withRateLimiting, withSecurityMiddleware } from './_middleware.js';
+import { withSecurityMiddleware } from './_middleware.js';
 import { sanitizeLogOutput, validatePlayerId, validateString } from './_validation.js';
 
 interface PushSubscription {
@@ -172,9 +172,4 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   return res.status(405).end();
 }
 
-// Applica security middleware + rate limiting
-export default combineMiddlewares(
-  handler,
-  withSecurityMiddleware,
-  h => withRateLimiting(h, { maxRequests: 10, windowMs: 60000 })
-);
+export default withSecurityMiddleware(handler);

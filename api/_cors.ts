@@ -5,8 +5,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * Allows requests from GitHub Pages and local development
  */
 export function setCorsHeaders(res: VercelResponse): void {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', process.env.ACCESS_CONTROL_ALLOW_ORIGIN || '*');
+  const origin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
