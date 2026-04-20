@@ -610,19 +610,77 @@ export default class PlayerProfilePage extends Component {
 
     type CardDef = { icon: string; label: string; stat: { player: number; value: number } | null; fmt: (v: number) => string; color?: string };
 
+    // When filter=2 (total), merge stats from both roles and find best/worst by summed value
+    type MergedEntry = { id: number; delta: number; matches: number };
+    type MergedStat = { player: number; delta: number; matches: number } | null;
+
+    const buildMergedMap = (statsPerRole: [{ [x: number]: any }, { [x: number]: any }]): Map<number, MergedEntry> => {
+      const map = new Map<number, MergedEntry>();
+      for (const r of [0, 1] as const) {
+        for (const [idStr, s] of Object.entries(statsPerRole[r])) {
+          if (!s || !('matches' in s)) continue;
+          const id = Number(idStr);
+          if (!Number.isInteger(id) || id <= 0 || !getPlayerById(id)) continue;
+          const stat = s as { matches: number; delta: number };
+          const ex = map.get(id);
+          if (ex) {
+            ex.delta += stat.delta;
+            ex.matches += stat.matches;
+          } else {
+            map.set(id, { id, delta: stat.delta, matches: stat.matches });
+          }
+        }
+      }
+      return map;
+    };
+    const pickBest = (
+      map: Map<number, MergedEntry>,
+      cmp: (a: MergedEntry, b: MergedEntry) => boolean
+    ): MergedStat => {
+      let best: MergedEntry | null = null;
+      for (const entry of map.values()) {
+        if (!best || cmp(entry, best)) best = entry;
+      }
+      return best ? { player: best.id, delta: best.delta, matches: best.matches } : null;
+    };
+    const toStat = (r: MergedStat, key: 'delta' | 'matches'): { player: number; value: number } | null =>
+      r ? { player: r.player, value: r[key] } : null;
+
+    const tmMap = filter === 2 ? buildMergedMap(player.teammatesStats) : null;
+    const oppMap = filter === 2 ? buildMergedMap(player.opponentsStats) : null;
+
+    const bestTm = tmMap
+      ? toStat(pickBest(tmMap, (a, b) => a.delta > b.delta), 'delta')
+      : player.bestTeammate[role];
+    const worstTm = tmMap
+      ? toStat(pickBest(tmMap, (a, b) => a.delta < b.delta), 'delta')
+      : player.worstTeammate[role];
+    const bestOpp = oppMap
+      ? toStat(pickBest(oppMap, (a, b) => a.delta < b.delta), 'delta')
+      : player.bestOpponent[role];
+    const worstOpp = oppMap
+      ? toStat(pickBest(oppMap, (a, b) => a.delta > b.delta), 'delta')
+      : player.worstOpponent[role];
+    const bestTmCount = tmMap
+      ? toStat(pickBest(tmMap, (a, b) => a.matches > b.matches), 'matches')
+      : player.bestTeammateCount[role];
+    const bestOppCount = oppMap
+      ? toStat(pickBest(oppMap, (a, b) => a.matches > b.matches), 'matches')
+      : player.bestOpponentCount[role];
+
     // Pairs: [left, right] — rendered as 2-column grid row-by-row
     const pairs: [CardDef, CardDef][] = [
       [
-        { icon: 'users', label: 'MIGLIOR COMPAGNO', stat: player.bestTeammate[role], fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' },
-        { icon: 'users', label: 'PEGGIOR COMPAGNO', stat: player.worstTeammate[role], fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' }
+        { icon: 'users', label: 'MIGLIOR COMPAGNO', stat: bestTm, fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' },
+        { icon: 'users', label: 'PEGGIOR COMPAGNO', stat: worstTm, fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' }
       ],
       [
-        { icon: 'sword', label: 'MIGLIOR AVVERSARIO', stat: player.bestOpponent[role], fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' },
-        { icon: 'sword', label: 'PEGGIOR AVVERSARIO', stat: player.worstOpponent[role], fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' }
+        { icon: 'sword', label: 'MIGLIOR AVVERSARIO', stat: bestOpp, fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' },
+        { icon: 'sword', label: 'PEGGIOR AVVERSARIO', stat: worstOpp, fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' }
       ],
       [
-        { icon: 'user-check', label: 'COMPAGNO FREQ.', stat: player.bestTeammateCount[role], fmt: v => `${Math.round(v)} partite` },
-        { icon: 'repeat', label: 'AVVERSARIO FREQ.', stat: player.bestOpponentCount[role], fmt: v => `${Math.round(v)} partite` }
+        { icon: 'user-check', label: 'COMPAGNO FREQ.', stat: bestTmCount, fmt: v => `${Math.round(v)} partite` },
+        { icon: 'repeat', label: 'AVVERSARIO FREQ.', stat: bestOppCount, fmt: v => `${Math.round(v)} partite` }
       ]
     ];
 
