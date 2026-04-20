@@ -3,6 +3,7 @@ try {
   importScripts('/sw-version.js');
 } catch {
   // Fallback for environments where the generated version file is unavailable.
+  self.console.warn('[Service Worker] sw-version.js not found, using default version.');
 }
 
 const VERSION = self.__SW_VERSION__ || '0.0.0-dev';
