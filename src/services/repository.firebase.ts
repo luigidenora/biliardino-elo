@@ -9,7 +9,12 @@ const CACHE_CONTROL_DOC = 'id';
 const CACHE_HASH_PLAYERS_KEY = 'firestore_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'firestore_cache_hash_matches';
 
-const { useCacheMatches, useCachePlayers } = await shouldUseCache();
+let cacheStatePromise: Promise<{ useCachePlayers: boolean; useCacheMatches: boolean }> | null = null;
+
+function getCacheState() {
+  cacheStatePromise ??= shouldUseCache();
+  return cacheStatePromise;
+}
 
 async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMatches: number | null }> {
   try {
@@ -83,6 +88,7 @@ async function shouldUseCache(): Promise<{ useCachePlayers: boolean; useCacheMat
 }
 
 export async function fetchPlayers(): Promise<IPlayer[]> {
+  const { useCachePlayers } = await getCacheState();
   const snap = await getDocsCacheServer(PLAYERS_COLLECTION, useCachePlayers);
 
   const players = snap.docs.map((d) => {
@@ -134,6 +140,7 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
 }
 
 export async function fetchMatches(): Promise<IMatch[]> {
+  const { useCacheMatches } = await getCacheState();
   const snap = await getDocsCacheServer(MATCHES_COLLECTION, useCacheMatches);
   const matches: IMatch[] = [];
 
