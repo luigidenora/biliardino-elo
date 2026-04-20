@@ -1,9 +1,23 @@
 import tailwindcss from '@tailwindcss/vite';
+import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vite';
 
+function readSwVersion(): string {
+  try {
+    const src = fs.readFileSync(path.resolve(__dirname, 'public/sw-version.js'), 'utf-8');
+    const m = src.match(/self\.__SW_VERSION__\s*=\s*['"]([^'"]+)['"]/);
+    return m?.[1] ?? '0.0.0-dev';
+  } catch {
+    return '0.0.0-dev';
+  }
+}
+
 export default defineConfig(config => ({
   base: '/',
+  define: {
+    __SW_VERSION__: JSON.stringify(readSwVersion())
+  },
   plugins: [tailwindcss()],
   resolve: {
     alias: {

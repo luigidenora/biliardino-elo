@@ -1,4 +1,12 @@
+declare const __SW_VERSION__: string;
+
 const baseUrl = import.meta.env.BASE_URL || '/';
+
+// Show version immediately from build-time constant (no SW message needed)
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('pwa-version');
+  if (el) el.textContent = __SW_VERSION__;
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register(`${baseUrl}sw.js`, { scope: baseUrl })
