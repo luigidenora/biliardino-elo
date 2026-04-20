@@ -60,32 +60,6 @@ function initPWAExperience(): void {
   });
 }
 
-function initFoosballCursor(): void {
-  // Skip on touch-only devices (no mouse)
-  if (window.matchMedia('(pointer: coarse)').matches) return;
-
-  const dot = document.createElement('div');
-  dot.id = 'foosball-cursor';
-  document.body.appendChild(dot);
-
-  document.addEventListener('mousemove', (e) => {
-    dot.style.left = `${e.clientX}px`;
-    dot.style.top = `${e.clientY}px`;
-  });
-
-  document.addEventListener('click', () => {
-    dot.classList.add('bounce');
-    setTimeout(() => dot.classList.remove('bounce'), 300);
-  });
-
-  document.addEventListener('mouseleave', () => {
-    dot.style.opacity = '0';
-  });
-  document.addEventListener('mouseenter', () => {
-    dot.style.opacity = '1';
-  });
-}
-
 function tryDismissBootOverlay(): void {
   if (splashDismissed) return;
   splashDismissed = true;
@@ -147,10 +121,6 @@ async function bootstrap(): Promise<void> {
   // 1b. Initialize particles system
   initParticlesSystem();
   trace('Bootstrap', 'particles initialized');
-
-  // 1c. Initialize custom foosball cursor
-  initFoosballCursor();
-  trace('Bootstrap', 'foosball cursor initialized');
 
   // 2. Render the Layout shell
   const layout = new LayoutComponent();

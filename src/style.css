@@ -33,45 +33,6 @@
 }
 
 /* ── Foosball cursor (white ball) ─────────────────────────── */
-*,
-*::before,
-*::after {
-  cursor: none !important;
-}
-
-#foosball-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffffff, #e0e0e0 60%, #bbb 100%);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), inset 0 -2px 4px rgba(0, 0, 0, 0.1);
-  pointer-events: none;
-  z-index: 99999;
-  transform: translate(-50%, -50%);
-  will-change: left, top;
-}
-
-#foosball-cursor.bounce {
-  animation: ball-bounce 0.3s ease-out;
-}
-
-@keyframes ball-bounce {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-
-  50% {
-    transform: translate(-50%, -50%) scale(0.7);
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
 html {
   background-color: #0a1912;
 }
