@@ -1,6 +1,12 @@
 {
   "default_branch": "main",
   "branches": {
+    "refactor/notify-and-multi-db": {
+      "db_file": "branches/refactor_notify-and-multi-db.db",
+      "parent": "main",
+      "created_at": "1776696013",
+      "last_synced_at": "1776696016"
+    },
     "main": {
       "db_file": "tokensave.db",
       "created_at": "1776691520",
