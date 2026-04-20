@@ -75,10 +75,10 @@ class LeaderboardPage extends Component {
         ${this.renderPageHeader()}
         ${this.renderReminderBanner()}
         ${this.renderIdentityBanner()}
-        ${this.renderLeaderboardSelector()}
         <div id="leaderboard-hero-slot" data-hero-content="podium">
           ${this.renderPodium()}
         </div>
+        ${this.renderLeaderboardSelector()}
         <div id="leaderboard-table-slot">
           <div class="rounded-xl" style="background:rgba(15,42,32,0.75); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(8px); height:200px; display:flex; align-items:center; justify-content:center">
             <div style="color:rgba(255,255,255,0.3); font-family:var(--font-ui); letter-spacing:0.1em; font-size:13px">CARICAMENTO CLASSIFICA...</div>
@@ -470,12 +470,13 @@ class LeaderboardPage extends Component {
 
       const avgEloA = Math.round((defAElo + attAElo) / 2);
       const avgEloB = Math.round((defBElo + attBElo) / 2);
+      const matchElo = Math.round((avgEloA + avgEloB) / 2);
       const expA = expectedScore(avgEloA, avgEloB);
       const winPctA = Math.round(expA * 100);
       const winPctB = 100 - winPctA;
       const isLive = this.isLiveNow();
 
-      // ELO scenario estimates — shown per-team perspective
+      // ELO scenario estimates — per-team perspective
       const mm80 = 1.5;
       const mm87 = 1;
       // BIANCHI wins
@@ -489,121 +490,169 @@ class LeaderboardPage extends Component {
 
       const av = (p: IPlayer, roleIdx: 0 | 1): string => {
         const color = CLASS_COLORS[p.class[roleIdx]] ?? '#8B7D6B';
-        return renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'sm', playerId: p.id, playerClass: p.class[roleIdx] });
+        return renderPlayerAvatar({ initials: getInitials(p.name), color, size: 'md', playerId: p.id, playerClass: p.class[roleIdx] });
       };
 
       const eloSign = (v: number): string => v >= 0 ? `+${v}` : `${v}`;
 
-      // Team column — avatars + names + avg elo, alignRight flips layout for ROSSI
-      const teamCol = (opts: {
-        p1: IPlayer; r1: 0 | 1; p2: IPlayer; r2: 0 | 1;
-        teamLabel: string; teamColor: string; avgElo: number; alignRight?: boolean;
-      }): string => {
-        const { p1, r1, p2, r2, teamLabel, teamColor, avgElo, alignRight = false } = opts;
-        return `
-        <div class="flex flex-col gap-2 flex-1 min-w-0${alignRight ? ' items-end' : ''}">
-          <div class="flex items-center gap-1.5${alignRight ? ' flex-row-reverse' : ''}">
-            <span class="font-display" style="font-size:11px;color:${teamColor};letter-spacing:0.16em">${teamLabel}</span>
-            <span class="font-display" style="font-size:13px;color:rgba(255,255,255,0.65);letter-spacing:0.04em">${avgElo}</span>
-          </div>
-          <div class="flex gap-2${alignRight ? ' flex-row-reverse' : ''}">
-            <a href="/profile/${p1.id}" class="flex flex-col items-center gap-1 hover:opacity-80 transition-opacity">
-              ${av(p1, r1)}
-              <span class="font-ui" style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.82);white-space:nowrap">${p1.name}</span>
-            </a>
-            <a href="/profile/${p2.id}" class="flex flex-col items-center gap-1 hover:opacity-80 transition-opacity">
-              ${av(p2, r2)}
-              <span class="font-ui" style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.82);white-space:nowrap">${p2.name}</span>
-            </a>
-          </div>
-        </div>`;
-      };
+      // Winning team advantage label
+      const favoriteLabel = winPctA > winPctB
+        ? `<span class="font-ui" style="font-size:9px;color:var(--color-text-dim);letter-spacing:0.1em">BIANCHI FAVORITI</span>`
+        : winPctB > winPctA
+          ? `<span class="font-ui" style="font-size:9px;color:rgba(229,62,62,0.60);letter-spacing:0.1em">ROSSI FAVORITI</span>`
+          : `<span class="font-ui" style="font-size:9px;color:var(--color-gold-dim);letter-spacing:0.1em">EQUILIBRATA</span>`;
 
       return `
-        <div class="live-match-card rounded-[14px] overflow-hidden"
-             style="background:rgba(8,22,16,0.90);border:1px solid rgba(255,215,0,0.18);box-shadow:0 4px 24px rgba(0,0,0,0.30)">
+        <div class="live-match-card glass-card-gold overflow-hidden mx-auto"
+             style="max-width:560px;box-shadow:0 8px 32px rgba(0,0,0,0.40),0 0 0 1px var(--glass-border-gold)">
 
-          <!-- Top bar -->
-          <div class="flex items-center justify-between px-4"
-               style="height:34px;background:rgba(0,0,0,0.28);border-bottom:1px solid rgba(255,255,255,0.05)">
+          <!-- ① Header bar -->
+          <div class="flex items-center justify-between px-3 sm:px-4"
+               style="height:36px;background:var(--color-bg-dark);border-bottom:1px solid var(--glass-border)">
             ${isLive
               ? `<div class="flex items-center gap-1.5">
-                   <div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
-                   <span class="font-display" style="font-size:9px;color:#ef4444;letter-spacing:0.2em">LIVE MATCH</span>
+                   <div class="w-2 h-2 rounded-full animate-pulse shrink-0" style="background:var(--color-loss)"></div>
+                   <span class="font-display" style="font-size:10px;color:var(--color-loss);letter-spacing:0.2em">LIVE MATCH</span>
                  </div>`
               : `<div class="flex items-center gap-1.5">
-                   <i data-lucide="clock" style="width:10px;height:10px;color:rgba(255,215,0,0.5)"></i>
-                   <span class="font-display" style="font-size:9px;color:rgba(255,215,0,0.6);letter-spacing:0.2em">PROSSIMA PARTITA</span>
+                   <i data-lucide="clock" style="width:12px;height:12px;color:var(--color-gold-dim)"></i>
+                   <span class="font-display" style="font-size:10px;color:var(--color-gold-dim);letter-spacing:0.16em">PROSSIMA PARTITA</span>
                  </div>`}
-            <div class="flex items-center gap-1">
-              <span class="font-ui" style="font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:0.1em">AVG ELO</span>
-              <span class="font-display" style="font-size:13px;color:#FFD700;letter-spacing:0.04em">${Math.round((avgEloA + avgEloB) / 2)}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="font-ui hidden sm:inline" style="font-size:9px;color:var(--color-text-muted);letter-spacing:0.12em">ELO MATCH</span>
+              <span class="font-display" style="font-size:18px;color:var(--color-gold);line-height:1">${matchElo}</span>
             </div>
           </div>
 
-          <!-- Teams + win bar -->
-          <div class="flex items-start gap-3 px-4 py-4">
-
-            <!-- BIANCHI -->
-            ${teamCol({ p1: defA, r1: 0, p2: attA, r2: 1, teamLabel: 'BIANCHI', teamColor: 'rgba(255,255,255,0.7)', avgElo: avgEloA })}
-
-            <!-- Center: win probability bar -->
-            <div class="flex flex-col items-center gap-1.5 shrink-0 pt-5">
-              <span class="font-display" style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1">${winPctA}%</span>
-              <div class="relative rounded-full overflow-hidden" style="width:6px;height:72px;background:rgba(255,255,255,0.07)">
-                <div style="position:absolute;top:0;left:0;right:0;height:${winPctA}%;background:linear-gradient(to bottom,rgba(255,255,255,0.7),rgba(255,255,255,0.2))"></div>
-                <div style="position:absolute;bottom:0;left:0;right:0;height:${winPctB}%;background:linear-gradient(to top,rgba(229,62,62,0.85),rgba(229,62,62,0.2))"></div>
-              </div>
-              <span class="font-display" style="font-size:12px;color:rgba(229,62,62,0.75);line-height:1">${winPctB}%</span>
+          <!-- ② Team headers: labels + team ELO above players -->
+          <div class="grid px-3 sm:px-4 pt-3 gap-x-2 sm:gap-x-4" style="grid-template-columns:1fr 1px 1fr">
+            <!-- BIANCHI team header -->
+            <div class="flex items-baseline gap-1.5 sm:gap-2 pb-2" style="border-bottom:1px solid var(--glass-border)">
+              <span class="font-display" style="font-size:10px;color:var(--color-text-secondary);letter-spacing:0.16em">BIANCHI</span>
+              <span class="font-display" style="font-size:20px;color:var(--color-text-primary);line-height:1">${avgEloA}</span>
             </div>
-
-            <!-- ROSSI -->
-            ${teamCol({ p1: defB, r1: 0, p2: attB, r2: 1, teamLabel: 'ROSSI', teamColor: 'rgba(229,62,62,0.75)', avgElo: avgEloB, alignRight: true })}
+            <div></div>
+            <!-- ROSSI team header -->
+            <div class="flex items-baseline justify-end gap-1.5 sm:gap-2 pb-2" style="border-bottom:1px solid var(--glass-border)">
+              <span class="font-display" style="font-size:20px;color:rgba(229,62,62,0.92);line-height:1">${avgEloB}</span>
+              <span class="font-display" style="font-size:10px;color:rgba(229,62,62,0.60);letter-spacing:0.16em">ROSSI</span>
+            </div>
           </div>
 
-          <!-- Bottom: ELO scenarios LEFT | curiosity CENTER | ELO scenarios RIGHT -->
-          <div class="grid px-3 pb-3 gap-2"
-               style="grid-template-columns:1fr auto 1fr;border-top:1px solid rgba(255,255,255,0.05);padding-top:10px">
+          <!-- ③ Players: 2-column grid with divider -->
+          <div class="grid px-3 sm:px-4 pt-2.5 pb-2.5 gap-x-2 sm:gap-x-4" style="grid-template-columns:1fr 1px 1fr">
 
-            <!-- BIANCHI scenarios -->
-            <div class="flex flex-col gap-1">
-              <span class="font-ui" style="font-size:7px;color:rgba(255,215,0,0.35);letter-spacing:0.12em">SE BIANCHI VINCONO</span>
-              <div class="flex flex-col gap-0.5">
-                <div class="flex items-baseline gap-1">
-                  <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.3)">8–0</span>
-                  <span class="font-display" style="font-size:14px;color:#4ade80;line-height:1">${eloSign(eloWin80)}</span>
-                  <span class="font-ui" style="font-size:7px;color:rgba(255,255,255,0.2)">ELO</span>
+            <!-- BIANCHI players -->
+            <div class="flex flex-col gap-2">
+              <a href="/profile/${defA.id}"
+                 class="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity min-w-0">
+                <div class="shrink-0">${av(defA, 0)}</div>
+                <div class="flex flex-col min-w-0 flex-1">
+                  <span class="font-ui truncate" style="font-size:12px;font-weight:600;color:var(--color-text-primary)">${defA.name}</span>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="font-ui" style="font-size:9px;color:var(--color-text-muted)">🛡 DEF</span>
+                    <span class="font-display" style="font-size:13px;color:var(--color-text-secondary);line-height:1">${defAElo}</span>
+                  </div>
                 </div>
-                <div class="flex items-baseline gap-1">
-                  <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.3)">8–7</span>
-                  <span class="font-display" style="font-size:14px;color:#4ade80;line-height:1">${eloSign(eloWin87)}</span>
-                  <span class="font-ui" style="font-size:7px;color:rgba(255,255,255,0.2)">ELO</span>
+              </a>
+              <a href="/profile/${attA.id}"
+                 class="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity min-w-0">
+                <div class="shrink-0">${av(attA, 1)}</div>
+                <div class="flex flex-col min-w-0 flex-1">
+                  <span class="font-ui truncate" style="font-size:12px;font-weight:600;color:var(--color-text-primary)">${attA.name}</span>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="font-ui" style="font-size:9px;color:var(--color-text-muted)">⚔ ATT</span>
+                    <span class="font-display" style="font-size:13px;color:var(--color-text-secondary);line-height:1">${attAElo}</span>
+                  </div>
+                </div>
+              </a>
+            </div>
+
+            <!-- Vertical divider -->
+            <div style="background:var(--glass-border);margin:2px 0"></div>
+
+            <!-- ROSSI players (mirrored) -->
+            <div class="flex flex-col gap-2">
+              <a href="/profile/${defB.id}"
+                 class="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity flex-row-reverse min-w-0">
+                <div class="shrink-0">${av(defB, 0)}</div>
+                <div class="flex flex-col items-end min-w-0 flex-1">
+                  <span class="font-ui truncate" style="font-size:12px;font-weight:600;color:var(--color-text-primary)">${defB.name}</span>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="font-display" style="font-size:13px;color:var(--color-text-secondary);line-height:1">${defBElo}</span>
+                    <span class="font-ui" style="font-size:9px;color:var(--color-text-muted)">DEF 🛡</span>
+                  </div>
+                </div>
+              </a>
+              <a href="/profile/${attB.id}"
+                 class="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity flex-row-reverse min-w-0">
+                <div class="shrink-0">${av(attB, 1)}</div>
+                <div class="flex flex-col items-end min-w-0 flex-1">
+                  <span class="font-ui truncate" style="font-size:12px;font-weight:600;color:var(--color-text-primary)">${attB.name}</span>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="font-display" style="font-size:13px;color:var(--color-text-secondary);line-height:1">${attBElo}</span>
+                    <span class="font-ui" style="font-size:9px;color:var(--color-text-muted)">ATT ⚔</span>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <!-- ④ Win probability bar -->
+          <div class="px-3 sm:px-4 pb-2.5" style="border-top:1px solid var(--glass-border)">
+            <div class="flex items-center justify-between mt-2 mb-1.5">
+              <span class="font-display" style="font-size:13px;color:var(--color-text-secondary);line-height:1">${winPctA}%</span>
+              ${favoriteLabel}
+              <span class="font-display" style="font-size:13px;color:rgba(229,62,62,0.88);line-height:1">${winPctB}%</span>
+            </div>
+            <div class="relative rounded-full overflow-hidden" style="height:9px;background:var(--glass-border)">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:${winPctA}%;background:linear-gradient(to right,rgba(255,255,255,0.80),rgba(255,255,255,0.20))"></div>
+              <div style="position:absolute;top:0;right:0;bottom:0;width:${winPctB}%;background:linear-gradient(to left,rgba(229,62,62,0.90),rgba(229,62,62,0.20))"></div>
+            </div>
+          </div>
+
+          <!-- ⑤ ELO scenarios + curiosity -->
+          <div class="px-3 sm:px-4 pb-3 pt-2.5" style="border-top:1px solid var(--glass-border)">
+
+            <!-- Scenarios row -->
+            <div class="grid gap-x-2" style="grid-template-columns:1fr 1fr 1fr">
+
+              <!-- BIANCHI scenarios -->
+              <div class="flex flex-col gap-1">
+                <span class="font-ui" style="font-size:7px;color:var(--color-text-muted);letter-spacing:0.1em;text-transform:uppercase">Se Bianchi vincono</span>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="font-ui" style="font-size:10px;color:var(--color-text-dim)">8–0</span>
+                  <span class="font-display" style="font-size:19px;color:var(--color-win);line-height:1">${eloSign(eloWin80)}</span>
+                  <span class="font-ui" style="font-size:8px;color:var(--color-text-dim)">ELO</span>
+                </div>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="font-ui" style="font-size:10px;color:var(--color-text-dim)">8–7</span>
+                  <span class="font-display" style="font-size:19px;color:var(--color-win);opacity:0.70;line-height:1">${eloSign(eloWin87)}</span>
+                  <span class="font-ui" style="font-size:8px;color:var(--color-text-dim)">ELO</span>
                 </div>
               </div>
-            </div>
 
-            <!-- Curiosity center -->
-            <div class="flex items-center justify-center px-2" style="max-width:140px">
-              ${curiosityFact
-                ? `<p class="font-body text-center" style="font-size:9px;color:rgba(255,255,255,0.24);line-height:1.5;font-style:italic">
-                     <i data-lucide="sparkles" style="width:8px;height:8px;display:inline;vertical-align:middle;margin-right:2px;color:rgba(255,215,0,0.25)"></i>${curiosityFact}
-                   </p>`
-                : '<div></div>'}
-            </div>
+              <!-- Curiosity center -->
+              <div class="flex items-center justify-center">
+                ${curiosityFact
+                  ? `<p class="font-body text-center" style="font-size:11px;color:var(--color-text-dim);line-height:1.6;font-style:italic">
+                       <i data-lucide="sparkles" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:3px;color:var(--color-gold-dim)"></i>${curiosityFact}
+                     </p>`
+                  : `<i data-lucide="swords" style="width:18px;height:18px;color:var(--color-gold-muted)"></i>`}
+              </div>
 
-            <!-- ROSSI scenarios -->
-            <div class="flex flex-col gap-1 items-end">
-              <span class="font-ui" style="font-size:7px;color:rgba(229,62,62,0.45);letter-spacing:0.12em">SE ROSSI VINCONO</span>
-              <div class="flex flex-col gap-0.5 items-end">
-                <div class="flex items-baseline gap-1 flex-row-reverse">
-                  <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.3)">7–8</span>
-                  <span class="font-display" style="font-size:14px;color:#4ade80;line-height:1">${eloSign(eloRossiWin87)}</span>
-                  <span class="font-ui" style="font-size:7px;color:rgba(255,255,255,0.2)">ELO</span>
+              <!-- ROSSI scenarios -->
+              <div class="flex flex-col gap-1 items-end">
+                <span class="font-ui" style="font-size:7px;color:var(--color-text-muted);letter-spacing:0.1em;text-transform:uppercase">Se Rossi vincono</span>
+                <div class="flex items-baseline gap-1.5 flex-row-reverse">
+                  <span class="font-ui" style="font-size:10px;color:var(--color-text-dim)">0–8</span>
+                  <span class="font-display" style="font-size:19px;color:var(--color-win);line-height:1">${eloSign(eloRossiWin80)}</span>
+                  <span class="font-ui" style="font-size:8px;color:var(--color-text-dim)">ELO</span>
                 </div>
-                <div class="flex items-baseline gap-1 flex-row-reverse">
-                  <span class="font-ui" style="font-size:9px;color:rgba(255,255,255,0.3)">0–8</span>
-                  <span class="font-display" style="font-size:14px;color:#4ade80;line-height:1">${eloSign(eloRossiWin80)}</span>
-                  <span class="font-ui" style="font-size:7px;color:rgba(255,255,255,0.2)">ELO</span>
+                <div class="flex items-baseline gap-1.5 flex-row-reverse">
+                  <span class="font-ui" style="font-size:10px;color:var(--color-text-dim)">7–8</span>
+                  <span class="font-display" style="font-size:19px;color:var(--color-win);opacity:0.70;line-height:1">${eloSign(eloRossiWin87)}</span>
+                  <span class="font-ui" style="font-size:8px;color:var(--color-text-dim)">ELO</span>
                 </div>
               </div>
             </div>
@@ -619,18 +668,27 @@ class LeaderboardPage extends Component {
     const [defA, attA, defB, attB] = players;
     const allMatches = getAllMatches();
     const facts: string[] = [];
+    type Role = 'defence' | 'attack';
 
-    const opponentPairs: [IPlayer, IPlayer][] = [
-      [defA, defB], [defA, attB], [attA, defB], [attA, attB]
+    // All directed opponent pairs — role-specific (both orderings give different win% perspectives)
+    const opponentPairs: [IPlayer, Role, IPlayer, Role][] = [
+      [defA, 'defence', defB, 'defence'], [defB, 'defence', defA, 'defence'],
+      [defA, 'defence', attB, 'attack'], [attB, 'attack', defA, 'defence'],
+      [attA, 'attack', defB, 'defence'], [defB, 'defence', attA, 'attack'],
+      [attA, 'attack', attB, 'attack'], [attB, 'attack', attA, 'attack']
     ];
-    for (const [p1, p2] of opponentPairs) {
-      const fact = this.headToHeadFact(p1, p2, allMatches);
+    for (const [p1, r1, p2, r2] of opponentPairs) {
+      const fact = this.headToHeadFact(p1, r1, p2, r2, allMatches);
       if (fact) facts.push(fact);
     }
 
-    const teammatePairs: [IPlayer, IPlayer][] = [[defA, attA], [defB, attB]];
-    for (const [p1, p2] of teammatePairs) {
-      const fact = this.teammateFact(p1, p2, allMatches);
+    // Teammate pairs — role-specific
+    const teammatePairs: [IPlayer, Role, IPlayer, Role][] = [
+      [defA, 'defence', attA, 'attack'],
+      [defB, 'defence', attB, 'attack']
+    ];
+    for (const [p1, r1, p2, r2] of teammatePairs) {
+      const fact = this.teammateFact(p1, r1, p2, r2, allMatches);
       if (fact) facts.push(fact);
     }
 
@@ -638,14 +696,18 @@ class LeaderboardPage extends Component {
     return facts[Math.floor(Math.random() * facts.length)];
   }
 
-  private headToHeadFact(p1: IPlayer, p2: IPlayer, allMatches: ReturnType<typeof getAllMatches>): string {
+  private headToHeadFact(
+    p1: IPlayer, p1Role: 'defence' | 'attack',
+    p2: IPlayer, p2Role: 'defence' | 'attack',
+    allMatches: ReturnType<typeof getAllMatches>
+  ): string {
     let count = 0;
     let p1wins = 0;
     for (const m of allMatches) {
-      const p1inA = m.teamA.defence === p1.id || m.teamA.attack === p1.id;
-      const p2inB = m.teamB.defence === p2.id || m.teamB.attack === p2.id;
-      const p1inB = m.teamB.defence === p1.id || m.teamB.attack === p1.id;
-      const p2inA = m.teamA.defence === p2.id || m.teamA.attack === p2.id;
+      const p1inA = m.teamA[p1Role] === p1.id;
+      const p2inB = m.teamB[p2Role] === p2.id;
+      const p1inB = m.teamB[p1Role] === p1.id;
+      const p2inA = m.teamA[p2Role] === p2.id;
       if (p1inA && p2inB) {
         count++;
         if (m.score[0] > m.score[1]) p1wins++;
@@ -656,17 +718,20 @@ class LeaderboardPage extends Component {
     }
     if (count < 3) return '';
     const pct = Math.round((p1wins / count) * 100);
-    return `${p1.name} ha affrontato ${p2.name} ${count} volte e ha vinto il ${pct}% delle partite`;
+    const r1label = p1Role === 'defence' ? 'difensore' : 'attaccante';
+    return `<b>${p1.name}</b> (${r1label}) ha affrontato <b>${p2.name}</b> <b>${count}</b> volte e ha vinto il <b>${pct}%</b>`;
   }
 
-  private teammateFact(p1: IPlayer, p2: IPlayer, allMatches: ReturnType<typeof getAllMatches>): string {
+  private teammateFact(
+    p1: IPlayer, p1Role: 'defence' | 'attack',
+    p2: IPlayer, p2Role: 'defence' | 'attack',
+    allMatches: ReturnType<typeof getAllMatches>
+  ): string {
     let count = 0;
     let wins = 0;
     for (const m of allMatches) {
-      const inA = (m.teamA.defence === p1.id || m.teamA.attack === p1.id)
-        && (m.teamA.defence === p2.id || m.teamA.attack === p2.id);
-      const inB = (m.teamB.defence === p1.id || m.teamB.attack === p1.id)
-        && (m.teamB.defence === p2.id || m.teamB.attack === p2.id);
+      const inA = m.teamA[p1Role] === p1.id && m.teamA[p2Role] === p2.id;
+      const inB = m.teamB[p1Role] === p1.id && m.teamB[p2Role] === p2.id;
       if (inA) {
         count++;
         if (m.score[0] > m.score[1]) wins++;
@@ -677,7 +742,7 @@ class LeaderboardPage extends Component {
     }
     if (count < 3) return '';
     const pct = Math.round((wins / count) * 100);
-    return `${p1.name} e ${p2.name} hanno giocato insieme ${count} volte e hanno vinto il ${pct}% delle partite`;
+    return `<b>${p1.name}</b> e <b>${p2.name}</b> insieme <b>${count}</b> volte, vinto il <b>${pct}%</b>`;
   }
 
   private isLiveNow(): boolean {
