@@ -1,9 +1,12 @@
 import { IMatch } from '@/models/match.interface';
 import { updateMatch } from '@/services/elo.service';
-import { computeRanks, updatePlayer, updatePlayerRecords } from '@/services/player.service';
+import { computeRanks, getPlayerById, updatePlayer, updatePlayerRecords } from '@/services/player.service';
 
 export function computeMatch(match: IMatch, computeStats: boolean): void {
-  updateMatch(match);
+  if (!updateMatch(match)) return;
+
+  if (match.score[0] !== 8 && match.score[1] !== 8) return;
+  if (!getPlayerById(match.teamA.defence) || !getPlayerById(match.teamA.attack) || !getPlayerById(match.teamB.defence) || !getPlayerById(match.teamB.attack)) return;
 
   updatePlayer(match.teamA.defence, match.teamA.attack, match.teamB, 0, match);
   updatePlayer(match.teamA.attack, match.teamA.defence, match.teamB, 1, match);

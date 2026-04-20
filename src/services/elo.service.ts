@@ -12,7 +12,7 @@ export const FirstRankUp = 1005;
 export const startElo = 1000;
 const EloScalingFactorFormula = 200;
 
-export function updateMatch(match: IMatch): void {
+export function updateMatch(match: IMatch): boolean {
   const teamAP1 = getPlayerById(match.teamA.defence);
   const teamAP2 = getPlayerById(match.teamA.attack);
 
@@ -20,8 +20,8 @@ export function updateMatch(match: IMatch): void {
   const teamBP2 = getPlayerById(match.teamB.attack);
 
   if (!teamAP1 || !teamAP2 || !teamBP1 || !teamBP2) {
-    // throw new Error('One or more players not found for match Elo calculation.'); // TODO
-    return;
+    console.error('One or more players not found for match Elo calculation.');
+    return false;
   }
 
   const [goalsA, goalsB] = match.score;
@@ -59,6 +59,8 @@ export function updateMatch(match: IMatch): void {
 
   match.teamBELO[0] = teamBP1.elo[0];
   match.teamBELO[1] = teamBP2.elo[1];
+
+  return true;
 }
 
 export function expectedScore(eloA: number, eloB: number): number {
