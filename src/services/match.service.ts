@@ -5,8 +5,10 @@ import { fetchMatches, parseMatchDTO } from './repository.service';
 
 let matches: IMatch[] = [];
 
-await loadAllMatches();
-computeMatches();
+try {
+  await loadAllMatches();
+  computeMatches();
+} catch (e) { console.error('[match.service] Failed to load matches from Firebase:', e); }
 
 export async function loadAllMatches(): Promise<void> {
   matches = await fetchMatches();

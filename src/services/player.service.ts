@@ -6,7 +6,11 @@ import { fetchPlayers } from './repository.service';
 const playersMap = new Map<number, IPlayer>();
 let playersArray: IPlayer[] = [];
 
-await loadPlayers();
+try {
+  await loadPlayers();
+} catch (e) {
+  console.error('[player.service] Failed to load players from Firebase:', e);
+}
 
 export function getPlayerById(id: number): IPlayer | undefined {
   return playersMap.get(id);
