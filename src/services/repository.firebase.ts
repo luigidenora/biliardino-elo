@@ -13,7 +13,7 @@ const { useCacheMatches, useCachePlayers } = await shouldUseCache();
 
 async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMatches: number | null }> {
   try {
-    const ref = doc(collection(db!, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     const snap = await getDoc(ref);
 
     if (!snap.exists()) return { hashPlayers: null, hashMatches: null };
@@ -32,7 +32,7 @@ async function fetchCacheHashes(): Promise<{ hashPlayers: number | null; hashMat
 export async function updatePlayersHash(): Promise<void> {
   try {
     const hashPlayers = Math.random();
-    const ref = doc(collection(db!, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     await setDoc(ref, { hashPlayers }, { merge: true });
   } catch (error) {
     console.error('Error saving players cache hash:', error);
@@ -42,7 +42,7 @@ export async function updatePlayersHash(): Promise<void> {
 export async function updateMatchesHash(): Promise<void> {
   try {
     const hashMatches = Math.random();
-    const ref = doc(collection(db!, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
+    const ref = doc(collection(db, CACHE_CONTROL_COLLECTION), CACHE_CONTROL_DOC);
     await setDoc(ref, { hashMatches }, { merge: true });
   } catch (error) {
     console.error('Error saving matches cache hash:', error);
@@ -102,8 +102,8 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
       class: [-1, -1],
       streak: [0, 0],
 
-      teammatesStats: [{ diff: 0, min: 0 }, { diff: 0, min: 0 }],
-      opponentsStats: [{ diff: 0, min: 0 }, { diff: 0, min: 0 }],
+      teammatesStats: [{ }, { }],
+      opponentsStats: [{ }, { }],
       history: [[], []],
       matchesDelta: [[], []],
 
@@ -161,7 +161,7 @@ export async function fetchMatches(): Promise<IMatch[]> {
 }
 
 export async function saveMatch(match: IMatchDTO, merge = false): Promise<void> {
-  const ref = doc(collection(db!, MATCHES_COLLECTION), match.id.toString());
+  const ref = doc(collection(db, MATCHES_COLLECTION), match.id.toString());
   await setDoc(ref, match, { merge });
   await updateMatchesHash();
 }
@@ -182,12 +182,12 @@ export function parseMatchDTO(match: IMatchDTO): IMatch {
 }
 
 export async function saveRunningMatch(match: IRunningMatchDTO): Promise<void> {
-  const ref = doc(collection(db!, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
+  const ref = doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
   await setDoc(ref, match, { merge: true });
 }
 
 export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
-  const snap = await getDocFromServer(doc(collection(db!, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH));
+  const snap = await getDocFromServer(doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH));
 
   if (!snap?.exists()) return null;
 
@@ -195,12 +195,12 @@ export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
 }
 
 export async function clearRunningMatch(): Promise<void> {
-  const ref = doc(collection(db!, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
+  const ref = doc(collection(db, RUNNING_MATCH_COLLECTION), CURRENT_RUNNING_MATCH);
   await deleteDoc(ref);
 }
 
 export async function savePlayer(player: IPlayerDTO): Promise<void> {
-  const ref = doc(collection(db!, PLAYERS_COLLECTION), player.id.toString());
+  const ref = doc(collection(db, PLAYERS_COLLECTION), player.id.toString());
   const playerDTO = {
     name: player.name,
     role: player.role
@@ -210,16 +210,16 @@ export async function savePlayer(player: IPlayerDTO): Promise<void> {
 }
 
 export async function deletePlayer(id: number): Promise<void> {
-  const ref = doc(collection(db!, PLAYERS_COLLECTION), id.toString());
+  const ref = doc(collection(db, PLAYERS_COLLECTION), id.toString());
   await deleteDoc(ref);
 }
 
 async function getDocsCacheServer(collectionName: string, useCache: boolean): Promise<QuerySnapshot<DocumentData, DocumentData>> {
   if (useCache) {
     console.log('cached fetch for collection:', collectionName);
-    return await getDocsFromCache(collection(db!, collectionName));
+    return await getDocsFromCache(collection(db, collectionName));
   }
 
   console.log('server fetch for collection:', collectionName);
-  return await getDocsFromServer(collection(db!, collectionName));
+  return await getDocsFromServer(collection(db, collectionName));
 }

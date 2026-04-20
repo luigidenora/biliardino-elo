@@ -1,4 +1,3 @@
-import { MatchmakingRange } from '@/services/matchmaking.service';
 import { IMatch } from './match.interface';
 
 export interface IPlayerDTO {
@@ -22,8 +21,8 @@ export interface IPlayer extends IPlayerDTO {
   streak: [number, number];
   bestRole: number; // 0 defender, 1 attacker
 
-  teammatesStats: [{ [x: number]: MatchPlayerStats } & MatchmakingRange, { [x: number]: MatchPlayerStats } & MatchmakingRange];
-  opponentsStats: [{ [x: number]: MatchPlayerStats } & MatchmakingRange, { [x: number]: MatchPlayerStats } & MatchmakingRange];
+  teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
+  opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
   history: [IMatch[], IMatch[]];
   matchesDelta: [number[], number[]];
 
