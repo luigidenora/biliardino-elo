@@ -105,7 +105,8 @@ async function cacheFirst(request) {
   }
   const res = await fetch(request).catch(() => null);
   if (res?.ok) {
-    caches.open(CACHE_NAME).then(c => c.put(request, res.clone())).catch((err) => {
+    const cloned = res.clone();
+    caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch((err) => {
       console.warn('[SW] cacheFirst failed to cache:', request.url, err);
     });
   }
@@ -115,7 +116,10 @@ async function cacheFirst(request) {
 async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
   const fresh = fetch(request).then((res) => {
-    if (res.ok) caches.open(CACHE_NAME).then(c => c.put(request, res.clone())).catch(() => { });
+    if (res.ok) {
+      const cloned = res.clone();
+      caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch(() => { });
+    }
     return res;
   }).catch(() => cached || new Response(JSON.stringify({ error: 'offline' }), { status: 503 }));
   return cached || fresh;
