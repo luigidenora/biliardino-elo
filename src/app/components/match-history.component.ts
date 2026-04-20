@@ -53,6 +53,7 @@ interface MatchCardData {
   leftPct: number;
   rightPct: number;
   leftWon: boolean;
+  playerElos: [number, number, number, number]; // [leftDef, leftAtt, rightDef, rightAtt]
 }
 
 // ── Stateless render functions ─────────────────────────────────
@@ -232,12 +233,12 @@ function buildMatchCardDetails(data: MatchCardData): string {
     </div>
     <div class="grid grid-cols-2 gap-4 m-4">
       <div class="flex items-center justify-evenly rounded-xl" style="background:rgba(0,0,0,0.15);padding:6px">
-        ${renderDetailPlayer(data.leftDef, 0)}
-        ${renderDetailPlayer(data.leftAtt, 1)}
+        ${renderDetailPlayer(data.leftDef, 0, data.playerElos[0])}
+        ${renderDetailPlayer(data.leftAtt, 1, data.playerElos[1])}
       </div>
       <div class="flex items-center justify-evenly rounded-xl" style="background:rgba(0,0,0,0.15);padding:6px">
-        ${renderDetailPlayer(data.rightDef, 2)}
-        ${renderDetailPlayer(data.rightAtt, 3)}
+        ${renderDetailPlayer(data.rightDef, 2, data.playerElos[2])}
+        ${renderDetailPlayer(data.rightAtt, 3, data.playerElos[3])}
       </div>
     </div>
   `;
@@ -334,7 +335,8 @@ function getMatchCardData(match: IMatch, selectedPlayerId: number): MatchCardDat
       leftDelta: Math.round(match.deltaELO[0]),
       leftPct: Math.round(match.expectedScore[0] * 100),
       rightPct: Math.round(match.expectedScore[1] * 100),
-      leftWon: aWon
+      leftWon: aWon,
+      playerElos: [match.teamAELO[0], match.teamAELO[1], match.teamBELO[0], match.teamBELO[1]]
     };
   }
 
@@ -351,11 +353,12 @@ function getMatchCardData(match: IMatch, selectedPlayerId: number): MatchCardDat
     leftDelta: Math.round(match.deltaELO[1]),
     leftPct: Math.round(match.expectedScore[1] * 100),
     rightPct: Math.round(match.expectedScore[0] * 100),
-    leftWon: !aWon
+    leftWon: !aWon,
+    playerElos: [match.teamBELO[0], match.teamBELO[1], match.teamAELO[0], match.teamAELO[1]]
   };
 }
 
-function renderDetailPlayer(player: IPlayer | undefined, index: number): string {
+function renderDetailPlayer(player: IPlayer | undefined, index: number, elo: number): string {
   if (!player) return '<div style="width:110px"></div>';
 
   const matchRole: 0 | 1 = (index % 2) as 0 | 1;
@@ -378,7 +381,7 @@ function renderDetailPlayer(player: IPlayer | undefined, index: number): string 
         ${avatarHtml}
       </div>
       <div class="font-ui truncate text-center" style="font-size:12px;color:rgba(255,255,255,0.85);max-width:100%">${player.name}</div>
-      <div class="font-display" style="font-size:16px;color:rgba(255,215,0,0.9)">${Math.round(player.elo[player.bestRole])}</div>
+      <div class="font-display" style="font-size:16px;color:rgba(255,215,0,0.9)">${Math.round(elo)}</div>
     </a>
   `;
 }

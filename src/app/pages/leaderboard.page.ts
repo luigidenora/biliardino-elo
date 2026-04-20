@@ -336,19 +336,28 @@ class LeaderboardPage extends Component {
       yesterdayElos.set(p.id, currentElo - (entry?.delta ?? 0));
     }
 
-    // Sort by yesterday ELO descending → yesterday ranks
-    const sorted = [...players].sort(
+    // Today's ranks: sort by current ELO descending
+    const todaySorted = [...players].sort(
+      (a, b) => this.getPlayerElo(b) - this.getPlayerElo(a)
+    );
+    const todayRanks = new Map<number, number>();
+    todaySorted.forEach((p, i) => todayRanks.set(p.id, i + 1));
+
+    // Yesterday's ranks: sort by yesterday ELO descending
+    const yesterdaySorted = [...players].sort(
       (a, b) => (yesterdayElos.get(b.id) ?? 0) - (yesterdayElos.get(a.id) ?? 0)
     );
     const yesterdayRanks = new Map<number, number>();
-    sorted.forEach((p, i) => yesterdayRanks.set(p.id, i + 1));
+    yesterdaySorted.forEach((p, i) => yesterdayRanks.set(p.id, i + 1));
 
     // Delta = positions gained (positive = improved)
     const result = new Map<number, number>();
     for (const p of players) {
       const entry = todayDeltas.get(p.id);
       if (entry && entry.matches > 0) {
-        result.set(p.id, (yesterdayRanks.get(p.id) ?? this.getPlayerRank(p)) - this.getPlayerRank(p));
+        const todayRank = todayRanks.get(p.id) ?? 0;
+        const yesterdayRank = yesterdayRanks.get(p.id) ?? todayRank;
+        result.set(p.id, yesterdayRank - todayRank);
       }
     }
     return result;

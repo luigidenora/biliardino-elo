@@ -25,8 +25,6 @@ import { BroadcastKickComponent } from '../components/broadcast-kick.component';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
 import { refreshIcons } from '../icons';
-import { createParticles } from '../particles/particles-manager';
-import { appState } from '../state';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -195,7 +193,7 @@ class LobbyPage extends Component {
 
     this.bindChatEvents();
     this.bindConfirmButton();
-    this.bindBroadcastButton();
+
     this.bindConfirmKick();
     this.bindAbandonButton();
 
@@ -259,7 +257,7 @@ class LobbyPage extends Component {
     // Bind events
     this.bindChatEvents();
     this.bindConfirmButton();
-    this.bindBroadcastButton();
+
     this.bindConfirmKick();
     this.bindAbandonButton();
 
@@ -369,8 +367,6 @@ class LobbyPage extends Component {
         if (!alreadyConfirmed) return this.renderConfirmKickCard();
         // Already confirmed — no card needed, panels are visible via canAccessLobbyPanels
         return '';
-      } else if (appState.isAdmin) {
-        return this.renderAdminBroadcastCard();
       }
       return `
         <div class="team-card glass-card rounded-xl p-6 text-center">
@@ -937,42 +933,6 @@ class LobbyPage extends Component {
     return this.getLobbyPlayerIds().includes(this.myPlayerId);
   }
 
-  // ── Admin Broadcast ─────────────────────────────────────────
-
-  private renderAdminBroadcastCard(): string {
-    return `
-      <div class="team-card glass-card rounded-xl p-6 text-center">
-        <i data-lucide="bell" class="mx-auto mb-3"
-           style="width:32px;height:32px;color:var(--color-gold)"></i>
-        <p class="font-display text-xl text-(--color-gold) mb-2"
-           style="letter-spacing:0.12em">
-          CREA UNA LOBBY
-        </p>
-        <p class="font-body text-sm mb-4" style="color:rgba(255,255,255,0.4)">
-          Invia la notifica per iniziare una partita
-        </p>
-        <div class="mb-4 flex items-center justify-center gap-3">
-          <label for="admin-duration-select" class="font-ui" style="font-size:11px; letter-spacing:0.1em; color:rgba(255,255,255,0.5)">DURATA LOBBY</label>
-          <select id="admin-duration-select"
-                  class="rounded-lg px-3 py-1.5 font-ui"
-                  style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,215,0,0.3); color:#FFD700; font-size:12px; letter-spacing:0.08em; outline:none; cursor:pointer">
-            <option value="1800">30 min</option>
-            <option value="2700">45 min</option>
-            <option value="3600">60 min</option>
-            <option value="5400" selected>90 min</option>
-            <option value="7200">120 min</option>
-          </select>
-        </div>
-        <button id="admin-broadcast-btn"
-                class="px-6 py-2.5 rounded-lg font-ui transition-all duration-200 hover:brightness-110 active:scale-95"
-          style="background:linear-gradient(135deg, #FFD700, #F0A500); font-size:13px; letter-spacing:0.12em; color:var(--color-bg-deep)">
-          AVVIA
-        </button>
-        <p id="admin-broadcast-feedback" class="font-ui mt-4" style="font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:0.1em; min-height:16px"></p>
-      </div>
-    `;
-  }
-
   private renderConfirmKickCard(): string {
     this.confirmKick?.destroy();
     this.confirmKick = new BroadcastKickComponent();
@@ -991,87 +951,6 @@ class LobbyPage extends Component {
         </p>
       </div>
     `;
-  }
-
-  private bindBroadcastButton(): void {
-    const btn = this.$id('admin-broadcast-btn') as HTMLButtonElement | null;
-    if (!btn) return;
-
-    btn.addEventListener('click', e => this.handleBroadcast(e));
-  }
-
-  private async handleBroadcast(e: PointerEvent): Promise<void> {
-    const btn = this.$id('admin-broadcast-btn') as HTMLButtonElement | null;
-    const feedback = this.$id('admin-broadcast-feedback');
-    const durationSelect = this.$id('admin-duration-select') as HTMLSelectElement | null;
-    if (!btn) return;
-    const token = localStorage.getItem('biliardino_admin_token');
-
-    if (!token) {
-      if (feedback) {
-        feedback.textContent = 'TOKEN ADMIN API MANCANTE: INSERISCILO NEL MENU UTENTE';
-        feedback.style.color = '#F87171';
-      }
-      return;
-    }
-
-    // Trigger strong haptic + particle feedback on broadcast start
-    // Uncomment to test with any click
-    createParticles(e.clientX, e.clientY,
-      [
-        { emoji: '🔔', canFlip: true },
-        { emoji: '📣', canFlip: true },
-        { emoji: '📢', canFlip: true }], 1000
-    );
-    haptics.trigger('buzz');
-
-    const durationSeconds = durationSelect ? parseInt(durationSelect.value, 10) : LOBBY_TTL_DEFAULT;
-
-    btn.disabled = true;
-    btn.textContent = 'INVIO IN CORSO...';
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/send-broadcast`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ durationSeconds })
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Errore ${res.status}`);
-      }
-
-      const result = await res.json();
-
-      // Sync countdown with the TTL chosen for this lobby
-      if (typeof result.durationSeconds === 'number' && result.durationSeconds > 0) {
-        this.countdownTotal = result.durationSeconds;
-        this.countdownSeconds = result.durationSeconds;
-      }
-
-      if (feedback) {
-        feedback.textContent = `${result.sent}/${result.total} NOTIFICHE INVIATE`;
-        feedback.style.color = '#4ADE80';
-      }
-
-      appState.lobbyActive = true;
-      appState.emit('lobby-change');
-
-      // Sync fresh state immediately — no delay needed
-      await LobbyService.refreshNow();
-    } catch (err: any) {
-      console.error('[LobbyPage] Broadcast error:', err);
-      if (feedback) {
-        feedback.textContent = err.message || 'ERRORE INVIO NOTIFICHE';
-        feedback.style.color = '#F87171';
-      }
-      btn.disabled = false;
-      btn.textContent = 'AVVIA PARTITA';
-    }
   }
 
   // ── Confirm Kick ─────────────────────────────────────────────

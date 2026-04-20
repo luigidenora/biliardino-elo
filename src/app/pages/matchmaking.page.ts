@@ -22,6 +22,7 @@ import gsap from 'gsap';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
 import { refreshIcons } from '../icons';
+import { createParticles } from '../particles/particles-manager';
 import { appState } from '../state';
 
 import type { ILobbyState } from '@/models/lobby.interface';
@@ -37,6 +38,7 @@ import { renderMatchmakingPageHeader, renderMatchmakingPlayerList } from '../com
 type PlayerState = 0 | 1 | 2;
 
 const MIN_PLAYERS = 4;
+const LOBBY_TTL_DEFAULT = 5400; // 90 min
 
 const CLASS_COLORS: Record<number, string> = {
   0: '#FFD700',
@@ -65,6 +67,8 @@ class MatchmakingPage extends Component {
   private isSaving = false;
   private searchQuery = '';
   private useRelaxedClassDiff = false;
+  private lobbyExists = false;
+  private lobbyConfirmedCount = 0;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -78,6 +82,8 @@ class MatchmakingPage extends Component {
     // Pre-populate confirmedPlayerIds from cached lobby state (avoids empty set on first render)
     const cachedLobbyState = LobbyService.getState();
     if (cachedLobbyState) {
+      this.lobbyExists = cachedLobbyState.exists;
+      this.lobbyConfirmedCount = cachedLobbyState.count;
       this.confirmedPlayerIds = new Set(cachedLobbyState.confirmations.map(c => c.playerId));
       for (const playerId of this.confirmedPlayerIds) {
         if (this.playerStates.get(playerId) === 0) {
@@ -188,14 +194,77 @@ class MatchmakingPage extends Component {
   }
 
   private renderMatchPanel(): string {
-    if (this.generatedMatch) {
-      return this.renderGeneratedMatch(this.generatedMatch);
-    }
+    const matchContent = this.generatedMatch
+      ? this.renderGeneratedMatch(this.generatedMatch)
+      : `${this.renderEmptyMatchState()}${this.renderGenerateButton()}`;
 
     return `
       <div class="space-y-4 match-panel-card">
-        ${this.renderEmptyMatchState()}
-        ${this.renderGenerateButton()}
+        <div id="lobby-panel">
+          ${this.renderLobbyPanel()}
+        </div>
+        ${matchContent}
+      </div>
+    `;
+  }
+
+  private renderLobbyPanel(): string {
+    if (this.lobbyExists) {
+      return `
+        <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl"
+             style="background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.3)">
+          <i data-lucide="wifi" style="width:14px;height:14px;color:#4ADE80;flex-shrink:0"></i>
+          <span class="font-ui text-[#4ADE80]" style="font-size:12px; letter-spacing:0.1em">
+            LOBBY ATTIVA
+          </span>
+          <span id="lobby-confirmed-count" class="font-ui ml-auto"
+                style="font-size:11px; color:rgba(74,222,128,0.7); letter-spacing:0.06em">
+            ${this.lobbyConfirmedCount} CONFERMATI
+          </span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="rounded-xl overflow-hidden"
+           style="background:rgba(15,42,32,0.85); border:1px solid rgba(255,215,0,0.25); backdrop-filter:blur(8px)">
+        <div class="px-4 py-3 flex items-center gap-2"
+             style="background:rgba(10,25,18,0.8); border-bottom:1px solid rgba(255,215,0,0.2)">
+          <i data-lucide="bell" style="width:14px;height:14px;color:var(--color-gold)"></i>
+          <span class="font-ui" style="font-size:13px; color:var(--color-gold); letter-spacing:0.1em">
+            AVVIA LOBBY
+          </span>
+        </div>
+        <div class="p-4 space-y-3">
+          <p class="font-body" style="font-size:12px; color:rgba(255,255,255,0.45); line-height:1.5">
+            Invia la notifica ai giocatori prima di generare la partita.
+          </p>
+          <div class="flex items-center gap-3">
+            <label for="lobby-duration-select" class="font-ui shrink-0"
+                   style="font-size:11px; letter-spacing:0.08em; color:rgba(255,255,255,0.45)">
+              DURATA
+            </label>
+            <select id="lobby-duration-select"
+                    class="flex-1 rounded-lg px-3 py-1.5 font-ui"
+                    style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,215,0,0.3);
+                           color:#FFD700; font-size:12px; letter-spacing:0.06em; outline:none; cursor:pointer">
+              <option value="1800">30 min</option>
+              <option value="2700">45 min</option>
+              <option value="3600">60 min</option>
+              <option value="5400" selected>90 min</option>
+              <option value="7200">120 min</option>
+            </select>
+          </div>
+          <button id="admin-broadcast-btn"
+                  class="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-ui transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+                  style="background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(240,165,0,0.1));
+                         border:1px solid rgba(255,215,0,0.4); font-size:13px; letter-spacing:0.12em; color:#FFD700">
+            <i data-lucide="bell" style="width:14px;height:14px"></i>
+            INVIA NOTIFICHE
+          </button>
+          <p id="admin-broadcast-feedback" class="font-ui text-center"
+             style="font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:0.08em; min-height:14px"></p>
+        </div>
       </div>
     `;
   }
@@ -668,6 +737,95 @@ class MatchmakingPage extends Component {
         }
       });
     }
+
+    this.bindBroadcastButton();
+  }
+
+  private bindBroadcastButton(): void {
+    for (const btn of this.$$('#admin-broadcast-btn') as HTMLButtonElement[]) {
+      btn.addEventListener('click', e => this.handleBroadcast(e as PointerEvent));
+    }
+  }
+
+  private async handleBroadcast(e: PointerEvent): Promise<void> {
+    const feedback = this.$$('#admin-broadcast-feedback');
+    const durationSelects = this.$$('#lobby-duration-select') as HTMLSelectElement[];
+    const btns = this.$$('#admin-broadcast-btn') as HTMLButtonElement[];
+
+    const token = localStorage.getItem('biliardino_admin_token');
+    if (!token) {
+      for (const f of feedback) {
+        f.textContent = 'TOKEN ADMIN MANCANTE';
+        (f as HTMLElement).style.color = '#F87171';
+      }
+      return;
+    }
+
+    createParticles(e.clientX, e.clientY, [
+      { emoji: '🔔', canFlip: true },
+      { emoji: '📣', canFlip: true },
+      { emoji: '📢', canFlip: true }
+    ], 1000);
+    haptics.trigger('buzz');
+
+    const durationSeconds = durationSelects[0] ? parseInt(durationSelects[0].value, 10) : LOBBY_TTL_DEFAULT;
+
+    for (const btn of btns) {
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" style="width:14px;height:14px;animation:_spin 0.6s linear infinite"></i> INVIO...`;
+    }
+    refreshIcons();
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/send-broadcast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ durationSeconds })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Errore ${res.status}`);
+      }
+
+      const result = await res.json();
+
+      for (const f of feedback) {
+        f.textContent = `${result.sent}/${result.total} NOTIFICHE INVIATE`;
+        (f as HTMLElement).style.color = '#4ADE80';
+      }
+
+      appState.lobbyActive = true;
+      appState.emit('lobby-change');
+
+      this.lobbyExists = true;
+      this.patchLobbyPanels();
+
+      await LobbyService.refreshNow();
+    } catch (err: any) {
+      console.error('[Matchmaking] Broadcast error:', err);
+      for (const f of feedback) {
+        f.textContent = err.message || 'ERRORE INVIO';
+        (f as HTMLElement).style.color = '#F87171';
+      }
+      for (const btn of btns) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="bell" style="width:14px;height:14px"></i> INVIA NOTIFICHE`;
+      }
+      refreshIcons();
+    }
+  }
+
+  private patchLobbyPanels(): void {
+    const html = this.renderLobbyPanel();
+    for (const el of this.$$('#lobby-panel')) {
+      el.innerHTML = html;
+    }
+    refreshIcons();
+    this.bindBroadcastButton();
   }
 
   private bindSearchFilter(): void {
@@ -911,6 +1069,8 @@ class MatchmakingPage extends Component {
     // Reset state
     this.generatedMatch = null;
     this.confirmedPlayerIds.clear();
+    this.lobbyExists = false;
+    this.lobbyConfirmedCount = 0;
     appState.lobbyActive = false;
     appState.emit('lobby-change');
     this.refreshMatchPanels();
@@ -1069,6 +1229,19 @@ class MatchmakingPage extends Component {
     const addedIds = [...newConfirmedIds].filter(id => !this.confirmedPlayerIds.has(id));
 
     this.confirmedPlayerIds = newConfirmedIds;
+    this.lobbyConfirmedCount = state.count;
+
+    // Patch lobby panel if existence changed
+    const prevLobbyExists = this.lobbyExists;
+    this.lobbyExists = state.exists;
+    if (prevLobbyExists !== this.lobbyExists) {
+      this.patchLobbyPanels();
+    } else if (this.lobbyExists) {
+      // Just update the count label without full re-render
+      for (const el of this.$$('#lobby-confirmed-count')) {
+        el.textContent = `${state.count} CONFERMATI`;
+      }
+    }
 
     // Auto-select confirmed players
     for (const playerId of this.confirmedPlayerIds) {
@@ -1080,8 +1253,23 @@ class MatchmakingPage extends Component {
 
       // Add confirmed visual indicator to the row
       const row = document.querySelector(`.player-row[data-player-id="${playerId}"]`) as HTMLElement | null;
-      if (row && !row.classList.contains('confirmed-player')) {
-        row.classList.add('confirmed-player');
+      if (row) {
+        if (!row.classList.contains('confirmed-player')) {
+          row.classList.add('confirmed-player');
+        }
+        // Inject wifi icon inline if not already present
+        if (!row.querySelector('[data-lobby-wifi]')) {
+          const toggleBtn = row.querySelector('.player-toggle-btn');
+          if (toggleBtn) {
+            const wifi = document.createElement('i');
+            wifi.dataset.lucide = 'wifi';
+            wifi.dataset.lobbyWifi = '1';
+            wifi.title = 'Confermato dalla lobby';
+            wifi.style.cssText = 'width:13px;height:13px;color:#4ADE80;flex-shrink:0';
+            toggleBtn.before(wifi);
+            refreshIcons();
+          }
+        }
       }
     }
 
