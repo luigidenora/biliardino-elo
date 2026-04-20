@@ -18,7 +18,7 @@
 import { API_BASE_URL, VAPID_PUBLIC_KEY } from '@/config/env.config';
 import { subscribeToPushNotifications } from '@/notifications';
 import { getAllPlayers, getPlayerById } from '@/services/player.service';
-import { AUTH } from '@/utils/firebase.util';
+import { AUTH, login } from '@/utils/firebase.util';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -411,7 +411,6 @@ class UserDropdownComponent {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const { login } = await import('@/utils/firebase.util');
       await login(email, password);
       this.loginError = '';
       this.adminTokenFeedback = '';

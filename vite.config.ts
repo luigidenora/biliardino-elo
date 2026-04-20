@@ -27,6 +27,10 @@ export default defineConfig(config => ({
   build: {
     target: 'es2022',
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE' && warning.message.includes('web-haptics')) return;
+        warn(warning);
+      },
       input: {
         main: path.resolve(__dirname, 'index.html')
       },
