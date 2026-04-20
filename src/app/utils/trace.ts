@@ -20,14 +20,14 @@ declare global {
   }
 }
 
-window.enableTracing = () => {
+window['enableTracing'] = () => {
   _enabled = true;
   localStorage.removeItem(LS_DISABLED_KEY);
   localStorage.setItem(LS_KEY, '1');
   console.info('[Trace] Tracing ENABLED.');
 };
 
-window.disableTracing = () => {
+window['disableTracing'] = () => {
   _enabled = false;
   localStorage.setItem(LS_DISABLED_KEY, '1');
   localStorage.removeItem(LS_KEY);
