@@ -68,33 +68,9 @@ function tryDismissBootOverlay(): void {
 
 function dismissBootOverlay(): void {
   const bootEl = document.getElementById('app-boot');
-  const appEl = document.getElementById('app');
   if (!bootEl) return;
-
-  if (typeof window.__bootRevealTimer === 'number') {
-    window.clearTimeout(window.__bootRevealTimer);
-    window.__bootRevealTimer = undefined;
-  }
-
-  if (bootEl.classList.contains('is-exiting') || bootEl.classList.contains('is-hidden')) return;
-
-  appEl?.setAttribute('aria-busy', 'false');
-
-  if (!bootEl.classList.contains('is-visible')) {
-    bootEl.classList.add('is-hidden');
-    return;
-  }
-
-  bootEl.classList.add('is-exiting');
-  bootEl.addEventListener('transitionend', () => {
-    bootEl.classList.remove('is-visible', 'is-exiting');
-    bootEl.classList.add('is-hidden');
-  }, { once: true });
-  // Fallback: force hide after 400ms even if transitionend doesn't fire
-  window.setTimeout(() => {
-    bootEl.classList.remove('is-visible', 'is-exiting');
-    bootEl.classList.add('is-hidden');
-  }, 400);
+  else
+    bootEl.remove();
 }
 
 async function bootstrap(): Promise<void> {

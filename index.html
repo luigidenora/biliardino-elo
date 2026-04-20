@@ -421,7 +421,7 @@
 
 <body>
   <div id="app" aria-busy="true" aria-live="polite"></div>
-  <div id="app-boot" aria-hidden="true">
+  <div id="app-boot" aria-hidden="true" class="is-visible">
 
     <!-- Skeleton header -->
     <div style="
@@ -611,11 +611,6 @@
       </div>
     </div>
   </div>
-  <script>
-    window.__bootRevealTimer = window.setTimeout(() => {
-      document.getElementById('app-boot')?.classList.add('is-visible');
-    }, 180);
-  </script>
   <script type="module" src="./src/app/main.ts"></script>
 </body>
 
