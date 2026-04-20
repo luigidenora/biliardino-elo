@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 const packageJsonPath = path.join(rootDir, 'package.json');
-const outputPath = path.join(rootDir, 'public', 'sw-version.js');
+const swPath = path.join(rootDir, 'public', 'sw.js');
 
 function parseVersion(version) {
   const [core] = String(version || '0.0.0').split('-');
@@ -66,8 +66,12 @@ async function main() {
   const buildId = getBuildId();
   const swVersion = `${swCoreVersion}+${buildId}`;
 
-  const content = `/* AUTO-GENERATED FILE. DO NOT EDIT. */\nself.__SW_VERSION__ = '${swVersion}';\n`;
-  await writeFile(outputPath, content, 'utf8');
+  const swContent = await readFile(swPath, 'utf8');
+  const updated = swContent.replace(
+    /^const VERSION = '[^']*';/m,
+    `const VERSION = '${swVersion}';`
+  );
+  await writeFile(swPath, updated, 'utf8');
 
   console.log(`[sw-version] ${swVersion}`);
 }

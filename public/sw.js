@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-try {
-  importScripts('/sw-version.js');
-} catch {
-  // sw-version.js is generated at build time; absent in dev is expected.
-}
-
-const VERSION = self.__SW_VERSION__ || '0.0.0-dev';
+// Updated automatically by scripts/generate-sw-version.js
+const VERSION = '2.1.0+dev';
 const CACHE_NAME = `calcio-biliardino-${VERSION}`;
 
 // Static assets safe to cache: same URL = same content forever

@@ -5,8 +5,8 @@ import { defineConfig } from 'vite';
 
 function readSwVersion(): string {
   try {
-    const src = fs.readFileSync(path.resolve(__dirname, 'public/sw-version.js'), 'utf-8');
-    const m = src.match(/self\.__SW_VERSION__\s*=\s*['"]([^'"]+)['"]/);
+    const src = fs.readFileSync(path.resolve(__dirname, 'public/sw.js'), 'utf-8');
+    const m = src.match(/^const VERSION = '([^']+)';/m);
     return m?.[1] ?? '0.0.0-dev';
   } catch {
     return '0.0.0-dev';
