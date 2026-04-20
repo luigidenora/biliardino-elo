@@ -105,7 +105,9 @@ async function cacheFirst(request) {
   }
   const res = await fetch(request).catch(() => null);
   if (res?.ok) {
-    caches.open(CACHE_NAME).then(c => c.put(request, res.clone())).catch(() => { });
+    caches.open(CACHE_NAME).then(c => c.put(request, res.clone())).catch((err) => {
+      console.warn('[SW] cacheFirst failed to cache:', request.url, err);
+    });
   }
   return res || new Response('Not found', { status: 404 });
 }

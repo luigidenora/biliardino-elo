@@ -30,8 +30,6 @@ declare global {
   }
 }
 
-let splashDismissed = false;
-
 function isInsidePWA(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches;
 }
@@ -58,12 +56,6 @@ function initPWAExperience(): void {
 
     e.preventDefault();
   });
-}
-
-function tryDismissBootOverlay(): void {
-  if (splashDismissed) return;
-  splashDismissed = true;
-  dismissBootOverlay();
 }
 
 function dismissBootOverlay(): void {
@@ -130,7 +122,7 @@ async function bootstrap(): Promise<void> {
   const onFirstRoute = (): void => {
     trace('Bootstrap', 'first route-change received → dismissing splash');
     appState.off('route-change', onFirstRoute);
-    tryDismissBootOverlay();
+    dismissBootOverlay();
   };
   appState.on('route-change', onFirstRoute);
   trace('Bootstrap', 'registered route-change listener for splash dismiss');
@@ -138,7 +130,7 @@ async function bootstrap(): Promise<void> {
   // 4c. Safety: force-dismiss skeleton after 5s even if route-change never fires
   window.setTimeout(() => {
     trace('Bootstrap', '5s safety timeout fired → force-dismissing splash');
-    tryDismissBootOverlay();
+    dismissBootOverlay();
   }, 5000);
   trace('Bootstrap', 'bootstrap() finished synchronously — waiting for router');
 }
