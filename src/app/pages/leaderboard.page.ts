@@ -234,16 +234,15 @@ class LeaderboardPage extends Component {
 
   private getPlayerRank(player: IPlayer): number {
     const roleIdx = this.getRoleIndex();
-    if (roleIdx === null) return player.rank[2]; // overall
-    return player.rank[roleIdx];
+    if (roleIdx === null) return player.rank[2] > 0 ? player.rank[2] : Number.MAX_SAFE_INTEGER;
+    return player.rank[roleIdx] > 0 ? player.rank[roleIdx] : Number.MAX_SAFE_INTEGER;
   }
 
   private getAllRankedPlayers(): IPlayer[] {
     const roleIdx = this.getRoleIndex();
     return getAllPlayers().filter((p) => {
       if (roleIdx === null) {
-        // General: include players with non-zero rank[2]
-        return p.rank[2] > 0;
+        return p.matches[0] > 0 || p.matches[1] > 0;
       }
       return p.matches[roleIdx] > 0;
     });

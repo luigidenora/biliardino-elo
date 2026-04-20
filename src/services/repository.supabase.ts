@@ -7,8 +7,6 @@ const CACHE_CONTROL_ID = 'id';
 const CACHE_HASH_PLAYERS_KEY = 'supabase_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'supabase_cache_hash_matches';
 
-// running match stored in localStorage since there's no dedicated table
-const RUNNING_MATCH_KEY = 'biliardino_running_match';
 
 export async function updatePlayersHash(): Promise<void> {
   const hash = Math.random();
@@ -137,16 +135,24 @@ export function parseMatchDTO(match: IMatchDTO): IMatch {
 }
 
 export async function saveRunningMatch(match: IRunningMatchDTO): Promise<void> {
-  localStorage.setItem(RUNNING_MATCH_KEY, JSON.stringify(match));
+  const { error } = await (supabase as any).from('runningMatch').upsert({
+    id: 1,
+    teamA: match.teamA,
+    teamB: match.teamB
+  });
+  if (error) throw error;
 }
 
 export async function fetchRunningMatch(): Promise<IRunningMatchDTO | null> {
-  const raw = localStorage.getItem(RUNNING_MATCH_KEY);
-  return raw ? JSON.parse(raw) : null;
+  const { data, error } = await (supabase as any).from('runningMatch').select('*').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { teamA: data.teamA, teamB: data.teamB };
 }
 
 export async function clearRunningMatch(): Promise<void> {
-  localStorage.removeItem(RUNNING_MATCH_KEY);
+  const { error } = await (supabase as any).from('runningMatch').delete().eq('id', 1);
+  if (error) throw error;
 }
 
 export async function savePlayer(player: IPlayerDTO): Promise<void> {
