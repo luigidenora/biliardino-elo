@@ -15,7 +15,7 @@ import { LobbyService } from '@/services/lobby.service';
 import { addMatch } from '@/services/match.service';
 import { findBestMatch } from '@/services/matchmaking.service';
 import { getAllPlayers, getClass, getPlayerById } from '@/services/player.service';
-import { clearRunningMatch, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
+import { clearRunningMatch, fetchMatchById, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import haptics from '@/utils/haptics.util';
 import gsap from 'gsap';
@@ -55,7 +55,7 @@ function getClassColor(playerClass: number): string {
 class MatchmakingPage extends Component {
   // ── State ─────────────────────────────────────────────────────
 
-  private playerStates: Map<number, PlayerState> = new Map();
+  private readonly playerStates: Map<number, PlayerState> = new Map();
   private generatedMatch: IMatchProposal | null = null;
   private confirmedPlayerIds: Set<number> = new Set();
   private lobbyStateListener: ((state: ILobbyState) => void) | null = null;
@@ -64,6 +64,7 @@ class MatchmakingPage extends Component {
   private isGenerating = false;
   private isSaving = false;
   private searchQuery = '';
+  private useRelaxedClassDiff = false;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -193,27 +194,8 @@ class MatchmakingPage extends Component {
 
     return `
       <div class="space-y-4 match-panel-card">
-        ${this.renderDisclaimerCard()}
         ${this.renderEmptyMatchState()}
         ${this.renderGenerateButton()}
-      </div>
-    `;
-  }
-
-  private renderDisclaimerCard(): string {
-    return `
-      <div class="rounded-xl p-3 md:p-4 flex items-start gap-3"
-           style="background:linear-gradient(135deg, rgba(255,165,0,0.08), rgba(255,215,0,0.05));
-                  border:1px solid rgba(255,165,0,0.25)">
-        <i data-lucide="shield" style="width:18px;height:18px;color:#FFD700;flex-shrink:0;margin-top:1px"></i>
-        <div>
-          <div class="font-ui" style="font-size:12px; color:#FFD700; letter-spacing:0.08em; margin-bottom:4px">
-            PROMEMORIA
-          </div>
-          <p class="font-body" style="font-size:11px; color:rgba(255,255,255,0.55); line-height:1.5">
-            Il biliardino non e scontato: solo in pausa e con rispetto, per evitare sanzioni.
-          </p>
-        </div>
       </div>
     `;
   }
@@ -235,6 +217,21 @@ class MatchmakingPage extends Component {
   private renderGenerateButton(): string {
     const enabled = this.getSelectedCount() >= MIN_PLAYERS;
     return `
+      <!-- Class diff toggle -->
+      <label id="class-diff-toggle-label" class="flex items-center gap-3 cursor-pointer select-none px-1">
+        <div class="relative">
+          <input type="checkbox" id="class-diff-toggle" class="sr-only" ${this.useRelaxedClassDiff ? 'checked' : ''}>
+          <div id="class-diff-track" class="w-9 h-5 rounded-full transition-colors duration-200"
+               style="background:${this.useRelaxedClassDiff ? 'rgba(255,165,0,0.5)' : 'rgba(255,255,255,0.1)'}; border:1px solid rgba(255,255,255,0.15)">
+            <div id="class-diff-thumb" class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                 style="background:#FFD700; transform:translateX(${this.useRelaxedClassDiff ? '16px' : '0px'})"></div>
+          </div>
+        </div>
+        <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.55); letter-spacing:0.08em">
+          MAX DIFF. CLASSI: <span style="color:${this.useRelaxedClassDiff ? '#FFD700' : 'rgba(255,255,255,0.35)'}">${this.useRelaxedClassDiff ? '2' : '1'}</span>
+        </span>
+      </label>
+
       <button id="generate-match-btn"
               class="w-full py-3.5 md:py-4 rounded-xl flex items-center justify-center gap-3 transition-all duration-300
                      ${enabled ? '' : 'opacity-40 cursor-not-allowed'}"
@@ -256,15 +253,13 @@ class MatchmakingPage extends Component {
   }
 
   private renderGeneratedMatch(match: IMatchProposal): string {
-    const avgEloA = ((getPlayerById(match.teamA.defence)?.elo[0] ?? 1000) + (getPlayerById(match.teamA.attack)?.elo[1] ?? 1000)) / 2;
-    const avgEloB = ((getPlayerById(match.teamB.defence)?.elo[0] ?? 1000) + (getPlayerById(match.teamB.attack)?.elo[1] ?? 1000)) / 2;
+    const avgEloA = (match.teamA.defence.elo[0] + match.teamA.attack.elo[1]) / 2;
+    const avgEloB = (match.teamB.defence.elo[0] + match.teamB.attack.elo[1]) / 2;
     const winProbA = expectedScore(avgEloA, avgEloB);
     const winProbB = 1 - winProbA;
 
     return `
       <div class="space-y-4 match-panel-card">
-
-        ${this.renderDisclaimerCard()}
 
         <!-- Match Card -->
         <div class="glass-card-gold rounded-xl overflow-hidden">
@@ -302,14 +297,7 @@ class MatchmakingPage extends Component {
             ${this.renderTeamCard('B', match.teamB.defence, match.teamB.attack, avgEloB, winProbB)}
 
             <!-- Win probabilities -->
-            <div class="flex justify-between px-2">
-              <span class="font-ui" style="font-size:11px; color:${winProbA > 0.5 ? '#4ADE80' : 'rgba(255,255,255,0.4)'}">
-                ${(winProbA * 100).toFixed(1)}% WIN
-              </span>
-              <span class="font-ui" style="font-size:11px; color:${winProbB > 0.5 ? '#4ADE80' : 'rgba(255,255,255,0.4)'}">
-                ${(winProbB * 100).toFixed(1)}% WIN
-              </span>
-            </div>
+            ${this.renderWinProbBar(winProbA, winProbB)}
           </div>
 
           <!-- Heuristic Data -->
@@ -326,10 +314,10 @@ class MatchmakingPage extends Component {
             <div class="p-4 md:p-5">
               <div class="flex items-center justify-center gap-4">
                 <div class="text-center">
-                  <div class="font-ui mb-1" style="font-size:10px; color:var(--color-team-red, #E53E3E); letter-spacing:0.1em">
+                  <div class="font-ui mb-1" style="font-size:10px; color:rgba(240,240,240,0.7); letter-spacing:0.1em">
                     BIANCHI
                   </div>
-                  <input id="score-team-a" type="number" min="0" max="8"
+                  <input id="score-team-a" type="text" inputmode="numeric" pattern="[0-8]"
                          class="w-16 h-16 rounded-xl text-center font-display bg-white/5 text-white outline-none
                                 focus:ring-2 focus:ring-(--color-gold)/50 transition-all"
                          style="font-size:32px; border:1px solid rgba(255,255,255,0.15)"
@@ -337,10 +325,10 @@ class MatchmakingPage extends Component {
                 </div>
                 <span class="font-display text-white/30" style="font-size:28px; margin-top:16px">-</span>
                 <div class="text-center">
-                  <div class="font-ui mb-1" style="font-size:10px; color:var(--color-team-blue, #3182CE); letter-spacing:0.1em">
+                  <div class="font-ui mb-1" style="font-size:10px; color:#E53E3E; letter-spacing:0.1em">
                     ROSSI
                   </div>
-                  <input id="score-team-b" type="number" min="0" max="8"
+                  <input id="score-team-b" type="text" inputmode="numeric" pattern="[0-8]"
                          class="w-16 h-16 rounded-xl text-center font-display bg-white/5 text-white outline-none
                                 focus:ring-2 focus:ring-(--color-gold)/50 transition-all"
                          style="font-size:32px; border:1px solid rgba(255,255,255,0.15)"
@@ -377,12 +365,12 @@ class MatchmakingPage extends Component {
     avgElo: number,
     _winProb: number
   ): string {
-    const teamColor = team === 'A' ? 'var(--color-team-red, #E53E3E)' : 'var(--color-team-blue, #3182CE)';
-    const teamBg = team === 'A' ? 'rgba(229,62,62,0.08)' : 'rgba(49,130,206,0.08)';
-    const teamBorder = team === 'A' ? 'rgba(229,62,62,0.25)' : 'rgba(49,130,206,0.25)';
+    const teamColor = team === 'A' ? 'rgba(240,240,240,0.9)' : '#E53E3E';
+    const teamBg = team === 'A' ? 'rgba(255,255,255,0.06)' : 'rgba(229,62,62,0.08)';
+    const teamBorder = team === 'A' ? 'rgba(255,255,255,0.2)' : 'rgba(229,62,62,0.25)';
 
-    const defClass = defence.class === -1 ? getClass(defence.elo) : defence.class;
-    const attClass = attack.class === -1 ? getClass(attack.elo) : attack.class;
+    const defClass = defence.class[0] === -1 ? getClass(defence.elo[0]) : defence.class[0];
+    const attClass = attack.class[1] === -1 ? getClass(attack.elo[1]) : attack.class[1];
     const defColor = getClassColor(defClass);
     const attColor = getClassColor(attClass);
     const defInitials = getInitials(defence.name);
@@ -390,8 +378,6 @@ class MatchmakingPage extends Component {
 
     const defRoleElo = Math.round(defence.elo[0]);
     const attRoleElo = Math.round(attack.elo[1]);
-    const defPercent = Math.round(defence.defence * 100);
-    const attPercent = Math.round((1 - attack.defence) * 100);
 
     return `
       <div class="rounded-xl p-3 md:p-4" style="background:${teamBg}; border:1px solid ${teamBorder}">
@@ -423,7 +409,7 @@ class MatchmakingPage extends Component {
               <span class="font-ui px-1.5 py-0.5 rounded"
                     style="font-size:9px; letter-spacing:0.06em; color:#3182CE;
                            background:rgba(49,130,206,0.15); border:1px solid rgba(49,130,206,0.3)">
-                DIF ${defPercent}%
+                DIF
               </span>
               <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.5)">
                 ${defRoleElo} <span style="font-size:9px; opacity:0.6">(${getDisplayElo(defence)})</span>
@@ -448,13 +434,33 @@ class MatchmakingPage extends Component {
               <span class="font-ui px-1.5 py-0.5 rounded"
                     style="font-size:9px; letter-spacing:0.06em; color:#E53E3E;
                            background:rgba(229,62,62,0.15); border:1px solid rgba(229,62,62,0.3)">
-                ATT ${attPercent}%
+                ATT
               </span>
               <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.5)">
                 ${attRoleElo} <span style="font-size:9px; opacity:0.6">(${getDisplayElo(attack)})</span>
               </span>
             </div>
           </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderWinProbBar(winProbA: number, winProbB: number): string {
+    const pctA = Math.round(winProbA * 100);
+    const pctB = Math.round(winProbB * 100);
+    const colorA = 'rgba(220,220,220,0.85)';
+    const colorB = '#E53E3E';
+    return `
+      <div>
+        <div class="flex justify-between mb-1 px-0.5">
+          <span class="font-ui" style="font-size:11px; color:${colorA}">${pctA}%</span>
+          <span class="font-ui" style="font-size:10px; color:rgba(255,255,255,0.35); letter-spacing:0.08em">PROB. VITTORIA</span>
+          <span class="font-ui" style="font-size:11px; color:${colorB}">${pctB}%</span>
+        </div>
+        <div class="flex h-2 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.06)">
+          <div style="width:${pctA}%; background:${colorA}; border-radius:4px 0 0 4px; transition:width 0.4s"></div>
+          <div style="width:${pctB}%; background:${colorB}; border-radius:0 4px 4px 0; transition:width 0.4s"></div>
         </div>
       </div>
     `;
@@ -469,7 +475,7 @@ class MatchmakingPage extends Component {
       { icon: 'dices', label: 'Diversita team', score: h.diversityTeam.score, max: h.diversityTeam.max, color: '#27AE60' },
       { icon: 'dices', label: 'Diversita avversari', score: h.diversityOpponent.score, max: h.diversityOpponent.max, color: '#2ECC71' },
       { icon: 'zap', label: 'Casualita', score: h.randomness.score, max: h.randomness.max, color: '#E8A020' },
-      { icon: 'shield', label: 'Class Balance', score: h.classBalance.score, max: h.classBalance.max, color: '#C0C0C0' }
+      { icon: 'trending-down', label: 'Diff. gioc.', score: h.playersDifference.score, max: h.playersDifference.max, color: '#C0C0C0' }
     ];
 
     return `
@@ -636,8 +642,30 @@ class MatchmakingPage extends Component {
     for (const input of this.$$('#score-team-a, #score-team-b') as HTMLInputElement[]) {
       input.addEventListener('blur', () => {
         const val = Number.parseInt(input.value, 10);
+        if (Number.isNaN(val) || val < 0) input.value = '0';
         if (val > 8) input.value = '8';
-        if (val < 0) input.value = '0';
+      });
+    }
+
+    // Class diff toggle (rendered in both panels)
+    for (const checkbox of this.$$('#class-diff-toggle') as HTMLInputElement[]) {
+      checkbox.addEventListener('change', () => {
+        this.useRelaxedClassDiff = checkbox.checked;
+        // Sync all toggle instances
+        for (const cb of this.$$('#class-diff-toggle') as HTMLInputElement[]) {
+          cb.checked = this.useRelaxedClassDiff;
+        }
+        for (const track of this.$$('#class-diff-track')) {
+          track.style.background = this.useRelaxedClassDiff ? 'rgba(255,165,0,0.5)' : 'rgba(255,255,255,0.1)';
+        }
+        for (const thumb of this.$$('#class-diff-thumb')) {
+          thumb.style.transform = `translateX(${this.useRelaxedClassDiff ? '16px' : '0px'})`;
+        }
+        const labels = this.$$('#class-diff-toggle-label span span');
+        for (const span of labels) {
+          span.textContent = this.useRelaxedClassDiff ? '2' : '1';
+          (span as HTMLElement).style.color = this.useRelaxedClassDiff ? '#FFD700' : 'rgba(255,255,255,0.35)';
+        }
       });
     }
   }
@@ -720,7 +748,7 @@ class MatchmakingPage extends Component {
   }
 
   private updateGenerateButton(): void {
-    const canGenerate = this.getSelectedCount() >= MIN_PLAYERS && !this.isGenerating && !this.isSaving;
+    const canGenerate = this.getSelectedCount() >= MIN_PLAYERS && !this.isGenerating && !this.isSaving && !this.generatedMatch;
 
     for (const btn of this.$$('#generate-match-btn') as HTMLButtonElement[]) {
       btn.disabled = !canGenerate;
@@ -741,6 +769,9 @@ class MatchmakingPage extends Component {
       if (loading) {
         btn.style.opacity = '0.7';
         btn.innerHTML = `${SPINNER} GENERAZIONE...`;
+      } else {
+        btn.style.opacity = '';
+        btn.innerHTML = `<i data-lucide="swords" style="width:18px;height:18px"></i> GENERA MATCH <i data-lucide="chevron-right" style="width:16px;height:16px"></i>`;
       }
     }
   }
@@ -759,7 +790,7 @@ class MatchmakingPage extends Component {
   // ── Actions ───────────────────────────────────────────────────
 
   private async handleGenerateMatch(): Promise<void> {
-    if (this.isGenerating) return;
+    if (this.isGenerating || this.generatedMatch) return;
 
     const selectedIds = this.getSelectedPlayerIds();
     const priorityIds = this.getPriorityPlayerIds();
@@ -773,7 +804,7 @@ class MatchmakingPage extends Component {
     this.setGenerateButtonLoading(true);
 
     try {
-      const match = findBestMatch(selectedIds, priorityIds);
+      const match = findBestMatch(selectedIds, priorityIds, this.useRelaxedClassDiff ? 2 : 1);
 
       if (!match) {
         alert('Impossibile generare partite con i giocatori selezionati.');
@@ -795,6 +826,7 @@ class MatchmakingPage extends Component {
       alert('Errore durante la generazione della partita.');
     } finally {
       this.isGenerating = false;
+      this.setGenerateButtonLoading(false);
       this.updateGenerateButton();
     }
   }
@@ -810,9 +842,9 @@ class MatchmakingPage extends Component {
       console.error('Failed to clear running match:', error);
     }
 
-    this.resetAllPlayerStates();
     this.refreshMatchPanels();
     this.refreshPlayerListPanel();
+    this.updateGenerateButton();
   }
 
   private async handleSaveMatch(): Promise<void> {
@@ -853,6 +885,12 @@ class MatchmakingPage extends Component {
     };
 
     const matchDTO = addMatch(teamA, teamB, [scoreA, scoreB]);
+
+    const existing = await fetchMatchById(matchDTO.id);
+    if (existing) {
+      throw new Error(`La partita con ID ${matchDTO.id} esiste già in Firestore. Possibile doppio salvataggio.`);
+    }
+
     await saveMatch(matchDTO);
     haptics.trigger('success');
 
@@ -875,7 +913,6 @@ class MatchmakingPage extends Component {
     this.confirmedPlayerIds.clear();
     appState.lobbyActive = false;
     appState.emit('lobby-change');
-    this.resetAllPlayerStates();
     this.refreshMatchPanels();
     this.refreshPlayerListPanel();
   }

@@ -129,11 +129,11 @@ function validatePriority(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer, pr
   return true;
 }
 
-function getClassDiff4(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): number {
-  const class1 = Math.min(3, Math.max(1, p1.class[0] === -1 ? getClass(p1.elo[0]) : p1.class[0])); // da 1 a 3 perchè le altre classi sono virtuali
-  const class2 = Math.min(3, Math.max(1, p2.class[1] === -1 ? getClass(p2.elo[1]) : p2.class[1]));
-  const class3 = Math.min(3, Math.max(1, p3.class[0] === -1 ? getClass(p3.elo[0]) : p3.class[0]));
-  const class4 = Math.min(3, Math.max(1, p4.class[1] === -1 ? getClass(p4.elo[1]) : p4.class[1]));
+function getClassDiff4(def1: IPlayer, att1: IPlayer, def2: IPlayer, att2: IPlayer): number {
+  const class1 = Math.min(3, Math.max(1, def1.class[0] === -1 ? getClass(def1.elo[0]) : def1.class[0])); // da 1 a 3 perchè le altre classi sono virtuali
+  const class2 = Math.min(3, Math.max(1, att1.class[1] === -1 ? getClass(att1.elo[1]) : att1.class[1]));
+  const class3 = Math.min(3, Math.max(1, def2.class[0] === -1 ? getClass(def2.elo[0]) : def2.class[0]));
+  const class4 = Math.min(3, Math.max(1, att2.class[1] === -1 ? getClass(att2.elo[1]) : att2.class[1]));
 
   const maxClass = Math.max(class1, class2, class3, class4);
   const minClass = Math.min(class1, class2, class3, class4);
@@ -141,9 +141,9 @@ function getClassDiff4(p1: IPlayer, p2: IPlayer, p3: IPlayer, p4: IPlayer): numb
   return maxClass - minClass;
 }
 
-function getClassDiff2(p1: IPlayer, p2: IPlayer): number {
-  const class1 = Math.min(3, Math.max(1, p1.class[0] === -1 ? getClass(p1.elo[0]) : p1.class[0]));
-  const class2 = Math.min(3, Math.max(1, p2.class[1] === -1 ? getClass(p2.elo[1]) : p2.class[1]));
+function getClassDiff2(def: IPlayer, att: IPlayer): number {
+  const class1 = Math.min(3, Math.max(1, def.class[0] === -1 ? getClass(def.elo[0]) : def.class[0]));
+  const class2 = Math.min(3, Math.max(1, att.class[1] === -1 ? getClass(att.elo[1]) : att.class[1]));
   return Math.abs(class1 - class2);
 }
 
@@ -210,9 +210,7 @@ function getPriorityAndDiversity(players: IPlayer[], maxClassDiff: number): Matc
     for (const p2 of players) {
       if (player === p2) continue;
 
-      debugger;
-
-      if (player.role[0] <= 0 && p2.role[1] >= 0 && Math.abs(player.class[0] - p2.class[1]) <= maxClassDiff) {
+      if (player.role <= 0 && p2.role >= 0 && getClassDiff2(player, p2) <= maxClassDiff) {
         diversityTeam[0][player.id] ??= { min: Infinity, max: -Infinity, diff: 0 };
         diversityOpponent[0][player.id] ??= { min: Infinity, max: -Infinity, diff: 0 };
 
@@ -223,7 +221,7 @@ function getPriorityAndDiversity(players: IPlayer[], maxClassDiff: number): Matc
         diversityOpponent[0][player.id].max = Math.max(diversityOpponent[0][player.id].max, player.opponentsStats[0][p2.id]?.matches ?? 0);
       }
 
-      if (player.role[1] >= 0 && p2.role[0] <= 0 && Math.abs(player.class[1] - p2.class[0]) <= maxClassDiff) { // conta solo se il giocatore contro gioca in quel ruolo
+      if (player.role >= 0 && p2.role <= 0 && getClassDiff2(p2, player) <= maxClassDiff) { // conta solo se il giocatore contro gioca in quel ruolo
         diversityTeam[1][player.id] ??= { min: Infinity, max: -Infinity, diff: 0 };
         diversityOpponent[1][player.id] ??= { min: Infinity, max: -Infinity, diff: 0 };
 
@@ -235,10 +233,21 @@ function getPriorityAndDiversity(players: IPlayer[], maxClassDiff: number): Matc
       }
     }
 
-    diversityTeam[0][player.id].diff = diversityTeam[0][player.id].max - diversityTeam[0][player.id].min;
-    diversityTeam[1][player.id].diff = diversityTeam[1][player.id].max - diversityTeam[1][player.id].min;
-    diversityOpponent[0][player.id].diff = diversityOpponent[0][player.id].max - diversityOpponent[0][player.id].min;
-    diversityOpponent[1][player.id].diff = diversityOpponent[1][player.id].max - diversityOpponent[1][player.id].min;
+    if (diversityTeam[0][player.id]) {
+      diversityTeam[0][player.id].diff = diversityTeam[0][player.id].max - diversityTeam[0][player.id].min;
+    }
+
+    if (diversityTeam[1][player.id]) {
+      diversityTeam[1][player.id].diff = diversityTeam[1][player.id].max - diversityTeam[1][player.id].min;
+    }
+
+    if (diversityOpponent[0][player.id]) {
+      diversityOpponent[0][player.id].diff = diversityOpponent[0][player.id].max - diversityOpponent[0][player.id].min;
+    }
+
+    if (diversityOpponent[1][player.id]) {
+      diversityOpponent[1][player.id].diff = diversityOpponent[1][player.id].max - diversityOpponent[1][player.id].min;
+    }
   }
 
   return { priority, diversityTeam, diversityOpponent };
