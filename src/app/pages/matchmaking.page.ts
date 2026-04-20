@@ -74,6 +74,17 @@ class MatchmakingPage extends Component {
     // Pre-populate states from daily availability
     this.initPlayerStates(players);
 
+    // Pre-populate confirmedPlayerIds from cached lobby state (avoids empty set on first render)
+    const cachedLobbyState = LobbyService.getState();
+    if (cachedLobbyState) {
+      this.confirmedPlayerIds = new Set(cachedLobbyState.confirmations.map(c => c.playerId));
+      for (const playerId of this.confirmedPlayerIds) {
+        if (this.playerStates.get(playerId) === 0) {
+          this.playerStates.set(playerId, 1);
+        }
+      }
+    }
+
     // Try to restore a previously saved running match
     await this.restoreSavedMatch();
 

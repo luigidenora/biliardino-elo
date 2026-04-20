@@ -77,7 +77,7 @@ export function renderMatchmakingPlayerList({
     return `
       <div class="player-row flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 transition-all duration-200 cursor-pointer hover:bg-white/[0.08]
                   ${state > 0 ? 'bg-white/[0.04]' : idx % 2 === 0 ? 'bg-white/[0.015]' : ''}
-                  ${isConfirmed ? 'confirmed-player' : ''}
+                  ${isConfirmed ? 'confirmed-player border-l-2 border-[#4ADE80]' : 'border-l-2 border-transparent'}
                   border-b border-white/5"
            data-player-id="${player.id}"
            data-player-name="${player.name.toLowerCase()}">
@@ -86,14 +86,13 @@ export function renderMatchmakingPlayerList({
           ${renderPlayerAvatar({ initials, color: classColor, size: 'sm', online: isConfirmed ? true : undefined, playerId: player.id })}
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="player-name text-white font-ui truncate text-sm font-semibold" data-original-name="${player.name}">
+              <span class="player-name font-ui truncate text-sm font-semibold ${isConfirmed ? 'text-white' : 'text-white'}" data-original-name="${player.name}">
                 ${player.name}
               </span>
               <span class="px-1.5 py-0.5 rounded font-ui hidden sm:inline text-[9px] tracking-[0.08em]"
                     style="color:${classColor}; background:${classColor}22; border:1px solid ${classColor}33">
                 ${className.toUpperCase()}
               </span>
-              ${isConfirmed ? '' : ''}
             </div>
             <div class="flex items-center gap-2 mt-0.5 flex-wrap">
               <div class="flex items-center gap-1">
@@ -108,20 +107,14 @@ export function renderMatchmakingPlayerList({
           </div>
         </div>
 
-        <div class="flex flex-col items-center gap-0.5 shrink-0 ml-2">
+        <div class="flex items-center gap-2 shrink-0 ml-2">
           ${isConfirmed
-            ? `<span class="confirmed-badge flex items-center gap-1 px-1.5 py-0.5 rounded-full font-ui text-[9px] tracking-[0.06em]"
-                 title="Confermato dalla lobby"
-                 style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:#4ADE80">
-                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-                   stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                 API
-               </span>`
-            : '<span class="h-[18px]"></span>'}
+            ? `<i data-lucide="wifi" title="Confermato dalla lobby" style="width:13px;height:13px;color:#4ADE80;flex-shrink:0"></i>`
+            : ''}
           <button class="player-toggle-btn w-9 h-9 rounded-full flex items-center justify-center transition-all"
                   data-player-id="${player.id}"
                   data-state="${state}"
-            style="${getToggleBtnStyle(state)}"
+                  style="${getToggleBtnStyle(state)}"
                   title="${state === 0 ? 'Non selezionato' : state === 1 ? 'Disponibile (click per priorita)' : 'Priorita (click per deselezionare)'}">
             ${getToggleBtnIcon(state)}
           </button>

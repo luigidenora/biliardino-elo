@@ -33,6 +33,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let phase = 'fetch iniziale';
   try {
     // Fetch lobby registry, confirmations, and message IDs in parallel
     const [lobbyData, rawMap, messageIds] = await Promise.all([
@@ -45,6 +46,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     const exists = lobbyData !== null;
     let ttl = 0;
     if (exists) {
+      phase = 'lettura TTL lobby';
       ttl = await redis.ttl('lobby');
     }
 
@@ -54,6 +56,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       : null;
 
     // ── Confirmations ────────────────────────────────────────
+    phase = 'parsing confirmations';
     const confirmations = Object.values(rawMap || {}).map((v) => {
       try {
         const data = (typeof v === 'string' ? JSON.parse(v) : v) as Confirmation;
@@ -67,6 +70,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     }).filter(Boolean) as Array<Confirmation & { fishName: string }>;
 
     // ── Messages ─────────────────────────────────────────────
+    phase = 'caricamento messaggi';
     const messages: IMessage[] = [];
     if (messageIds.length > 0) {
       const messagePromises = messageIds.map(id => redis.get<IMessage>(`message:${id}`));
@@ -86,8 +90,25 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       messageCount: messages.length
     });
   } catch (error) {
-    console.error('Errore lobby:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    const err = error as Error;
+    const isRedisError = err.message?.toLowerCase().includes('redis')
+      || err.message?.toLowerCase().includes('upstash')
+      || err.message?.toLowerCase().includes('connect')
+      || err.name === 'UpstashError';
+
+    console.error(`❌ Errore lobby [${phase}]:`, err.message || err);
+
+    if (isRedisError) {
+      return res.status(503).json({
+        error: 'Servizio temporaneamente non disponibile',
+        detail: `Redis non raggiungibile durante: ${phase}`
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Errore interno del server',
+      detail: `Fallito durante: ${phase}`
+    });
   }
 }
 
