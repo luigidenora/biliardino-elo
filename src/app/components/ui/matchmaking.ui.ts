@@ -1,9 +1,7 @@
 import { expectedScore } from '@/services/elo.service';
-import { getClass } from '@/services/player.service';
-import { getClassName } from '@/utils/get-class-name.util';
-import { getDisplayElo } from '@/utils/get-display-elo.util';
 import { html, rawHtml } from '../../utils/html-template.util';
 import { getInitials, renderPlayerAvatar } from '../player-avatar.component';
+import { renderRoleBadge } from '../role-badge.component';
 import generatedCardTemplate from './matchmaking-generated-card.component.html?raw';
 import playerListTemplate from './matchmaking-player-list.component.html?raw';
 
@@ -64,15 +62,11 @@ export function renderMatchmakingPlayerList({
 
   const playerRows = players.map((player, idx) => {
     const state = playerStates.get(player.id) ?? 0;
-    const classNum = player.class[player.bestRole];
-    const classColor = getClassColor(classNum);
-    const className = getClassName(classNum);
     const initials = getInitials(player.name);
-    const displayElo = getDisplayElo(player);
-    const totalMatches = player.matches[0] + player.matches[1];
-    const totalWins = player.wins[0] + player.wins[1];
-    const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
     const isConfirmed = confirmedPlayerIds.has(player.id);
+    const defElo = Math.round(player.elo[0]);
+    const attElo = Math.round(player.elo[1]);
+    const roleBadge = renderRoleBadge({ playerRole: player.role, defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'base' });
 
     return `
       <div class="player-row flex items-center justify-between px-4 md:px-5 py-3 md:py-3.5 transition-all duration-200 cursor-pointer hover:bg-white/[0.08]
@@ -83,27 +77,18 @@ export function renderMatchmakingPlayerList({
            data-player-name="${player.name.toLowerCase()}">
 
         <div class="flex items-center gap-3 min-w-0 flex-1">
-          ${renderPlayerAvatar({ initials, color: classColor, size: 'sm', online: isConfirmed ? true : undefined, playerId: player.id })}
+          ${renderPlayerAvatar({ initials, color: 'rgba(255,255,255,0.25)', size: 'sm', online: isConfirmed ? true : undefined, playerId: player.id })}
           <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
               <span class="player-name text-white font-ui truncate text-sm font-semibold" data-original-name="${player.name}">
                 ${player.name}
               </span>
-              <span class="px-1.5 py-0.5 rounded font-ui hidden sm:inline text-[9px] tracking-[0.08em]"
-                    style="color:${classColor}; background:${classColor}22; border:1px solid ${classColor}33">
-                ${className.toUpperCase()}
-              </span>
-              ${isConfirmed ? '' : ''}
+              ${roleBadge}
             </div>
-            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-              <div class="flex items-center gap-1">
-                <i data-lucide="star" class="size-2.5 text-[#FFD700]"></i>
-                <span class="font-ui text-[11px] text-[#FFD700]">${displayElo}</span>
-              </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="font-ui text-[11px] text-white/50">DIF <span class="text-[#4A90D9]">${defElo}</span></span>
               <span class="text-white/20">&middot;</span>
-              <span class="font-ui text-[11px] text-white/45">${winRate}% WR</span>
-              <span class="hidden sm:inline font-ui text-[11px] text-[#4ADE80]">${totalWins}W</span>
-              <span class="hidden sm:inline font-ui text-[11px] text-[#F87171]">${totalMatches - totalWins}L</span>
+              <span class="font-ui text-[11px] text-white/50">ATT <span class="text-[#E53E3E]">${attElo}</span></span>
             </div>
           </div>
         </div>

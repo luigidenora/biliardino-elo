@@ -7,6 +7,7 @@ export const updateMatchesHash = repo.updateMatchesHash;
 export const fetchPlayers = repo.fetchPlayers;
 export const fetchMatches = repo.fetchMatches;
 export const saveMatch = repo.saveMatch;
+export const fetchMatchById = repo.fetchMatchById;
 export const parseMatchDTO = repo.parseMatchDTO;
 export const saveRunningMatch = repo.saveRunningMatch;
 export const fetchRunningMatch = repo.fetchRunningMatch;

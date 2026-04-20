@@ -166,6 +166,13 @@ export async function saveMatch(match: IMatchDTO, merge = false): Promise<void> 
   await updateMatchesHash();
 }
 
+export async function fetchMatchById(id: number): Promise<IMatchDTO | null> {
+  const ref = doc(collection(db, MATCHES_COLLECTION), id.toString());
+  const snap = await getDocFromServer(ref);
+  if (!snap.exists()) return null;
+  return snap.data() as IMatchDTO;
+}
+
 export function parseMatchDTO(match: IMatchDTO): IMatch {
   return {
     id: match.id,

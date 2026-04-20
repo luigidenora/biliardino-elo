@@ -175,8 +175,8 @@ export class RealtimeClient {
           // Server requests us to reconnect (approaching maxDurationSecs)
           console.log('[RealtimeClient] Server requested reconnect');
           this.closeEventSource();
-          // Reconnect immediately with cursors
-          this.reconnectDelay = 0;
+          // Use a minimum delay to avoid spinning in a tight loop in dev
+          this.reconnectDelay = Math.max(RECONNECT_BASE_MS, this.reconnectDelay);
           this.scheduleReconnect();
           break;
 
