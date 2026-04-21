@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 function readSwVersion(): string {
   try {
@@ -18,7 +19,21 @@ export default defineConfig(config => ({
   define: {
     __SW_VERSION__: JSON.stringify(readSwVersion())
   },
-  plugins: [tailwindcss()],
+  plugins: [
+    tailwindcss(),
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
+      injectRegister: null,
+      manifest: false,
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,woff2,png,svg,webmanifest,webp}'],
+        globIgnores: ['**/apple-splash-*.jpg'],
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')

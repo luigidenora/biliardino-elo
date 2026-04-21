@@ -1,4 +1,4 @@
-import { IMatch, IMatchDTO, IRunningMatchDTO } from '@/models/match.interface';
+import { IMatch, IMatchDTO, IRunningMatchDTO, ITeam } from '@/models/match.interface';
 import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 import { supabase } from '@/utils/supabase.util';
 import { IRepository } from './repository.interface';
@@ -6,6 +6,8 @@ import { IRepository } from './repository.interface';
 const CACHE_CONTROL_ID = 'id';
 const CACHE_HASH_PLAYERS_KEY = 'supabase_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'supabase_cache_hash_matches';
+const PLAYERS_DATA_KEY = 'supabase_players_data';
+const MATCHES_DATA_KEY = 'supabase_matches_data';
 
 
 export async function updatePlayersHash(): Promise<void> {
@@ -24,11 +26,8 @@ export async function updateMatchesHash(): Promise<void> {
     .upsert({ firestore_id: CACHE_CONTROL_ID, hashMatches: hash });
 }
 
-export async function fetchPlayers(): Promise<IPlayer[]> {
-  const { data, error } = await supabase.from('playersShark').select('*');
-  if (error) throw error;
-
-  return data.map(row => ({
+function mapPlayerRow(row: { id: string; name: string; role: -1 | 0 | 1 }): IPlayer {
+  return {
     id: Number(row.id),
     name: row.name,
     role: row.role,
@@ -64,14 +63,26 @@ export async function fetchPlayers(): Promise<IPlayer[]> {
     worstDefeatByElo: [null, null],
     worstDefeatByScore: [null, null],
     worstDefeatByPercentage: [null, null]
-  } satisfies IPlayer));
+  } satisfies IPlayer;
 }
 
-export async function fetchMatches(): Promise<IMatch[]> {
-  const { data, error } = await supabase.from('matchesShark').select('*');
-  if (error) throw error;
+export async function fetchPlayers(): Promise<IPlayer[]> {
+  try {
+    const { data, error } = await supabase.from('playersShark').select('*');
+    if (error) throw error;
+    localStorage.setItem(PLAYERS_DATA_KEY, JSON.stringify(data));
+    return data.map(mapPlayerRow);
+  } catch (err) {
+    const raw = localStorage.getItem(PLAYERS_DATA_KEY);
+    if (raw) return (JSON.parse(raw) as { id: string; name: string; role: -1 | 0 | 1 }[]).map(mapPlayerRow);
+    throw err;
+  }
+}
 
-  return data.map(row => ({
+type MatchRow = { id: number; teamA: ITeam; teamB: ITeam; score: [number, number]; createdAt: number };
+
+function mapMatchRow(row: MatchRow): IMatch {
+  return {
     id: row.id,
     teamA: row.teamA,
     teamB: row.teamB,
@@ -82,7 +93,20 @@ export async function fetchMatches(): Promise<IMatch[]> {
     teamELO: [-1, -1],
     teamAELO: [-1, -1],
     teamBELO: [-1, -1]
-  }));
+  };
+}
+
+export async function fetchMatches(): Promise<IMatch[]> {
+  try {
+    const { data, error } = await supabase.from('matchesShark').select('*');
+    if (error) throw error;
+    localStorage.setItem(MATCHES_DATA_KEY, JSON.stringify(data));
+    return data.map(mapMatchRow);
+  } catch (err) {
+    const raw = localStorage.getItem(MATCHES_DATA_KEY);
+    if (raw) return (JSON.parse(raw) as MatchRow[]).map(mapMatchRow);
+    throw err;
+  }
 }
 
 export async function saveMatch(match: IMatchDTO, merge = false): Promise<void> {

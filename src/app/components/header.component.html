@@ -31,6 +31,10 @@
     </nav>
 
     <div class="flex items-center gap-2">
+      <div id="offline-indicator" aria-label="Offline — dati in cache">
+        <i data-lucide="globe-off"></i>
+        <span class="hidden sm:inline">OFFLINE</span>
+      </div>
       <button id="user-pill"
         class="hidden md:flex items-center place-items-center gap-2 p-1 rounded-full transition-all duration-200 hover:bg-white/10"
         style="border: 1px solid var(--glass-border-gold)" aria-label="Apri profilo utente">

@@ -37,7 +37,7 @@ const frameTransformMap: Record<number, { translateX: number; translateY: number
   4:
   { translateX: 0, translateY: -11, scale: 1.4, origin: '50% 50%' },
   5:
-   { translateX: 0, translateY: -0.1, scale: 1.35, origin: '50% 50%' }
+   { translateX: -1, translateY: -2, scale: 1.5, origin: '50% 50%' }
 };
 
 interface AvatarOptions {
