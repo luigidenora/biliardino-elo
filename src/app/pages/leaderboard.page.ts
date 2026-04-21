@@ -778,10 +778,11 @@ class LeaderboardPage extends Component {
 
     const card = (p: IPlayer, rank: number, elevated = false): string => {
       const roleIdx = this.getRoleIndex();
+      // Mostra dati SOLO del ruolo visualizzato (anche in generale)
       const displayedRoleIdx = roleIdx ?? p.bestRole;
-      const elo = this.getPlayerEloRounded(p);
-      const matches = roleIdx === null ? (p.matches[0] + p.matches[1]) : p.matches[roleIdx];
-      const wins = roleIdx === null ? (p.wins[0] + p.wins[1]) : p.wins[roleIdx];
+      const elo = Math.round(p.elo[displayedRoleIdx]);
+      const matches = p.matches[displayedRoleIdx];
+      const wins = p.wins[displayedRoleIdx];
       const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
       const eloColor = MEDAL_ELO_COLOR[rank] ?? '#8B7D6B';
       const border = MEDAL_BORDER[rank] ?? 'rgba(255,255,255,0.08)';
@@ -790,14 +791,16 @@ class LeaderboardPage extends Component {
       const color = CLASS_COLORS[p.class[displayedRoleIdx]] ?? '#8B7D6B';
       const initials = getInitials(p.name);
       const elevatedClass = elevated ? 'transform-[translateY(-10px)]' : '';
-      // Card bg: 15% white base gives ~50 RGB unit contrast over the dark field
-      // (#0F2A20 → #1F5C3A); previous 8% was below perceptible threshold.
-      // Medal gradient on top adds gold/silver/bronze identity.
       const bg = rank === 1
         ? 'linear-gradient(160deg, rgba(255,215,0,0.40) 0%, rgba(255,215,0,0.18) 100%), rgba(255,255,255,0.15)'
         : rank === 2
           ? 'linear-gradient(160deg, rgba(192,192,192,0.30) 0%, rgba(192,192,192,0.12) 100%), rgba(255,255,255,0.14)'
           : 'linear-gradient(160deg, rgba(205,127,50,0.30) 0%, rgba(205,127,50,0.12) 100%), rgba(255,255,255,0.14)';
+
+      // Determina ruolo per badge
+      let badgeRole: 'defence' | 'attack';
+      if (displayedRoleIdx === 0) badgeRole = 'defence';
+      else badgeRole = 'attack';
 
       return `
         <a href="/profile/${p.id}"
@@ -809,42 +812,38 @@ class LeaderboardPage extends Component {
              backdrop-filter: blur(8px);
            "
         >
-        
-        <!-- Avatar -->
-        <div class="relative flex flex-col text-center">
-        ${renderPlayerAvatar({ initials, color, size: 'base', playerId: p.id, playerClass: p.class[displayedRoleIdx] })}
-          <!-- Medal emoji -->
+        <!-- Avatar + medaglia -->
+        <div class="relative flex flex-col text-center items-center">
+          ${renderPlayerAvatar({ initials, color, size: 'base', playerId: p.id, playerClass: p.class[displayedRoleIdx] })}
           <span class="-translate-y-1" style="font-size:28px; line-height:1">${medal}</span>
+        </div>
+        <!-- Nome + ruolo -->
+        <div class="text-center flex flex-col items-center gap-1">
+          <div class="flex items-center justify-center gap-2">
+            <span class="text-white" style="font-family:var(--font-ui); font-size:15px; font-weight:600">${p.name}</span>
+            ${renderRoleBadge({ role: badgeRole, size: 'base' })}
           </div>
-            
-          <!-- Name -->
-          <div class="text-center flex flex-col items-center gap-1">
-            <div class="text-white"
-                 style="font-family:var(--font-ui); font-size:15px; font-weight:600">
-              ${p.name}
-            </div>
+        </div>
+        <!-- Stats: WR | ELO | Matches -->
+        <div class="flex gap-2 md:gap-4  text-center">
+          <div>
+            <div style="font-family:var(--font-ui); font-size:14px; color:white">${winRate}%</div>
+            <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">WIN RATE</div>
           </div>
-
-          <!-- Stats: WR | ELO | Matches -->
-          <div class="flex gap-2 md:gap-4  text-center">
-            <div>
-              <div style="font-family:var(--font-ui); font-size:14px; color:white">${winRate}%</div>
-              <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">WIN RATE</div>
-            </div>
-            <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
-             <div class="text-center">
-            <div style="font-family:var(--font-display); font-size:26px; color:${eloColor}; letter-spacing:0.1em; line-height:1">
-              ${elo}
-            </div>
-            <div style="font-family:var(--font-ui); font-size:10px; color:rgba(255,255,255,0.4); letter-spacing:0.1em">ELO</div>
+          <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
+           <div class="text-center">
+          <div style="font-family:var(--font-display); font-size:26px; color:${eloColor}; letter-spacing:0.1em; line-height:1">
+            ${elo}
           </div>
-            <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
-            <div>
-              <div style="font-family:var(--font-ui); font-size:14px; color:white">${matches}</div>
-              <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">MATCH</div>
-            </div>
+          <div style="font-family:var(--font-ui); font-size:10px; color:rgba(255,255,255,0.4); letter-spacing:0.1em">ELO</div>
+        </div>
+          <div style="width:1px; background:rgba(255,255,255,0.15)"></div>
+          <div>
+            <div style="font-family:var(--font-ui); font-size:14px; color:white">${matches}</div>
+            <div style="font-size:10px; color:rgba(255,255,255,0.4); font-family:var(--font-ui)">MATCH</div>
           </div>
-        </a>
+        </div>
+      </a>
       `;
     };
 

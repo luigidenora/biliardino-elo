@@ -9,7 +9,6 @@ const CACHE_HASH_MATCHES_KEY = 'supabase_cache_hash_matches';
 const PLAYERS_DATA_KEY = 'supabase_players_data';
 const MATCHES_DATA_KEY = 'supabase_matches_data';
 
-
 export async function updatePlayersHash(): Promise<void> {
   const hash = Math.random();
   localStorage.setItem(CACHE_HASH_PLAYERS_KEY, String(hash));
@@ -40,6 +39,7 @@ function mapPlayerRow(row: { id: string; name: string; role: -1 | 0 | 1 }): IPla
     bestRole: 0,
     class: [-1, -1],
     streak: [0, 0],
+    consistency: [0, 0],
     teammatesStats: [{}, {}],
     opponentsStats: [{}, {}],
     history: [[], []],
@@ -205,6 +205,6 @@ const _check: IRepository = {
   fetchRunningMatch,
   clearRunningMatch,
   savePlayer,
-  deletePlayer,
+  deletePlayer
 };
 void _check;

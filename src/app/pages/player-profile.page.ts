@@ -11,7 +11,7 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { MatchesToRank } from '@/services/elo.service';
-import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
+import { calculateConsistency, getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getAvgAgainstColor, getAvgForColor, getGoalRatioColor, getWinRateColor } from '@/utils/stats-thresholds.util';
 import { Chart, registerables } from 'chart.js';
@@ -576,56 +576,9 @@ export default class PlayerProfilePage extends Component {
     // Difficoltà: ELO medio degli avversari affrontati, normalizzato
     const difficoltaScore = norm(player.avgOpponentElo[role], globalMinOppElo, globalMaxOppElo);
 
-    const costanzaScore = norm(this.computeCostanza(player, role), 0, 100);
+    const costanzaScore = norm(calculateConsistency(player, role), 0, 1);
 
     return [eloScore, winRate, goalRatioScore, formaScore, difficoltaScore, costanzaScore];
-  }
-
-  private computeCostanza(player: IPlayer, role: 0 | 1): number {
-    const history = player.history[role] ?? [];
-    if (history.length < 5) return 50;
-
-    // Ricostruiamo la serie ELO cronologica
-    const sorted = [...history].sort((a, b) => a.createdAt - b.createdAt);
-    let elo = player.elo[role];
-    const raw: number[] = new Array(sorted.length + 1);
-    raw[sorted.length] = elo;
-    for (let i = sorted.length - 1; i >= 0; i--) {
-      const m = sorted[i];
-      const teamIdx = (m.teamA.defence === player.id || m.teamA.attack === player.id) ? 0 : 1;
-      elo -= m.deltaELO[teamIdx];
-      raw[i] = elo;
-    }
-
-    // Media mobile (window=10) per filtrare il rumore partita-per-partita
-    const W = Math.min(10, Math.floor(raw.length / 2));
-    const smooth: number[] = [];
-    for (let i = 0; i < raw.length; i++) {
-      const start = Math.max(0, i - Math.floor(W / 2));
-      const end = Math.min(raw.length, start + W);
-      const slice = raw.slice(start, end);
-      smooth.push(slice.reduce<number>((s, v) => s + v, 0) / slice.length);
-    }
-
-    // Monotonicity della media mobile: quanto la MA va in una direzione sola.
-    // Sommiamo separatamente i tratti in salita e in discesa della MA.
-    let sumUp = 0;
-    let sumDown = 0;
-    for (let i = 1; i < smooth.length; i++) {
-      const diff = smooth[i] - smooth[i - 1];
-      if (diff > 0) sumUp += diff;
-      else sumDown -= diff;
-    }
-    const totalPath = sumUp + sumDown;
-
-    // Se la MA si muove pochissimo → giocatore stabile → costanza massima
-    if (totalPath < 5) return 100;
-
-    // Frazione del percorso nella direzione dominante: 0.5 = perfettamente sinusoidale, 1.0 = monotòna
-    const dominantFraction = Math.max(sumUp, sumDown) / totalPath;
-
-    // Scaliamo 0.5→0, 1.0→100
-    return Math.max(Math.round((dominantFraction - 0.5) / 0.5 * 100), 0);
   }
 
   // ── Companion Cards ───────────────────────────────────────
@@ -1675,7 +1628,7 @@ export default class PlayerProfilePage extends Component {
     this.radarChart = new Chart(rCtx, {
       type: 'radar',
       data: {
-        labels: ['ELO', 'Win Rate', 'Ratio Goal', 'Forma', 'Avversari', 'Costanza'],
+        labels: ['ELO', 'Win Rate', 'Ratio Goal', 'Forma', 'Avversari', 'Consistenza'],
         datasets
       },
       options: {

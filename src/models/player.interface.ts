@@ -20,6 +20,7 @@ export interface IPlayer extends IPlayerDTO {
   class: [number, number];
   streak: [number, number];
   bestRole: number; // 0 defender, 1 attacker
+  consistency: [number, number];
 
   teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
   opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];

@@ -321,3 +321,62 @@ function computeRanksRole(role: number): void {
     player.rank[role] = rank;
   }
 }
+
+function standardDeviation(values: number[]): number {
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+export function calculateConsistency(player: IPlayer, role: number): number {
+  // OPTIMIZE sta calcolando due volte tutta sta roba e sta ricalcolando pure il player stesso
+  const matches = player.history[role];
+  if (matches.length === 0) return 0;
+
+  const results: { sigma: number; mu: number }[] = [];
+
+  for (const p of getAllPlayers()) {
+    results.push(getSigmaMu(p, 0, MatchesToRank), getSigmaMu(p, 1, MatchesToRank));
+  }
+
+  const sigmas = results.map(r => r.sigma).filter(sigma => Number.isFinite(sigma));
+  const mus = results.map(r => r.mu).filter(mu => Number.isFinite(mu));
+  const maxSigma = Math.max(...sigmas);
+  const minSigma = Math.min(...sigmas);
+  const maxMu = Math.max(...mus);
+  const minMu = Math.min(...mus);
+
+  const { sigma, mu } = getSigmaMu(player, role, 1);
+  const sigmaNorm = 1 - normClamp(sigma, minSigma, maxSigma);
+  const muNorm = normClamp(mu, minMu, maxMu);
+
+  console.log(`Player ${player.name} - Role ${role === 0 ? 'Defender' : 'Attacker'} - Consistency calculation: sigma=${sigma.toFixed(3)} (norm ${sigmaNorm.toFixed(3)}), mu=${mu.toFixed(3)} (norm ${muNorm.toFixed(3)})`);
+
+  const consistency = sigmaNorm * 0.5 + muNorm * 0.5;
+  return consistency;
+}
+
+function getSigmaMu(player: IPlayer, role: number, minMatches: number): { sigma: number; mu: number } {
+  const matches = player.history[role];
+  if (matches.length < minMatches) return { sigma: 0.5, mu: 0 };
+
+  const errors: number[] = [];
+
+  for (const match of matches) {
+    const teamId = match.teamA.defence === player.id || match.teamA.attack === player.id ? 0 : 1;
+    const expected = match.expectedScore[teamId];
+    const won = match.score[teamId] === 8 ? 1 : 0;
+    const error = won - expected;
+    errors.push(error);
+  }
+
+  const sigma = standardDeviation(errors); // deviazione standard degli errori (quanto i risultati si discostano dall'atteso)
+  const mu = errors.reduce((sum, v) => sum + v, 0) / errors.length; // media degli errori (quanto si tende a sovra/performance rispetto all'atteso)
+
+  return { sigma, mu };
+}
+
+function normClamp(value: number, min: number, max: number): number {
+  const norm = (value - min) / (max - min);
+  return Math.max(0, Math.min(1, norm));
+}
