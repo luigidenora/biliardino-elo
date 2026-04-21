@@ -10,7 +10,7 @@ export const DerankTreshold = Math.round(RankTreshold * 0.2);
 export const MaxEloDiff = RankTreshold * 2 + DerankTreshold - 1; // qui consideriamo un rank di differenza nel mm
 export const FirstRankUp = 1005;
 export const startElo = 1000;
-const EloScalingFactorFormula = 200;
+const EloScalingFactorFormula = 150;
 
 export function updateMatch(match: IMatch): boolean {
   const teamAP1 = getPlayerById(match.teamA.defence);

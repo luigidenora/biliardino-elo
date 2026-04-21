@@ -142,12 +142,13 @@ export function renderMatchCard(
     : '#ff6b6b';
 
   const absDelta = Math.abs(data.leftDelta);
-  const deltaIsPositive = data.leftDelta >= 0;
-  const deltaColor = deltaIsPositive ? '#22c55e' : '#ef4444';
-  const deltaBg = deltaIsPositive ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)';
-  const deltaBorder = deltaIsPositive ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)';
-  const deltaIcon = deltaIsPositive ? 'trending-up' : 'trending-down';
-  const deltaLabel = `${deltaIsPositive ? '+' : '-'}${absDelta} ELO`;
+  // Nella classifica, il delta ELO in alto a destra deve essere sempre positivo
+  const deltaIsPositive = true;
+  const deltaColor = '#22c55e';
+  const deltaBg = 'rgba(34,197,94,0.1)';
+  const deltaBorder = 'rgba(34,197,94,0.25)';
+  const deltaIcon = 'trending-up';
+  const deltaLabel = `+${absDelta} ELO`;
 
   const winBarGrad = 'background:linear-gradient(to right,rgba(255,255,255,0.15),rgba(255,255,255,0.7))';
   const loseBarGrad = 'background:linear-gradient(to left,rgba(229,62,62,0.2),rgba(229,62,62,0.85))';

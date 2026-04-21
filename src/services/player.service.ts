@@ -88,7 +88,17 @@ export function updatePlayer(id: number, idMate: number, opponentTeam: ITeam, ro
     player.worstLossStreak[role] = player.streak[role];
   }
 
-  player.bestRole = Number(player.class[0] === player.class[1] ? player.elo[1] > player.elo[0] : player.class[1] > player.class[0]);
+  player.bestRole = getBestRole(player);
+}
+
+function getBestRole(player: IPlayer): number {
+  if (player.class[0] === player.class[1]) {
+    if (player.matches[1] === 0) return 0;
+    if (player.matches[0] === 0) return 1;
+    return player.elo[1] > player.elo[0] ? 1 : 0;
+  }
+
+  return player.class[1] > player.class[0] ? 1 : 0;
 }
 
 export function updatePlayerClass(player: IPlayer, won: number, role: number): void {

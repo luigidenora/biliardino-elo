@@ -508,8 +508,9 @@ class StatsPage extends Component {
       const delta = m.deltaELO[0] > 0 ? m.deltaELO[0] : m.deltaELO[1];
       const winA = m.score[0] > m.score[1];
 
-      const avatars = (def: IPlayer | null, att: IPlayer | null, r: boolean): string => `
-        <div class="flex ${r ? 'flex-row-reverse' : 'flex-row'} items-center gap-1">
+      // Mostra sempre difensore a sinistra e attaccante a destra
+      const avatars = (def: IPlayer | null, att: IPlayer | null): string => `
+        <div class="flex flex-row items-center gap-1">
           ${def ? renderPlayerAvatar({ initials: getInitials(def.name), color: pColor(def, 0), size: 'sm', playerId: def.id, playerClass: pClass(def, 0) }) : ''}
           ${att ? renderPlayerAvatar({ initials: getInitials(att.name), color: pColor(att, 1), size: 'sm', playerId: att.id, playerClass: pClass(att, 1) }) : ''}
         </div>
@@ -527,7 +528,7 @@ class StatsPage extends Component {
             <span class="font-display font-bold" style="font-size:14px; color:${color}">${highlightValue}</span>
           </div>
           <div class="flex items-center justify-between px-2.5 py-2.5 gap-1" style="background:rgba(255,255,255,0.02)">
-            ${avatars(defA ?? null, attA ?? null, false)}
+            ${avatars(defA ?? null, attA ?? null)}
             <div class="flex flex-col items-center shrink-0">
               <div class="flex items-center gap-1.5">
                 <span class="font-display" style="font-size:20px; color:${winColorA}; line-height:1">${m.score[0]}</span>
@@ -536,7 +537,7 @@ class StatsPage extends Component {
               </div>
               <div class="font-body mt-0.5" style="font-size:10px; color:rgba(255,255,255,0.25)">${expA}% – ${expB}%</div>
             </div>
-            ${avatars(defB ?? null, attB ?? null, true)}
+            ${avatars(defB ?? null, attB ?? null)}
           </div>
           <div class="px-2.5 py-1 font-body flex items-center justify-between" style="font-size:8px; color:rgba(255,255,255,0.2); border-top:1px solid rgba(255,255,255,0.04); background:rgba(0,0,0,0.15)">
             <span>${Math.round(m.teamELO[0])}</span>

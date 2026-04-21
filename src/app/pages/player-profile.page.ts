@@ -529,8 +529,15 @@ export default class PlayerProfilePage extends Component {
   }
 
   private computeRadarDataForRole(player: IPlayer, role: 0 | 1, ranges: ReturnType<typeof this.computeRadarRanges>): number[] {
-    const norm = (v: number, min: number, max: number): number =>
-      max > min ? Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100)) : 50;
+    // Normalizza tra 20 e 100 (20%-100%)
+    const norm = (v: number, min: number, max: number): number => {
+      if (max > min) {
+        const raw = (v - min) / (max - min);
+        // Scala da 20 a 100
+        return Math.max(20, Math.min(100, raw * 80 + 20));
+      }
+      return 60; // fallback: centro
+    };
 
     const globalMinElo = Math.min(ranges.minElo[0], ranges.minElo[1]);
     const globalMaxElo = Math.max(ranges.maxElo[0], ranges.maxElo[1]);
@@ -563,12 +570,12 @@ export default class PlayerProfilePage extends Component {
       return m.score[teamIdx] > m.score[teamIdx ^ 1];
     }).length;
     const myForma = recentHistory.length > 0 ? recentWins / recentHistory.length : 0;
-    const formaScore = Math.round(norm(myForma, globalMinForma, globalMaxForma));
+    const formaScore = norm(myForma, globalMinForma, globalMaxForma);
 
     // Difficoltà: ELO medio degli avversari affrontati, normalizzato
     const difficoltaScore = norm(player.avgOpponentElo[role], globalMinOppElo, globalMaxOppElo);
 
-    const costanzaScore = this.computeCostanza(player, role);
+    const costanzaScore = norm(this.computeCostanza(player, role), 0, 100);
 
     return [eloScore, winRate, goalRatioScore, formaScore, difficoltaScore, costanzaScore];
   }
@@ -904,10 +911,26 @@ export default class PlayerProfilePage extends Component {
   // ── Desktop Table Rows ────────────────────────────────────
 
   private buildRowContext(m: IMatch, playerId: number, idx: number, eloMap: Map<number, { before: number; after: number }>): {
-    inTeamA: boolean; team: number; roundedDelta: number; deltaSign: string; deltaColor: string; deltaBg: string;
-    eloInfo: { before: number; after: number } | undefined; teamElo: number; oppTeamElo: number; isDefence: boolean;
-    teammate: IPlayer | null | undefined; opp1: IPlayer | null | undefined; opp2: IPlayer | null | undefined; teammateElo: number;
-    score: string; winPct: number; expectedPct: number; rowBg: string;
+    inTeamA: boolean;
+    team: number;
+    roundedDelta: number;
+    deltaSign: string;
+    deltaColor: string;
+    deltaBg: string;
+    eloInfo: { before: number; after: number } | undefined;
+    teamElo: number;
+    oppTeamElo: number;
+    isDefence: boolean;
+    teammate: IPlayer | null | undefined;
+    opp1: IPlayer | null | undefined;
+    opp2: IPlayer | null | undefined;
+    teammateElo: number;
+    opp1Elo: number;
+    opp2Elo: number;
+    score: string;
+    winPct: number;
+    expectedPct: number;
+    rowBg: string;
   } {
     const inTeamA = m.teamA.defence === playerId || m.teamA.attack === playerId;
     const team = inTeamA ? 0 : 1;
@@ -924,14 +947,26 @@ export default class PlayerProfilePage extends Component {
     const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
     const opp1 = getPlayerById(oppTeam.defence);
     const opp2 = getPlayerById(oppTeam.attack);
-    const teammateElo = teammate ? Math.round(teammate.elo[isDefence ? 1 : 0]) : 0;
+    // ELO snapshot per compagno e avversari dalla partita
+    let teammateElo = 0;
+    let opp1Elo = 0;
+    let opp2Elo = 0;
+    if (inTeamA) {
+      teammateElo = isDefence ? (m.teamAELO[1]) : (m.teamAELO[0]);
+      opp1Elo = m.teamBELO[0];
+      opp2Elo = m.teamBELO[1];
+    } else {
+      teammateElo = isDefence ? (m.teamBELO[1]) : (m.teamBELO[0]);
+      opp1Elo = m.teamAELO[0];
+      opp2Elo = m.teamAELO[1];
+    }
     const score = inTeamA ? `${m.score[0]}-${m.score[1]}` : `${m.score[1]}-${m.score[0]}`;
     const totalGoals = m.score[0] + m.score[1];
     const myGoals = inTeamA ? m.score[0] : m.score[1];
     const winPct = totalGoals > 0 ? Math.round((myGoals / totalGoals) * 100) : 0;
     const expectedPct = Math.round(m.expectedScore[team] * 100);
     const rowBg = idx % 2 === 0 ? 'background:transparent' : 'background:rgba(255,255,255,0.02)';
-    return { inTeamA, team, roundedDelta, deltaSign, deltaColor, deltaBg, eloInfo, teamElo, oppTeamElo, isDefence, teammate, opp1, opp2, teammateElo, score, winPct, expectedPct, rowBg };
+    return { inTeamA, team, roundedDelta, deltaSign, deltaColor, deltaBg, eloInfo, teamElo, oppTeamElo, isDefence, teammate, opp1, opp2, teammateElo, opp1Elo, opp2Elo, score, winPct, expectedPct, rowBg };
   }
 
   private renderTableRows(matches: IMatch[], playerId: number, player: IPlayer): string {
@@ -961,7 +996,7 @@ export default class PlayerProfilePage extends Component {
             <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teamElo}</p>
           </td>
           <td class="px-3 py-2.5">
-            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teammate?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${c.teammateElo})</span></p>
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.teammate?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${Math.round(c.teammateElo)})</span></p>
           </td>
           <td class="px-3 py-2.5 text-center">
             <p class="font-display text-base" style="color:${resultColor}">${c.score}</p>
@@ -972,8 +1007,8 @@ export default class PlayerProfilePage extends Component {
             </div>
           </td>
           <td class="px-3 py-2.5">
-            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp1?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${c.opp1 ? Math.round(c.opp1.elo[0]) : '?'})</span></p>
-            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp2?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${c.opp2 ? Math.round(c.opp2.elo[1]) : '?'})</span></p>
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp1?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${Math.round(c.opp1Elo)})</span></p>
+            <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.opp2?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${Math.round(c.opp2Elo)})</span></p>
           </td>
           <td class="px-3 py-2.5 text-center">
             <p class="font-body text-xs" style="color:var(--color-text-secondary)">${c.oppTeamElo}</p>
@@ -1007,7 +1042,19 @@ export default class PlayerProfilePage extends Component {
       const teammate = isDefence ? getPlayerById(myTeam.attack) : getPlayerById(myTeam.defence);
       const opp1 = getPlayerById(oppTeam.defence);
       const opp2 = getPlayerById(oppTeam.attack);
-      const teammateElo = teammate ? Math.round(teammate.elo[isDefence ? 1 : 0]) : 0;
+      // ELO snapshot per compagno e avversari dalla partita
+      let teammateElo = 0;
+      let opp1Elo = 0;
+      let opp2Elo = 0;
+      if (inTeamA) {
+        teammateElo = isDefence ? (m.teamAELO[1]) : (m.teamAELO[0]);
+        opp1Elo = m.teamBELO[0];
+        opp2Elo = m.teamBELO[1];
+      } else {
+        teammateElo = isDefence ? (m.teamBELO[1]) : (m.teamBELO[0]);
+        opp1Elo = m.teamAELO[0];
+        opp2Elo = m.teamAELO[1];
+      }
       const score = inTeamA ? `${m.score[0]}–${m.score[1]}` : `${m.score[1]}–${m.score[0]}`;
       const teamElo = Math.round(m.teamELO[team]);
       const oppTeamElo = Math.round(m.teamELO[team ^ 1]);
@@ -1020,7 +1067,7 @@ export default class PlayerProfilePage extends Component {
           <!-- Header row: WIN/LOSS + score + delta ELO -->
           <div class="flex items-center gap-2 px-3 py-2" style="border-bottom:1px solid rgba(255,255,255,0.05)">
             <span class="font-ui text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
-                  style="background:${winBg}; color:${winColor}; letter-spacing:0.08em">${isWin ? 'WIN' : 'LOSS'}</span>
+                  style="background:${winBg}; color:${winColor}; letter-spacing:0.08em}">${isWin ? 'WIN' : 'LOSS'}</span>
             <span class="font-display text-base flex-1" style="color:${winColor}">${score}</span>
             <span class="font-body text-[10px]" style="color:var(--color-text-muted)">
               <span class="${expBold(myExp) ? 'font-bold' : ''}" style="color:${winColor}">${myExp}%</span>
@@ -1046,14 +1093,14 @@ export default class PlayerProfilePage extends Component {
             </div>
             <div>
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">COMPAGNO</span>
-              <p class="font-body text-xs" style="color:var(--color-text-secondary)">${teammate?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${teammateElo})</span></p>
+              <p class="font-body text-xs" style="color:var(--color-text-secondary)">${teammate?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${Math.round(teammateElo)})</span></p>
             </div>
             <div class="col-span-2">
               <span class="font-ui text-[9px] uppercase tracking-widest" style="color:var(--color-text-muted)">AVVERSARI</span>
               <p class="font-body text-xs" style="color:var(--color-text-secondary)">
-                ${opp1?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${opp1 ? Math.round(opp1.elo[0]) : '?'})</span>
+                ${opp1?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${Math.round(opp1Elo)})</span>
                 &nbsp;&amp;&nbsp;
-                ${opp2?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${opp2 ? Math.round(opp2.elo[1]) : '?'})</span>
+                ${opp2?.name ?? '?'} <span style="color:var(--color-text-muted);font-size:0.625rem">(${Math.round(opp2Elo)})</span>
               </p>
             </div>
           </div>

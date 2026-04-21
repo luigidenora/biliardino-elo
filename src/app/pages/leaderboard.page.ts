@@ -353,10 +353,10 @@ class LeaderboardPage extends Component {
     // Delta = positions gained (positive = improved)
     const result = new Map<number, number>();
     for (const p of players) {
-      const entry = todayDeltas.get(p.id);
-      if (entry && entry.matches > 0) {
-        const todayRank = todayRanks.get(p.id) ?? 0;
-        const yesterdayRank = yesterdayRanks.get(p.id) ?? todayRank;
+      const todayRank = todayRanks.get(p.id) ?? 0;
+      const yesterdayRank = yesterdayRanks.get(p.id) ?? todayRank;
+      // Non mostrare badge se non c'è variazione
+      if (yesterdayRank !== todayRank) {
         result.set(p.id, yesterdayRank - todayRank);
       }
     }
