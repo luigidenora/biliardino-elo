@@ -31,12 +31,7 @@ export interface ILobbyState {
   messageCount: number;
 }
 
-/**
- * Lobby event types pushed through @upstash/realtime SSE.
- *
- * These match the Zod schema defined in `api/_realtime.ts`.
- * Dot notation is used by @upstash/realtime event names.
- */
+/** Lobby event types per Supabase Realtime postgres_changes. */
 export type LobbyEventType
   = | 'lobby.confirmation_add'
     | 'lobby.confirmation_remove'

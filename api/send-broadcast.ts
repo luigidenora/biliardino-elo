@@ -3,13 +3,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
+import { lobbyEnv } from './_lobbyEnv.js';
 import { combineMiddlewares, withSecurityMiddleware } from './_middleware.js';
 import { getRandomMessage } from './_randomMessage.js';
-import { lobbyChannel } from './_realtime.js';
-import { redis } from './_redisClient.js';
+import { supabaseAdmin } from './_supabaseAdmin.js';
 import { sanitizeLogOutput, validateString } from './_validation.js';
 
-// Verifica configurazione
 if (!process.env.VITE_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
   console.error('ERRORE: VAPID keys non configurate');
 }
@@ -37,15 +36,6 @@ interface NotificationAction {
   url: string;
 }
 
-/**
- * API per inviare broadcast a tutti gli utenti registrati
- *
- * POST /api/send-broadcast
- * Body: {
- *   title?: string (opzionale),
- *   body?: string (opzionale)
- * }
- */
 async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
   setCorsHeaders(res);
   if (handleCorsPreFlight(req, res)) return res;
@@ -57,40 +47,28 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   try {
     const {
       title: rawTitle,
-      subtitle: rawSubtitle,
       body: rawBody,
       match: rawMatch,
       durationSeconds: rawDurationSeconds
     } = req.body;
 
-    // Lobby TTL: optional override, must be between 60 s and 24 h. Default: 5400 s (90 min)
     const LOBBY_TTL_DEFAULT = 5400;
     const parsedDuration = rawDurationSeconds !== undefined ? parseInt(String(rawDurationSeconds), 10) : NaN;
     const lobbyTtl = (!isNaN(parsedDuration) && parsedDuration >= 60 && parsedDuration <= 86400)
       ? parsedDuration
       : LOBBY_TTL_DEFAULT;
 
-    // Valida e sanitizza input (se mancante, sarà usata la chiave 'default')
     const customTitle = rawTitle ? validateString(rawTitle, 'title', 100) : undefined;
     const customBody = rawBody ? validateString(rawBody, 'body', 500) : undefined;
 
-    // Verifica configurazione
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.error('BLOB_READ_WRITE_TOKEN non configurato');
-      return res.status(500).json({
-        error: 'Configurazione server incompleta'
-      });
+      return res.status(500).json({ error: 'Configurazione server incompleta' });
     }
 
-    const { blobs } = await list({
-      token: process.env.BLOB_READ_WRITE_TOKEN
-    });
+    const { blobs } = await list({ token: process.env.BLOB_READ_WRITE_TOKEN });
 
     if (!blobs || blobs.length === 0) {
-      return res.status(404).json({
-        error: 'Nessuna subscription trovata',
-        message: 'Non ci sono subscriptions registrate nel sistema'
-      });
+      return res.status(404).json({ error: 'Nessuna subscription trovata' });
     }
 
     const subscriptionsData = await Promise.all(
@@ -108,15 +86,11 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     const validSubscriptions = subscriptionsData.filter((sub): sub is SubscriptionData => sub !== null);
 
     if (validSubscriptions.length === 0) {
-      return res.status(404).json({
-        error: 'Nessuna subscription valida',
-        message: 'Non ci sono subscriptions valide da notificare'
-      });
+      return res.status(404).json({ error: 'Nessuna subscription valida' });
     }
 
     const url = process.env.BASE_URL || '.';
 
-    // Invia tutte le notifiche in parallelo
     const results = await Promise.allSettled(
       validSubscriptions.map(async (data) => {
         const playerName = data.playerName || 'Giocatore';
@@ -135,22 +109,16 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
               title,
               body,
               navigate: `${url}/lobby`,
-              tag: `lobby`,
+              tag: 'lobby',
               requireInteraction: true,
               icon: '/icons/icon-192.png',
               badge: '/icons/icon-192.png',
               app_badge: '0',
-              actions: actions?.map(a => ({
-                action: a.action,
-                title: a.title,
-                navigate: a.url
-              }))
+              actions: actions.map(a => ({ action: a.action, title: a.title, navigate: a.url }))
             }
           }),
           {
-            headers: {
-              'Content-Type': 'application/notification+json'
-            },
+            headers: { 'Content-Type': 'application/notification+json' },
             urgency: 'high',
             TTL: lobbyTtl
           }
@@ -164,44 +132,31 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     const sent = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    // Log errori
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        const playerName = validSubscriptions[index]?.playerName || validSubscriptions[index]?.playerId.toString() || 'Unknown';
+        const playerName = validSubscriptions[index]?.playerName || String(validSubscriptions[index]?.playerId) || 'Unknown';
         console.warn('Errore invio a:', playerName, (result.reason as Error)?.message || result.reason);
       }
     });
 
     console.log(`✅ Broadcast completato: ${sent}/${validSubscriptions.length} inviati`);
 
-    // Crea registry lobby in Redis
-    try {
-      const lobbyKey = `lobby`;
-      await redis.set(
-        lobbyKey,
-        {
-          createdAt: new Date().toISOString(),
-          notificationsSent: sent,
-          active: true,
-          durationSeconds: lobbyTtl,
-          ...(rawMatch ? { match: rawMatch } : {})
-        },
-        {
-          ex: lobbyTtl
-        }
-      );
+    // Crea lobby su Supabase (Supabase Realtime notifica automaticamente tutti i subscriber)
+    const expiresAt = new Date(Date.now() + lobbyTtl * 1000).toISOString();
+    const { error: insertErr } = await supabaseAdmin
+      .from('lobbies')
+      .insert({
+        status: 'waiting',
+        environment: lobbyEnv,
+        expires_at: expiresAt,
+        duration_seconds: lobbyTtl,
+        ...(rawMatch ? { match: rawMatch } : {})
+      });
 
-      console.log(`🏁 Lobby registry creata: ${lobbyKey} (TTL: ${lobbyTtl}s / ${Math.round(lobbyTtl / 60)} min)`);
-
-      // Emit event for real-time updates
-      try {
-        await lobbyChannel().emit('lobby.created', { timestamp: Date.now() });
-      } catch (pubErr) {
-        console.warn('Emit lobby-created event fallito:', (pubErr as Error).message || pubErr);
-      }
-    } catch (err) {
-      console.error('❌ Errore creazione lobby registry:', err);
-      // Non bloccare la risposta se fallisce
+    if (insertErr) {
+      console.error('❌ Errore creazione lobby su Supabase:', insertErr.message);
+    } else {
+      console.log(`🏁 Lobby creata su Supabase (env: ${lobbyEnv}, TTL: ${lobbyTtl}s)`);
     }
 
     return res.status(200).json({
@@ -215,15 +170,13 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     console.error('Errore broadcast:', err);
     return res.status(500).json({
       error: 'Errore invio broadcast',
-      details: (err as Error).message,
-      stack: process.env.NODE_ENV === 'development' ? (err as Error).stack : undefined
+      details: (err as Error).message
     });
   }
 }
 
-// Applica auth + security middleware
 export default combineMiddlewares(
   handler,
   h => withAuth(h, 'admin'),
-  h => withSecurityMiddleware(h, { timeout: 60000 }) // 60s per notifiche multiple
+  h => withSecurityMiddleware(h, { timeout: 60000 })
 );

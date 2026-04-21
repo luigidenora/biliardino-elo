@@ -14,10 +14,10 @@ import type { IConfirmationWithFish, ILobbyState } from '@/models/lobby.interfac
 import type { IRunningMatchDTO } from '@/models/match.interface';
 import type { IMessage } from '@/models/message.interface';
 import type { IPlayer } from '@/models/player.interface';
+import { CursorService, type RemoteCursor } from '@/services/cursor.service';
 import { LobbyService } from '@/services/lobby.service';
 import { MessageService } from '@/services/message.service';
 import { getPlayerById } from '@/services/player.service';
-import { FISH_SPRITES } from '@/utils/fish-sprites.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import haptics from '@/utils/haptics.util';
 import gsap from 'gsap';
@@ -81,14 +81,20 @@ class LobbyPage extends Component {
   // Fish tracking
   private fishMap = new Map<number, HTMLElement>();
   private fishMovement = new Map<number, FishMovement>();
+  private myFishControlled = false;
+  private remoteFishControlled = new Set<number>();
+  private cursorListener: ((cursors: RemoteCursor[]) => void) | null = null;
+  private aquariumMouseMove: ((e: MouseEvent) => void) | null = null;
+  private aquariumMouseLeave: (() => void) | null = null;
 
   // Current player
   private myPlayerId: number | null = null;
 
   private confirmKick: BroadcastKickComponent | null = null;
 
-  // LobbyService listener reference
+  // LobbyService listener references
   private lobbyStateListener: ((state: ILobbyState) => void) | null = null;
+  private chatMessageListener: ((msg: IMessage) => void) | null = null;
   // Last confirmations for fish sync
   private lastConfirmations: IConfirmationWithFish[] = [];
   // True once the first real server response has been applied
@@ -196,6 +202,7 @@ class LobbyPage extends Component {
 
     this.bindConfirmKick();
     this.bindAbandonButton();
+    this.bindCursorTracking();
 
     // Re-spawn aquarium decorations (new DOM nodes)
     this.spawnBubbles();
@@ -219,14 +226,47 @@ class LobbyPage extends Component {
     this.lobbyStateListener = (state: ILobbyState) => this.onLobbyStateChange(state);
     LobbyService.onStateChange(this.lobbyStateListener);
 
+    // Subscribe to instant chat broadcast delivery
+    this.chatMessageListener = (msg: IMessage) => {
+      // Dedup: ignora se già presente (ottimistico o duplicato)
+      if (this.messages.some(m => m.id === msg.id)) return;
+      // Ignora se è il nostro ottimistico non ancora confermato (stesso sentAt+player)
+      const hasOptimistic = this.messages.some(
+        m => m.playerId === msg.playerId && m.sentAt === msg.sentAt && m.id.startsWith('optimistic-')
+      );
+      if (hasOptimistic) return;
+      if (msg.sentAt <= this.lastMessageTimestamp && this.messages.some(m => m.sentAt === msg.sentAt && m.playerId === msg.playerId)) return;
+
+      this.lastMessageTimestamp = Math.max(this.lastMessageTimestamp, msg.sentAt);
+      this.messages.push(msg);
+      this.appendMessage(msg);
+    };
+    LobbyService.onChatMessage(this.chatMessageListener);
+
     // Kick off server fetch (non-blocking). Ensure we unblock the initial UI once
     // the first acquire() cycle completes, even if no state-change event was emitted.
     LobbyService.acquire()
       .then((state) => {
-        if (!this.serverResponded) {
+        if (!this.serverResponded && LobbyService.hasFetchedFromServer()) {
           this.applyLobbyState(state);
           this.rerenderMain();
           this.syncFish(this.lastConfirmations);
+        } else if (!this.serverResponded && !LobbyService.hasFetchedFromServer()) {
+          // Fetch failed: retry once after a short delay
+          setTimeout(() => {
+            LobbyService.refresh().then((retryState) => {
+              if (!this.serverResponded) {
+                this.applyLobbyState(retryState);
+                this.rerenderMain();
+                this.syncFish(this.lastConfirmations);
+              }
+            }).catch(() => {
+              if (!this.serverResponded) {
+                this.serverResponded = true;
+                this.rerenderMain();
+              }
+            });
+          }, 2000);
         }
       })
       .catch(() => {
@@ -260,6 +300,7 @@ class LobbyPage extends Component {
 
     this.bindConfirmKick();
     this.bindAbandonButton();
+    this.bindCursorTracking();
 
     // GSAP entrance animations
     gsap.from('#lobby-header', {
@@ -301,6 +342,10 @@ class LobbyPage extends Component {
       LobbyService.offStateChange(this.lobbyStateListener);
       this.lobbyStateListener = null;
     }
+    if (this.chatMessageListener) {
+      LobbyService.offChatMessage(this.chatMessageListener);
+      this.chatMessageListener = null;
+    }
     LobbyService.release();
 
     if (this.countdownInterval) {
@@ -312,6 +357,7 @@ class LobbyPage extends Component {
       this.animFrameId = null;
     }
     this.confirmKick?.destroy();
+    CursorService.leave();
   }
 
   // ── Section renderers ────────────────────────────────────────
@@ -325,7 +371,7 @@ class LobbyPage extends Component {
           <div class="min-w-0">
             <h1 class="text-white font-display"
                 style="font-size:clamp(26px,6vw,42px); letter-spacing:0.12em; line-height:1">
-              MATCH LOBBY
+              LOBBY
             </h1>
             <p class="font-ui truncate"
                style="font-size:11px; color:rgba(255,255,255,0.5); letter-spacing:0.1em">
@@ -583,12 +629,19 @@ class LobbyPage extends Component {
               <div id="chat-error" class="font-ui mb-1"
                    style="font-size:10px; color:#ff4444; display:none; letter-spacing:0.05em"></div>
               <form id="chat-form" class="flex gap-2">
-                <input id="chat-input" type="text" maxlength="${CHAT_MAX_LENGTH}"
-                       placeholder="Scrivi un messaggio..."
-                       class="flex-1 px-3 py-2 rounded-lg text-white placeholder-white/25 outline-none font-body"
-                       style="background:rgba(10,25,18,0.8); border:1px solid rgba(255,255,255,0.1);
-                              font-size:12px; min-width:0"
-                       autocomplete="off" />
+                <div class="relative flex-1 min-w-0">
+                  <input id="chat-input" type="text" maxlength="${CHAT_MAX_LENGTH}"
+                         placeholder="Scrivi un messaggio..."
+                         class="w-full px-3 py-2 rounded-lg text-white placeholder-white/25 outline-none font-body"
+                         style="background:rgba(10,25,18,0.8); border:1px solid rgba(255,255,255,0.1);
+                                font-size:12px; padding-right:42px"
+                         autocomplete="off" />
+                  <span id="chat-char-counter" class="absolute right-2.5 top-1/2 font-ui pointer-events-none"
+                        style="transform:translateY(-50%); font-size:10px; color:rgba(255,255,255,0.3);
+                               opacity:0; transition:opacity 0.15s,color 0.2s; letter-spacing:0.03em; white-space:nowrap">
+                    0/${CHAT_MAX_LENGTH}
+                  </span>
+                </div>
                 <button type="submit"
                         class="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:brightness-110 shrink-0"
                         style="background:linear-gradient(135deg, #FFD700, #F0A500)">
@@ -634,8 +687,9 @@ class LobbyPage extends Component {
         </div>
 
         <!-- Fish area -->
-        <div id="aquarium" class="relative" style="height:${fishAreaH}; overflow:hidden">
+        <div id="aquarium" class="relative" style="height:${fishAreaH}; overflow:hidden; cursor:none">
           <div id="god-rays" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+          <div id="remote-cursors" class="absolute inset-0 pointer-events-none z-10"></div>
           ${!this.isMyPresenceConfirmed
             ? `
             <div id="aquarium-lock"
@@ -998,6 +1052,22 @@ class LobbyPage extends Component {
       e.preventDefault();
       this.sendChatMessage();
     });
+
+    const input = this.$id('chat-input') as HTMLInputElement | null;
+    const counter = this.$id('chat-char-counter') as HTMLElement | null;
+    if (input && counter) {
+      input.addEventListener('input', () => {
+        const len = input.value.length;
+        const remaining = CHAT_MAX_LENGTH - len;
+        counter.textContent = `${len}/${CHAT_MAX_LENGTH}`;
+        counter.style.opacity = len > 0 ? '1' : '0';
+        counter.style.color = remaining <= 0
+          ? '#F87171'
+          : remaining <= 10
+            ? '#FFD700'
+            : 'rgba(255,255,255,0.3)';
+      });
+    }
   }
 
   private async sendChatMessage(): Promise<void> {
@@ -1019,21 +1089,46 @@ class LobbyPage extends Component {
       return;
     }
 
-    try {
-      const player = this.players.get(this.myPlayerId);
-      const playerName = player?.name ?? 'Giocatore';
-      const fishType = player ? (FISH_TYPES[player.class] ?? 'Tonno') : 'Tonno';
+    const player = this.players.get(this.myPlayerId);
+    const playerName = player?.name ?? 'Giocatore';
+    const fishType = player ? (FISH_TYPES[player.class] ?? 'Tonno') : 'Tonno';
+    const sentAt = Date.now();
 
-      haptics.trigger('selection');
-      await MessageService.sendMessage(
-        this.myPlayerId,
-        playerName,
-        fishType,
-        text
-      );
-      input.value = '';
+    // Mostra subito il messaggio (ottimistico)
+    const optimisticId = `optimistic-${sentAt}`;
+    const optimisticMsg: IMessage = {
+      id: optimisticId,
+      playerId: this.myPlayerId,
+      playerName,
+      fishType: fishType as IMessage['fishType'],
+      text,
+      sentAt,
+      timestamp: new Date().toISOString()
+    };
+    this.messages.push(optimisticMsg);
+    this.lastMessageTimestamp = Math.max(this.lastMessageTimestamp, sentAt);
+    this.appendMessage(optimisticMsg);
+    input.value = '';
+    haptics.trigger('selection');
+
+    try {
+      const sentMsg = await MessageService.sendMessage(this.myPlayerId, playerName, fishType, text);
+
+      // Sostituisci il messaggio ottimistico con quello reale (stesso sentAt)
+      const idx = this.messages.findIndex(m => m.id === optimisticId);
+      if (idx !== -1) this.messages[idx] = sentMsg;
+
+      // Aggiorna l'id nel DOM per il dedup broadcast
+      const el = this.$id(`msg-${optimisticId}`);
+      if (el) el.id = `msg-${sentMsg.id}`;
+
+      // Broadcast istantaneo a tutti i client
+      await LobbyService.broadcastMessage(sentMsg);
     } catch (err) {
       console.error('[LobbyPage] Send message error:', err);
+      // Marca il messaggio ottimistico come fallito
+      const el = this.$id(`msg-${optimisticId}`);
+      if (el) el.style.opacity = '0.4';
     }
   }
 
@@ -1059,48 +1154,46 @@ class LobbyPage extends Component {
     }
   }
 
-  private renderMessages(): void {
-    const container = this.$id('chat-messages');
-    if (!container) return;
+  private buildMessageEl(msg: IMessage): HTMLElement {
+    const conf = this.lastConfirmations.find(c => c.playerId === msg.playerId);
+    const fishName = conf?.fishName ?? msg.playerName ?? `#${msg.playerId}`;
+    const isMe = msg.playerId === this.myPlayerId;
+    const displayName = isMe ? 'Tu' : fishName;
+    const time = new Date(msg.sentAt).toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const dotColor = LABEL_COLORS[msg.playerId % LABEL_COLORS.length];
+    const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>`;
 
-    const empty = this.$id('chat-empty');
-    if (empty && this.messages.length > 0) {
-      empty.remove();
-    }
+    const el = document.createElement('div');
+    el.id = `msg-${msg.id}`;
 
-    // Clear and re-render all (simple approach)
-    container.innerHTML = '';
-
-    for (const msg of this.messages) {
-      const player = this.players.get(msg.playerId) ?? getPlayerById(msg.playerId);
-      const initials = player ? getInitials(player.name) : '??';
-      const playerClass = player?.class ?? 4;
-      const color = getClassColor(playerClass);
-      const displayName = msg.playerName || player?.name || `#${msg.playerId}`;
-      const time = new Date(msg.sentAt).toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      // Fish sprite (small inline) if available
-      const fishType = msg.fishType as keyof typeof FISH_SPRITES;
-      const fishSvg = FISH_SPRITES[fishType]
-        ? `<span class="inline-block" style="width:16px;height:12px;opacity:0.7">${FISH_SPRITES[fishType]}</span>`
-        : '';
-
-      const el = document.createElement('div');
-      el.className = 'flex items-start gap-2';
+    if (isMe) {
+      el.className = 'flex justify-end';
       el.innerHTML = `
-        ${renderPlayerAvatar({ initials, color, size: 'xs', playerId: msg.playerId, playerClass })}
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-0.5">
-            ${fishSvg}
-            <span class="font-ui" style="font-size:11px; color:${color}">
-              ${displayName}
-            </span>
-            <span class="font-body" style="font-size:10px; color:rgba(255,255,255,0.25)">
-              ${time}
-            </span>
+        <div style="max-width:80%">
+          <div class="flex items-center justify-end gap-1.5 mb-0.5">
+            <span class="font-body" style="font-size:10px; color:rgba(255,255,255,0.25)">${time}</span>
+            <span class="font-ui" style="font-size:11px; color:rgba(255,215,0,0.8)">${this.escapeHtml(displayName)}</span>
+            ${dot}
+          </div>
+          <div class="px-2.5 py-1.5 rounded-lg rounded-tr-none font-body"
+               style="background:rgba(255,215,0,0.12); border:1px solid rgba(255,215,0,0.2);
+                      font-size:12px; color:rgba(255,255,255,0.9); line-height:1.5;
+                      word-break:break-word; text-align:right">
+            ${this.escapeHtml(msg.text)}
+          </div>
+        </div>
+      `;
+    } else {
+      el.className = 'flex justify-start';
+      el.innerHTML = `
+        <div style="max-width:80%">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            ${dot}
+            <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.6)">${this.escapeHtml(displayName)}</span>
+            <span class="font-body" style="font-size:10px; color:rgba(255,255,255,0.25)">${time}</span>
           </div>
           <div class="px-2.5 py-1.5 rounded-lg rounded-tl-none font-body"
                style="background:rgba(255,255,255,0.06); font-size:12px;
@@ -1109,13 +1202,34 @@ class LobbyPage extends Component {
           </div>
         </div>
       `;
-      container.appendChild(el);
     }
 
-    // Auto-scroll
-    container.scrollTop = container.scrollHeight;
+    return el;
+  }
 
-    // Re-create lucide icons for the newly added elements
+  /** Aggiunge un singolo messaggio in fondo al container (senza re-render completo). */
+  private appendMessage(msg: IMessage): void {
+    const container = this.$id('chat-messages');
+    if (!container) return;
+
+    const empty = this.$id('chat-empty');
+    if (empty) empty.remove();
+
+    container.appendChild(this.buildMessageEl(msg));
+    container.scrollTop = container.scrollHeight;
+  }
+
+  private renderMessages(): void {
+    const container = this.$id('chat-messages');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    for (const msg of this.messages) {
+      container.appendChild(this.buildMessageEl(msg));
+    }
+
+    container.scrollTop = container.scrollHeight;
     refreshIcons();
   }
 
@@ -1194,6 +1308,77 @@ class LobbyPage extends Component {
     }, 500);
   }
 
+  // ── Cursor tracking ──────────────────────────────────────────
+
+  private bindCursorTracking(): void {
+    const aquarium = this.$id('aquarium');
+    if (!aquarium || !this.myPlayerId || !this.isMyPresenceConfirmed) return;
+
+    // Join presence channel if not already joined
+    CursorService.join(this.myPlayerId);
+
+    // Register remote cursor listener (replace previous to avoid duplicates)
+    if (this.cursorListener) CursorService.off(this.cursorListener);
+    this.cursorListener = cursors => this.renderRemoteCursors(cursors);
+    CursorService.on(this.cursorListener);
+
+    // Detach old listeners before re-binding
+    if (this.aquariumMouseMove) aquarium.removeEventListener('mousemove', this.aquariumMouseMove);
+    if (this.aquariumMouseLeave) aquarium.removeEventListener('mouseleave', this.aquariumMouseLeave);
+
+    this.aquariumMouseMove = (e: MouseEvent) => {
+      const rect = aquarium.getBoundingClientRect();
+      const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+      const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+      // Move own fish to cursor position
+      this.myFishControlled = true;
+      const myFish = this.myPlayerId ? this.fishMap.get(this.myPlayerId) : null;
+      const myMovement = this.myPlayerId ? this.fishMovement.get(this.myPlayerId) : null;
+      if (myFish && myMovement) {
+        const w = aquarium.clientWidth;
+        const h = aquarium.clientHeight;
+        myMovement.x = (xPct / 100) * w - 18;
+        myMovement.y = (yPct / 100) * h - 18;
+        myFish.style.transform = `translate(${myMovement.x}px, ${myMovement.y}px)`;
+      }
+
+      CursorService.move(xPct, yPct);
+    };
+
+    this.aquariumMouseLeave = () => {
+      this.myFishControlled = false;
+      CursorService.move(-1, -1);
+    };
+
+    aquarium.addEventListener('mousemove', this.aquariumMouseMove);
+    aquarium.addEventListener('mouseleave', this.aquariumMouseLeave);
+  }
+
+  private renderRemoteCursors(cursors: RemoteCursor[]): void {
+    const aquarium = this.$id('aquarium');
+    if (!aquarium) return;
+
+    const w = aquarium.clientWidth;
+    const h = aquarium.clientHeight;
+
+    // Rebuild controlled set from current presence snapshot
+    this.remoteFishControlled.clear();
+
+    for (const cursor of cursors) {
+      const fish = this.fishMap.get(cursor.playerId);
+      const movement = this.fishMovement.get(cursor.playerId);
+      if (!fish || !movement) continue;
+
+      if (cursor.x >= 0) {
+        this.remoteFishControlled.add(cursor.playerId);
+        movement.x = (cursor.x / 100) * w - 18;
+        movement.y = (cursor.y / 100) * h - 18;
+        fish.style.transform = `translate(${movement.x}px, ${movement.y}px)`;
+      }
+    }
+  }
+
   private startFishAnimation(): void {
     const loop = (): void => {
       this.updateFishMovement();
@@ -1216,6 +1401,10 @@ class LobbyPage extends Component {
         this.fishMovement.delete(playerId);
         return;
       }
+
+      // Skip autonomous update for fish under cursor control (local or remote)
+      if (this.myFishControlled && playerId === this.myPlayerId) return;
+      if (this.remoteFishControlled.has(playerId)) return;
 
       movement.x += movement.vx * movement.speed;
       movement.y += movement.vy * movement.speed;

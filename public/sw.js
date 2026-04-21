@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Updated automatically by scripts/generate-sw-version.js
-const VERSION = '2.1.2604210200+20260421020005';
+const VERSION = '2.1.2604210200+20260421020004';
 const CACHE_NAME = `calcio-balilla-${VERSION}`;
 
 // self.__WB_MANIFEST è iniettato da vite-plugin-pwa a build time con tutti i chunk Vite
@@ -59,20 +59,22 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // // Ignora tutte le richieste API (no cache, sempre network)
-  // if (url.pathname.startsWith('/api/')) {
-  //   // Non risponde, lascia passare al network
-  //   return;
-  // }
+  // API serverless: mai cacheate, devono sempre andare in rete
+  if (url.pathname.startsWith('/api/')) return;
 
-  // Navigation requests: stale-while-revalidate.
-  if (request.mode === 'navigate') {
+  // Supabase Realtime (WebSocket + HTTP long-polling fallback): mai cacheato
+  if (/supabase\.co\/realtime\/v1\//i.test(url.href)) return;
+
+  // Supabase REST: recupera subito la cache e poi aggiorna da chiamata rest
+  if (SUPABASE_REST.test(url.href)) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
 
-  // Supabase REST (cross-origin): stale-while-revalidate
-  if (SUPABASE_REST.test(url.href)) {
+  // Navigation requests: stale-while-revalidate.
+  // index.html è in PRECACHE (iniettato da __WB_MANIFEST) e la rotazione di VERSION
+  // garantisce coerenza con i chunk JS/CSS ad ogni deploy.
+  if (request.mode === 'navigate') {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
@@ -81,6 +83,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Tutti gli asset same-origin (JS, CSS, icone, avatar, classi, manifest): cache-first
+  // JS/CSS sono in PRECACHE dal build → serviti da cache anche offline
   event.respondWith(cacheFirst(request));
 });
 
@@ -106,14 +109,27 @@ async function cacheFirst(request) {
 }
 
 async function staleWhileRevalidate(request) {
+  const pathname = new URL(request.url).pathname;
   const cached = await caches.match(request);
+
+  if (cached) {
+    console.info(`[SW] Stale: ritorniamo cache per ${pathname}`);
+  }
+
   const fresh = fetch(request).then((res) => {
     if (res.ok) {
+      console.info(`[SW] Fresh: nuovi dati disponibili per ${pathname}, aggiornamento cache`);
       const cloned = res.clone();
       caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch(() => { });
+    } else {
+      console.warn(`[SW] Fresh: errore ${res.status} per ${pathname}`);
     }
     return res;
-  }).catch(() => cached || new Response(JSON.stringify({ error: 'offline' }), { status: 503 }));
+  }).catch((err) => {
+    console.warn(`[SW] Fresh: fallimento fetch per ${pathname} - siamo offline?`, err);
+    return cached || new Response(JSON.stringify({ error: 'offline' }), { status: 503 });
+  });
+
   return cached || fresh;
 }
 

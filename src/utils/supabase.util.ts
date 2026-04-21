@@ -1,5 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import type { IRunningMatchDTO } from '@/models/match.interface';
 import { ITeam } from '@/models/match.interface';
+import { createClient } from '@supabase/supabase-js';
+
+export type LobbyEnv = 'production' | 'preview';
+
+export const LOBBY_ENV: LobbyEnv
+  = import.meta.env.VITE_VERCEL_ENV === 'production' ? 'production' : 'preview';
 
 export type Database = {
   public: {
@@ -37,6 +43,56 @@ export type Database = {
         Row: { firestore_id: string; hashPlayers: number | null; hashMatches: number | null };
         Insert: { firestore_id: string; hashPlayers?: number | null; hashMatches?: number | null };
         Update: { hashPlayers?: number | null; hashMatches?: number | null };
+      };
+      lobbies: {
+        Row: {
+          lobby_id: string;
+          created_at: string;
+          created_by_email: string | null;
+          status: 'waiting' | 'closed';
+          expires_at: string | null;
+          duration_seconds: number | null;
+          match: IRunningMatchDTO | null;
+          environment: LobbyEnv;
+        };
+        Insert: {
+          lobby_id?: string;
+          created_at?: string;
+          created_by_email?: string | null;
+          status?: 'waiting' | 'closed';
+          expires_at?: string | null;
+          duration_seconds?: number | null;
+          match?: IRunningMatchDTO | null;
+          environment?: LobbyEnv;
+        };
+        Update: { status?: 'waiting' | 'closed'; expires_at?: string | null; match?: IRunningMatchDTO | null };
+      };
+      lobby_confirmations: {
+        Row: { player_id: number; lobby_id: string; confirmed_at: string; fish_name: string | null };
+        Insert: { player_id: number; lobby_id: string; confirmed_at?: string; fish_name?: string | null };
+        Update: { fish_name?: string | null };
+      };
+      lobby_messages: {
+        Row: {
+          id: string;
+          lobby_id: string;
+          player_id: number;
+          player_name: string;
+          fish_type: string;
+          text: string;
+          sent_at: number;
+          created_at: string;
+        };
+        Insert: {
+          lobby_id: string;
+          player_id: number;
+          player_name: string;
+          fish_type?: string;
+          text: string;
+          sent_at: number;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
       };
     };
   };

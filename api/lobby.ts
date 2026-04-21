@@ -1,29 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { IMessage } from '../src/models/message.interface.js';
-import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { generateFishName } from './_fishNames.js';
+import { lobbyEnv } from './_lobbyEnv.js';
+import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
 import { withSecurityMiddleware } from './_middleware.js';
-import { prefixed, redis, redisMget, redisRaw } from './_redisClient.js';
-
-interface Confirmation {
-  playerId: number;
-  confirmedAt: string;
-}
+import { supabaseAdmin } from './_supabaseAdmin.js';
 
 /**
- * Unified Lobby API — returns full lobby state in a single call.
+ * Unified Lobby API — restituisce lo stato completo della lobby in una chiamata.
  *
  * GET /api/lobby
- *
- * Response: {
- *   exists: boolean,
- *   ttl: number,
- *   match: IRunningMatchDTO | null,
- *   count: number,
- *   confirmations: Array<Confirmation & { fishName: string }>,
- *   messages: IMessage[],
- *   messageCount: number
- * }
  */
 async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
   setCorsHeaders(res);
@@ -33,81 +18,83 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let phase = 'fetch iniziale';
   try {
-    // Fetch lobby registry, confirmations, and message IDs in parallel
-    const [lobbyData, rawMap, messageIds] = await Promise.all([
-      redis.get('lobby') as Promise<Record<string, unknown> | null>,
-      redisRaw.hgetall(prefixed('availability')) as Promise<Record<string, string> | null>,
-      redis.lrange('messages', 0, -1) as Promise<string[]>
-    ]);
+    const now = new Date().toISOString();
 
-    // ── Lobby existence & TTL ────────────────────────────────
-    const exists = lobbyData !== null;
-    let ttl = 0;
-    if (exists) {
-      phase = 'lettura TTL lobby';
-      ttl = await redis.ttl('lobby');
+    // Cerca la lobby attiva per l'ambiente corrente
+    const { data: lobby, error: lobbyErr } = await supabaseAdmin
+      .from('lobbies')
+      .select('lobby_id, expires_at, duration_seconds, match, created_at')
+      .eq('environment', lobbyEnv)
+      .eq('status', 'waiting')
+      .gt('expires_at', now)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lobbyErr) throw lobbyErr;
+
+    if (!lobby) {
+      return res.status(200).json({
+        exists: false,
+        ttl: 0,
+        match: null,
+        count: 0,
+        confirmations: [],
+        messages: [],
+        messageCount: 0
+      });
     }
 
-    // Extract match data (if present)
-    const match = (lobbyData && typeof lobbyData === 'object' && 'match' in lobbyData)
-      ? lobbyData.match
-      : null;
+    const ttl = Math.max(0, Math.floor((new Date(lobby.expires_at).getTime() - Date.now()) / 1000));
 
-    // ── Confirmations ────────────────────────────────────────
-    phase = 'parsing confirmations';
-    const confirmations = Object.values(rawMap || {}).map((v) => {
-      try {
-        const data = (typeof v === 'string' ? JSON.parse(v) : v) as Confirmation;
-        return {
-          ...data,
-          fishName: generateFishName(data.playerId)
-        };
-      } catch {
-        return null;
-      }
-    }).filter(Boolean) as Array<Confirmation & { fishName: string }>;
+    // Leggi conferme
+    const { data: rows, error: confErr } = await supabaseAdmin
+      .from('lobby_confirmations')
+      .select('player_id, confirmed_at, fish_name')
+      .eq('lobby_id', lobby.lobby_id)
+      .order('confirmed_at', { ascending: true });
 
-    // ── Messages ─────────────────────────────────────────────
-    phase = 'caricamento messaggi';
-    const messages: IMessage[] = [];
-    if (messageIds.length > 0) {
-      const results = await redisMget<IMessage>(...messageIds.map(id => `message:${id}`));
-      for (const msg of results) {
-        if (msg) messages.push(msg);
-      }
-    }
+    if (confErr) throw confErr;
+
+    const confirmations = (rows ?? []).map(r => ({
+      playerId: r.player_id,
+      confirmedAt: r.confirmed_at,
+      fishName: r.fish_name ?? generateFishName(r.player_id)
+    }));
+
+    // Leggi messaggi
+    const { data: msgRows, error: msgErr } = await supabaseAdmin
+      .from('lobby_messages')
+      .select('id, player_id, player_name, fish_type, text, sent_at, created_at')
+      .eq('lobby_id', lobby.lobby_id)
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (msgErr) throw msgErr;
+
+    const messages = (msgRows ?? []).map(m => ({
+      id: m.id,
+      playerId: m.player_id,
+      playerName: m.player_name,
+      fishType: m.fish_type,
+      text: m.text,
+      sentAt: m.sent_at,
+      timestamp: m.created_at
+    }));
 
     return res.status(200).json({
-      exists,
+      exists: true,
       ttl,
-      match,
+      match: lobby.match ?? null,
       count: confirmations.length,
       confirmations,
       messages,
       messageCount: messages.length
     });
   } catch (error) {
-    const err = error as Error;
-    const isRedisError = err.message?.toLowerCase().includes('redis')
-      || err.message?.toLowerCase().includes('upstash')
-      || err.message?.toLowerCase().includes('connect')
-      || err.name === 'UpstashError';
-
-    console.error(`❌ Errore lobby [${phase}]:`, err.message || err);
-
-    if (isRedisError) {
-      return res.status(503).json({
-        error: 'Servizio temporaneamente non disponibile',
-        detail: `Redis non raggiungibile durante: ${phase}`
-      });
-    }
-
-    return res.status(500).json({
-      error: 'Errore interno del server',
-      detail: `Fallito durante: ${phase}`
-    });
+    console.error('❌ Errore lobby:', (error as Error).message);
+    return res.status(500).json({ error: 'Errore interno del server' });
   }
 }
 

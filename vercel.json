@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/realtime.ts": {
-      "maxDuration": 300
-    }
-  },
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/matchmaking", "destination": "/index.html" },

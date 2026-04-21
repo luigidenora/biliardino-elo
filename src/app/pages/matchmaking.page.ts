@@ -30,7 +30,6 @@ import type { ILobbyState } from '@/models/lobby.interface';
 import type { IRunningMatchDTO } from '@/models/match.interface';
 import type { IPlayer } from '@/models/player.interface';
 import type { IMatchProposal } from '@/services/matchmaking.service';
-import { RealtimeClient } from '@/services/realtime-client';
 import { fuzzyMatch, highlightChars } from '@/utils/fuzzy-search.util';
 import { renderMatchmakingPageHeader, renderMatchmakingPlayerList } from '../components/ui/matchmaking.ui';
 
@@ -62,14 +61,14 @@ class MatchmakingPage extends Component {
   private generatedMatch: IMatchProposal | null = null;
   private confirmedPlayerIds: Set<number> = new Set();
   private lobbyStateListener: ((state: ILobbyState) => void) | null = null;
-  private sseClient: RealtimeClient | null = null;
-  private sseVisibilityHandler: (() => void) | null = null;
   private isGenerating = false;
   private isSaving = false;
   private searchQuery = '';
   private useRelaxedClassDiff = false;
   private lobbyExists = false;
   private lobbyConfirmedCount = 0;
+  private lobbyLoading = true;
+  private showOnlyConfirmed = false;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -82,6 +81,7 @@ class MatchmakingPage extends Component {
 
     // Pre-populate confirmedPlayerIds from cached lobby state (avoids empty set on first render)
     const cachedLobbyState = LobbyService.getState();
+    // lobbyLoading rimane true finché startConfirmationsPolling non ottiene dati freschi
     if (cachedLobbyState) {
       this.lobbyExists = cachedLobbyState.exists;
       this.lobbyConfirmedCount = cachedLobbyState.count;
@@ -130,7 +130,7 @@ class MatchmakingPage extends Component {
     if (!document.getElementById('_matchmaking-spin-style')) {
       const style = document.createElement('style');
       style.id = '_matchmaking-spin-style';
-      style.textContent = '@keyframes _spin { to { transform: rotate(360deg); } }';
+      style.textContent = '@keyframes _spin { to { transform: rotate(360deg); } } @keyframes _pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }';
       document.head.appendChild(style);
     }
 
@@ -210,6 +210,17 @@ class MatchmakingPage extends Component {
   }
 
   private renderLobbyPanel(): string {
+    if (this.lobbyLoading) {
+      return `
+        <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl"
+             style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08)">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.3);animation:_pulse 1.2s ease-in-out infinite"></div>
+          <span class="font-ui" style="font-size:12px; letter-spacing:0.1em; color:rgba(255,255,255,0.3)">
+            VERIFICA LOBBY…
+          </span>
+        </div>
+      `;
+    }
     if (this.lobbyExists) {
       return `
         <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl"
@@ -719,6 +730,17 @@ class MatchmakingPage extends Component {
       deselectAllBtn.addEventListener('click', () => this.handleDeselectAll());
     }
 
+    const filterConfirmedBtn = this.$id('filter-confirmed-btn');
+    if (filterConfirmedBtn) {
+      filterConfirmedBtn.addEventListener('click', () => {
+        this.showOnlyConfirmed = !this.showOnlyConfirmed;
+        filterConfirmedBtn.style.cssText = this.showOnlyConfirmed
+          ? 'border-color:rgba(74,222,128,0.5);color:#4ADE80'
+          : '';
+        this.filterPlayerRows();
+      });
+    }
+
     // Score input blur validation (both panels)
     for (const input of this.$$('#score-team-a, #score-team-b') as HTMLInputElement[]) {
       input.addEventListener('blur', () => {
@@ -1192,31 +1214,14 @@ class MatchmakingPage extends Component {
   private startConfirmationsPolling(): void {
     this.lobbyStateListener = (state: ILobbyState) => this.applyConfirmations(state);
     LobbyService.onStateChange(this.lobbyStateListener);
-    LobbyService.acquire().then(() => {
-      const state = LobbyService.getState();
-      if (state) this.applyConfirmations(state);
-    });
-
-    // SSE: any lobby event triggers an immediate refresh (no debounce needed — we just call refresh)
-    this.sseClient = new RealtimeClient({
-      onStatusChange: status => console.log('[Matchmaking] SSE', status)
-    });
-    this.sseClient.onEvent(() => {
-      LobbyService.refresh();
-    });
-    this.sseClient.connect();
-
-    // Pause SSE when tab is hidden, reconnect + refresh on visible
-    this.sseVisibilityHandler = () => {
-      if (!this.sseClient) return;
-      if (document.visibilityState === 'hidden') {
-        this.sseClient.disconnect();
-      } else {
-        this.sseClient.connect();
-        LobbyService.refresh();
-      }
-    };
-    document.addEventListener('visibilitychange', this.sseVisibilityHandler);
+    // Forza sempre un refresh fresco per evitare stato stale dall'header
+    LobbyService.acquire()
+      .then(() => LobbyService.refreshNow())
+      .then(state => this.applyConfirmations(state))
+      .catch(() => {
+        this.lobbyLoading = false;
+        this.patchLobbyPanels();
+      });
   }
 
   private stopConfirmationsPolling(): void {
@@ -1225,15 +1230,6 @@ class MatchmakingPage extends Component {
       this.lobbyStateListener = null;
     }
     LobbyService.release();
-
-    if (this.sseVisibilityHandler) {
-      document.removeEventListener('visibilitychange', this.sseVisibilityHandler);
-      this.sseVisibilityHandler = null;
-    }
-    if (this.sseClient) {
-      this.sseClient.disconnect();
-      this.sseClient = null;
-    }
   }
 
   private applyConfirmations(state: ILobbyState): void {
@@ -1243,10 +1239,12 @@ class MatchmakingPage extends Component {
     this.confirmedPlayerIds = newConfirmedIds;
     this.lobbyConfirmedCount = state.count;
 
-    // Patch lobby panel if existence changed
+    // Patch lobby panel if existence changed (or if still in loading state)
+    const wasLoading = this.lobbyLoading;
+    this.lobbyLoading = false;
     const prevLobbyExists = this.lobbyExists;
     this.lobbyExists = state.exists;
-    if (prevLobbyExists !== this.lobbyExists) {
+    if (wasLoading || prevLobbyExists !== this.lobbyExists) {
       this.patchLobbyPanels();
     } else if (this.lobbyExists) {
       // Just update the count label without full re-render
@@ -1363,6 +1361,13 @@ class MatchmakingPage extends Component {
     for (const row of rows) {
       const nameEl = row.querySelector('.player-name') as HTMLElement | null;
       if (!nameEl) continue;
+
+      const playerId = Number(row.dataset.playerId);
+
+      if (this.showOnlyConfirmed && !this.confirmedPlayerIds.has(playerId)) {
+        row.style.display = 'none';
+        continue;
+      }
 
       const originalName = row.dataset.playerName ?? '';
 

@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withAuth } from './_auth.js';
 import { handleCorsPreFlight, setCorsHeaders } from './_cors.js';
-import { prefixed, redisRaw } from './_redisClient.js';
+import { lobbyEnv } from './_lobbyEnv.js';
+import { supabaseAdmin } from './_supabaseAdmin.js';
 
 /**
- * API per cancellare messaggi chat e conferme della lobby (admin only)
+ * Chiude la lobby attiva e cancella tutte le conferme (admin only).
  *
  * POST /api/admin-cleanup
  */
@@ -17,29 +18,48 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
   }
 
   try {
-    // Pipeline 1: read what we need (1 HTTP request)
-    const readPipeline = redisRaw.pipeline();
-    readPipeline.lrange(prefixed('messages'), 0, -1);
-    readPipeline.hlen(prefixed('availability'));
-    const [messageIds, confirmCount] = await readPipeline.exec() as [string[], number];
+    const now = new Date().toISOString();
 
-    // Pipeline 2: delete everything in a single batch (1 HTTP request)
-    const delPipeline = redisRaw.pipeline();
-    delPipeline.del(prefixed('messages'));
-    delPipeline.del(prefixed('availability'));
-    delPipeline.del(prefixed('availability_ts'));
-    if (messageIds && messageIds.length > 0) {
-      for (const id of messageIds) delPipeline.del(prefixed(`message:${id}`));
+    // Trova lobby attiva
+    const { data: lobby, error: lobbyErr } = await supabaseAdmin
+      .from('lobbies')
+      .select('lobby_id')
+      .eq('environment', lobbyEnv)
+      .eq('status', 'waiting')
+      .gt('expires_at', now)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lobbyErr) throw lobbyErr;
+
+    let deletedConfirmations = 0;
+
+    if (lobby) {
+      // Conta e cancella le conferme
+      const { count, error: countErr } = await supabaseAdmin
+        .from('lobby_confirmations')
+        .select('*', { count: 'exact', head: true })
+        .eq('lobby_id', lobby.lobby_id);
+      if (countErr) throw countErr;
+
+      deletedConfirmations = count ?? 0;
+
+      // Chiudi la lobby
+      const { error: updateErr } = await supabaseAdmin
+        .from('lobbies')
+        .update({ status: 'closed' })
+        .eq('lobby_id', lobby.lobby_id);
+      if (updateErr) throw updateErr;
+      // Le conferme vengono eliminate in cascade dalla FK
+
+      console.log(`Cleanup: ${deletedConfirmations} conferme, lobby ${lobby.lobby_id} chiusa`);
     }
-    await delPipeline.exec();
-
-    const msgCount = messageIds?.length ?? 0;
-    console.log(`Cleanup: ${msgCount} messaggi, ${confirmCount} conferme cancellate`);
 
     return res.status(200).json({
       ok: true,
-      deletedMessages: msgCount,
-      deletedConfirmations: confirmCount
+      deletedMessages: 0,
+      deletedConfirmations
     });
   } catch (error) {
     console.error('Errore admin-cleanup:', error);
