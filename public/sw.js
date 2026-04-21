@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Updated automatically by scripts/generate-sw-version.js
-const VERSION = '2.1.2604210200+20260421020004';
+const VERSION = '2.1.2604210200+20260421020005';
 const CACHE_NAME = `calcio-balilla-${VERSION}`;
 
 // self.__WB_MANIFEST è iniettato da vite-plugin-pwa a build time con tutti i chunk Vite
@@ -59,15 +59,19 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
+  // // Ignora tutte le richieste API (no cache, sempre network)
+  // if (url.pathname.startsWith('/api/')) {
+  //   // Non risponde, lascia passare al network
+  //   return;
+  // }
+
   // Navigation requests: stale-while-revalidate.
-  // index.html è in PRECACHE (iniettato da __WB_MANIFEST) e la rotazione di VERSION
-  // garantisce coerenza con i chunk JS/CSS ad ogni deploy.
   if (request.mode === 'navigate') {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
 
-  // Supabase REST (cross-origin): stale-while-revalidate — prima del check origin
+  // Supabase REST (cross-origin): stale-while-revalidate
   if (SUPABASE_REST.test(url.href)) {
     event.respondWith(staleWhileRevalidate(request));
     return;
@@ -77,7 +81,6 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Tutti gli asset same-origin (JS, CSS, icone, avatar, classi, manifest): cache-first
-  // JS/CSS sono in PRECACHE dal build → serviti da cache anche offline
   event.respondWith(cacheFirst(request));
 });
 

@@ -699,8 +699,8 @@ export default class PlayerProfilePage extends Component {
         { icon: 'users', label: 'PEGGIOR COMPAGNO', stat: worstTm, fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' }
       ],
       [
-        { icon: 'sword', label: 'MIGLIOR AVVERSARIO', stat: bestOpp, fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' },
-        { icon: 'sword', label: 'PEGGIOR AVVERSARIO', stat: worstOpp, fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' }
+        { icon: 'sword', label: 'AVVERSARIO PIù FORTE', stat: bestOpp, fmt: v => `${Math.round(v)} ELO`, color: 'var(--color-loss)' },
+        { icon: 'sword', label: 'AVVERSARIO PIù DEBOLE', stat: worstOpp, fmt: v => `+${Math.round(v)} ELO`, color: 'var(--color-win)' }
       ],
       [
         { icon: 'user-check', label: 'COMPAGNO FREQ.', stat: bestTmCount, fmt: v => `${Math.round(v)} partite` },

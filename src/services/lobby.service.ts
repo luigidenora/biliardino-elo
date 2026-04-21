@@ -106,7 +106,10 @@ class LobbyServiceImpl {
     this.activeFetchController = controller;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/lobby`, { signal: controller.signal });
+      const res = await fetch(`${API_BASE_URL}/lobby`, {
+        signal: controller.signal,
+        cache: 'no-store' // Bypass service worker cache
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: ILobbyState = await res.json();
 
