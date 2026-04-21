@@ -16,6 +16,7 @@ import { addMatch } from '@/services/match.service';
 import { findBestMatch } from '@/services/matchmaking.service';
 import { getAllPlayers, getClass, getPlayerById } from '@/services/player.service';
 import { clearRunningMatch, fetchMatchById, fetchRunningMatch, saveMatch, saveRunningMatch } from '@/services/repository.service';
+import { availabilityList } from '@/utils/availability.util';
 import { getDisplayElo } from '@/utils/get-display-elo.util';
 import haptics from '@/utils/haptics.util';
 import gsap from 'gsap';
@@ -645,8 +646,19 @@ class MatchmakingPage extends Component {
   }
 
   private initPlayerStates(players: IPlayer[]): void {
+    // Se non c'è una lobby attiva, preseleziona i giocatori disponibili oggi
+    const today = new Date();
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayKey = days[today.getDay()];
+    const availableNames: string[] = availabilityList[todayKey] || [];
+
     for (const player of players) {
-      this.playerStates.set(player.id, 0);
+      // Se non c'è una lobby attiva e il nome è nella lista, stato 1 (selezionato), altrimenti 0
+      if (!this.lobbyExists && availableNames.includes(player.name)) {
+        this.playerStates.set(player.id, 1);
+      } else {
+        this.playerStates.set(player.id, 0);
+      }
     }
   }
 
