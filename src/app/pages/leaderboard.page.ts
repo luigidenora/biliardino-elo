@@ -54,7 +54,7 @@ const MEDAL_SHADOW: Record<number, string> = {
   3: '0 0 24px rgba(205,127,50,0.14)'
 };
 
-type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate';
+type SortKey = 'rank' | 'name' | 'elo' | 'matches' | 'winrate' | 'goalratio' | 'forma';
 type LeaderboardType = 'overall' | 'defence' | 'attack';
 
 const RECENT_MATCHES_COUNT = 30;
@@ -249,39 +249,62 @@ class LeaderboardPage extends Component {
   private getSortedPlayers(): IPlayer[] {
     const filtered = [...this.getAllRankedPlayers()];
     const roleIdx = this.getRoleIndex();
-
     const { sortKey, sortAsc } = this;
     filtered.sort((a, b) => {
       let cmp = 0;
+      // Helper per bestRole
+      const getBest = (arr: number[], player: IPlayer) => arr[player.bestRole];
       switch (sortKey) {
         case 'rank':
           cmp = this.getPlayerRank(a) - this.getPlayerRank(b);
           break;
-        case 'name': cmp = a.name.localeCompare(b.name);
+        case 'name':
+          cmp = a.name.localeCompare(b.name);
           break;
-        case 'elo':
-          cmp = this.getPlayerElo(b) - this.getPlayerElo(a);
+        case 'elo': {
+          const aElo = roleIdx === null ? getBest(a.elo, a) : a.elo[roleIdx];
+          const bElo = roleIdx === null ? getBest(b.elo, b) : b.elo[roleIdx];
+          cmp = bElo - aElo;
           break;
+        }
         case 'matches': {
-          const aMatches = roleIdx === null ? (a.matches[0] + a.matches[1]) : a.matches[roleIdx];
-          const bMatches = roleIdx === null ? (b.matches[0] + b.matches[1]) : b.matches[roleIdx];
+          const aMatches = roleIdx === null ? getBest(a.matches, a) : a.matches[roleIdx];
+          const bMatches = roleIdx === null ? getBest(b.matches, b) : b.matches[roleIdx];
           cmp = bMatches - aMatches;
           break;
         }
         case 'winrate': {
-          const aMatches = roleIdx === null ? (a.matches[0] + a.matches[1]) : a.matches[roleIdx];
-          const aWins = roleIdx === null ? (a.wins[0] + a.wins[1]) : a.wins[roleIdx];
-          const bMatches = roleIdx === null ? (b.matches[0] + b.matches[1]) : b.matches[roleIdx];
-          const bWins = roleIdx === null ? (b.wins[0] + b.wins[1]) : b.wins[roleIdx];
+          const aMatches = roleIdx === null ? getBest(a.matches, a) : a.matches[roleIdx];
+          const aWins = roleIdx === null ? getBest(a.wins, a) : a.wins[roleIdx];
+          const bMatches = roleIdx === null ? getBest(b.matches, b) : b.matches[roleIdx];
+          const bWins = roleIdx === null ? getBest(b.wins, b) : b.wins[roleIdx];
           const aR = aMatches > 0 ? aWins / aMatches : 0;
           const bR = bMatches > 0 ? bWins / bMatches : 0;
           cmp = bR - aR;
           break;
         }
+        case 'goalratio': {
+          const aGF = roleIdx === null ? getBest(a.goalsFor, a) : a.goalsFor[roleIdx];
+          const aGA = roleIdx === null ? getBest(a.goalsAgainst, a) : a.goalsAgainst[roleIdx];
+          const bGF = roleIdx === null ? getBest(b.goalsFor, b) : b.goalsFor[roleIdx];
+          const bGA = roleIdx === null ? getBest(b.goalsAgainst, b) : b.goalsAgainst[roleIdx];
+          const aRatio = aGA > 0 ? aGF / aGA : (aGF > 0 ? 99 : 0);
+          const bRatio = bGA > 0 ? bGF / bGA : (bGF > 0 ? 99 : 0);
+          cmp = bRatio - aRatio;
+          break;
+        }
+        case 'forma': {
+          // Media ultimi 5 delta ELO
+          const aArr = roleIdx === null ? (a.matchesDelta[a.bestRole] || []) : (a.matchesDelta[roleIdx] || []);
+          const bArr = roleIdx === null ? (b.matchesDelta[b.bestRole] || []) : (b.matchesDelta[roleIdx] || []);
+          const aSum = aArr.slice(-5).reduce((acc, d) => acc + d, 0);
+          const bSum = bArr.slice(-5).reduce((acc, d) => acc + d, 0);
+          cmp = bSum - aSum;
+          break;
+        }
       }
       return sortAsc ? -cmp : cmp;
     });
-
     return filtered;
   }
 
@@ -841,8 +864,8 @@ class LeaderboardPage extends Component {
           <div class="hidden lg:block flex-none w-[88px]">V / S</div>
           <div class="sort-header cursor-pointer flex-none w-10 sm:w-[88px]" data-sort-key="winrate" data-label="WIN RATE">WR</div>
           <div class="hidden lg:block flex-none w-[64px] text-center">RUOLO</div>
-          <div class="hidden lg:block flex-none w-[60px]">G/S</div>
-          <div class="hidden sm:block flex-none w-[80px]">FORMA</div>
+          <div class="sort-header cursor-pointer hidden lg:block flex-none w-[60px]" data-sort-key="goalratio" data-label="G/S">G/S</div>
+          <div class="sort-header cursor-pointer hidden sm:block flex-none w-[80px]" data-sort-key="forma" data-label="FORMA">FORMA</div>
         </div>
 
         <!-- Rows -->
