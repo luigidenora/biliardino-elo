@@ -4,6 +4,31 @@ import { supabase } from '@/utils/supabase.util';
 import { IRepository } from './repository.interface';
 
 const CACHE_CONTROL_ID = 'id';
+/**
+ * Restituisce l'hash attuale dei giocatori dalla tabella cache-control.
+ */
+export async function getPlayersHash(): Promise<number> {
+  const { data, error } = await supabase
+    .from('cache-control')
+    .select('hashPlayers')
+    .eq('firestore_id', CACHE_CONTROL_ID)
+    .single<{ hashPlayers: number }>();
+  if (error || !data || typeof data.hashPlayers !== 'number') return -1;
+  return data.hashPlayers;
+}
+
+/**
+ * Restituisce l'hash attuale delle partite dalla tabella cache-control.
+ */
+export async function getMatchesHash(): Promise<number> {
+  const { data, error } = await supabase
+    .from('cache-control')
+    .select('hashMatches')
+    .eq('firestore_id', CACHE_CONTROL_ID)
+    .single<{ hashMatches: number }>();
+  if (error || !data || typeof data.hashMatches !== 'number') return -1;
+  return data.hashMatches;
+}
 const CACHE_HASH_PLAYERS_KEY = 'supabase_cache_hash_players';
 const CACHE_HASH_MATCHES_KEY = 'supabase_cache_hash_matches';
 const PLAYERS_DATA_KEY = 'supabase_players_data';
@@ -31,11 +56,13 @@ function mapPlayerRow(row: { id: string; name: string; role: -1 | 0 | 1 }): IPla
     name: row.name,
     role: row.role,
     elo: [1000, 1000],
+    eloAtDayStart: [1000, 1000],
     matches: [0, 0],
     wins: [0, 0],
     goalsFor: [0, 0],
     goalsAgainst: [0, 0],
     rank: [-1, -1, -1],
+    rankAtDayStart: [-1, -1, -1],
     bestRole: 0,
     class: [-1, -1],
     streak: [0, 0],
@@ -196,6 +223,8 @@ export async function deletePlayer(id: number): Promise<void> {
 const _check: IRepository = {
   updatePlayersHash,
   updateMatchesHash,
+  getPlayersHash,
+  getMatchesHash,
   fetchPlayers,
   fetchMatches,
   saveMatch,

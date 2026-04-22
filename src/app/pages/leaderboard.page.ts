@@ -13,7 +13,7 @@ import { MatchHistoryComponent, renderMatchHistory } from '@/app/components/matc
 import { refreshCoreData, registerAppRefreshHandler } from '@/services/app-refresh.service';
 import { expectedScore, FinalK, MatchesToRank } from '@/services/elo.service';
 import { getAllMatches } from '@/services/match.service';
-import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
+import { getAllPlayers, getPlayerById } from '@/services/player.service';
 import { fetchRunningMatch } from '@/services/repository.service';
 import { animateVisible } from '@/utils/animate-visible.util';
 import { getClassName } from '@/utils/get-class-name.util';
@@ -116,10 +116,7 @@ class LeaderboardPage extends Component {
     });
 
     // Get data for lazy loading (compute early but don't render yet)
-    const players = this.getSortedPlayers();
-    const todayDeltas = this.getTodayEloDeltas();
-    const todayRankDeltas = this.getTodayRankDeltas();
-    const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
+    // (Nessun calcolo delta qui: ora i delta sono calcolati direttamente nei render helpers)
 
     this.unregisterRefreshHandler = registerAppRefreshHandler(() => this.handlePullRefresh());
 
@@ -168,6 +165,7 @@ class LeaderboardPage extends Component {
       // Render match history
       const historySlot = this.$('#leaderboard-history-slot');
       if (historySlot) {
+        const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
         historySlot.innerHTML = renderMatchHistory({
           matches: getAllMatches(),
           limit: RECENT_MATCHES_COUNT,
@@ -287,80 +285,23 @@ class LeaderboardPage extends Component {
     return filtered;
   }
 
-  private getTodayEloDeltas(): Map<number, { delta: number; matches: number }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const deltas = new Map<number, { delta: number; matches: number }>();
-    const playerMatchCounts = new Map<number, number>();
-
-    const addDelta = (playerId: number, delta: number): void => {
-      if (!Number.isFinite(delta)) return;
-      const matchesPlayed = playerMatchCounts.get(playerId) ?? 0;
-      const bonusMultiplier = getBonusK(matchesPlayed);
-      const adjustedDelta = delta * bonusMultiplier;
-      const entry = deltas.get(playerId) ?? { delta: 0, matches: 0 };
-      entry.delta += adjustedDelta;
-      entry.matches += 1;
-      deltas.set(playerId, entry);
-      playerMatchCounts.set(playerId, matchesPlayed + 1);
-    };
-
-    const allMatches = getAllMatches().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    for (const match of allMatches) {
-      const matchDate = new Date(match.createdAt);
-      matchDate.setHours(0, 0, 0, 0);
-      if (matchDate.getTime() === today.getTime()) {
-        addDelta(match.teamA.defence, match.deltaELO[0]);
-        addDelta(match.teamA.attack, match.deltaELO[0]);
-        addDelta(match.teamB.defence, match.deltaELO[1]);
-        addDelta(match.teamB.attack, match.deltaELO[1]);
-      } else {
-        for (const pid of [match.teamA.defence, match.teamA.attack, match.teamB.defence, match.teamB.attack]) {
-          playerMatchCounts.set(pid, (playerMatchCounts.get(pid) ?? 0) + 1);
-        }
-      }
+  // Nuovi helper per delta giornalieri usando eloAtDayStart e rankAtDayStart
+  private getPlayerDailyEloDelta(player: IPlayer, roleForDisplay: 0 | 1 | null): number {
+    if (roleForDisplay === null) {
+      // Generale: usa bestRole
+      return Math.round(player.elo[player.bestRole] - player.eloAtDayStart[player.bestRole]);
     }
-    return deltas;
+    return Math.round(player.elo[roleForDisplay] - player.eloAtDayStart[roleForDisplay]);
   }
 
-  private getTodayRankDeltas(): Map<number, number> {
-    const players = this.getAllRankedPlayers();
-    const todayDeltas = this.getTodayEloDeltas();
-
-    // Estimate yesterday ELO = current ELO − today bonus-adjusted delta
-    const yesterdayElos = new Map<number, number>();
-    for (const p of players) {
-      const entry = todayDeltas.get(p.id);
-      const currentElo = this.getPlayerElo(p);
-      yesterdayElos.set(p.id, currentElo - (entry?.delta ?? 0));
+  private getPlayerDailyRankDelta(player: IPlayer, roleForDisplay: 0 | 1 | null): number | null {
+    if (roleForDisplay === null) {
+      // Generale: rank[2] e rankAtDayStart[2]
+      if (typeof player.rankAtDayStart?.[2] !== 'number') return null;
+      return player.rankAtDayStart[2] - player.rank[2];
     }
-
-    // Today's ranks: sort by current ELO descending
-    const todaySorted = [...players].sort(
-      (a, b) => this.getPlayerElo(b) - this.getPlayerElo(a)
-    );
-    const todayRanks = new Map<number, number>();
-    todaySorted.forEach((p, i) => todayRanks.set(p.id, i + 1));
-
-    // Yesterday's ranks: sort by yesterday ELO descending
-    const yesterdaySorted = [...players].sort(
-      (a, b) => (yesterdayElos.get(b.id) ?? 0) - (yesterdayElos.get(a.id) ?? 0)
-    );
-    const yesterdayRanks = new Map<number, number>();
-    yesterdaySorted.forEach((p, i) => yesterdayRanks.set(p.id, i + 1));
-
-    // Delta = positions gained (positive = improved)
-    const result = new Map<number, number>();
-    for (const p of players) {
-      const todayRank = todayRanks.get(p.id) ?? 0;
-      const yesterdayRank = yesterdayRanks.get(p.id) ?? todayRank;
-      // Non mostrare badge se non c'è variazione
-      if (yesterdayRank !== todayRank) {
-        result.set(p.id, yesterdayRank - todayRank);
-      }
-    }
-    return result;
+    if (typeof player.rankAtDayStart?.[roleForDisplay] !== 'number') return null;
+    return player.rankAtDayStart[roleForDisplay] - player.rank[roleForDisplay];
   }
 
   // ── Section Renderers ──────────────────────────────────────
@@ -870,13 +811,11 @@ class LeaderboardPage extends Component {
 
   private renderRankingTable(): string {
     const players = this.getSortedPlayers();
-    const todayDeltas = this.getTodayEloDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
-
-    const todayRankDeltas = this.getTodayRankDeltas();
+    const roleForDisplay = this.getRoleIndex();
 
     const rows = players.map((p, idx) =>
-      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId, this.getRoleIndex())
+      this.renderRankingRow(p, idx, players.length, selectedPlayerId, roleForDisplay)
     ).join('');
 
     const emptyState = players.length === 0
@@ -919,8 +858,6 @@ class LeaderboardPage extends Component {
     player: IPlayer,
     idx: number,
     total: number,
-    todayDeltas: Map<number, { delta: number; matches: number }>,
-    rankDeltas: Map<number, number>,
     selectedPlayerId: number,
     roleForDisplay: 0 | 1 | null
   ): string {
@@ -937,21 +874,22 @@ class LeaderboardPage extends Component {
     const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
     const wrColor = winRate >= 60 ? '#4ADE80' : winRate >= 45 ? '#FFD700' : '#F87171';
 
-    // Today delta badge
-    const todayInfo = todayDeltas.get(player.id);
-    const todayDelta = todayInfo?.delta ?? 0;
-    const todayMatches = todayInfo?.matches ?? 0;
-    let todayBadge = '';
-    if (todayMatches > 0) {
-      const rounded = Math.round(todayDelta);
-      if (rounded > 0) todayBadge = `<span class="font-body text-xs" style="color:var(--color-win)"> +${rounded}</span>`;
-      else if (rounded < 0) todayBadge = `<span class="font-body text-xs" style="color:var(--color-loss)"> ${rounded}</span>`;
-      else todayBadge = `<span class="font-body text-xs" style="color:rgba(255,255,255,0.3)"> =</span>`;
+    // Delta ELO giornaliero: mostra sempre il delta del ruolo visualizzato, nella generale mostra bestRole
+    let dailyEloDelta = 0;
+    if (roleForDisplay === null) {
+      dailyEloDelta = player.elo[player.bestRole] - player.eloAtDayStart[player.bestRole];
+    } else {
+      dailyEloDelta = player.elo[roleForDisplay] - player.eloAtDayStart[roleForDisplay];
     }
-    // ── Rank delta — icona freccia, no box ───────────────
-    const rankDelta = rankDeltas.get(player.id);
+    let todayBadge = '';
+    if (dailyEloDelta > 0) todayBadge = `<span class="font-body text-xs" style="color:var(--color-win)"> +${Math.round(dailyEloDelta)}</span>`;
+    else if (dailyEloDelta < 0) todayBadge = `<span class="font-body text-xs" style="color:var(--color-loss)"> ${Math.round(dailyEloDelta)}</span>`;
+    // Se zero, non mostra nulla
+
+    // Delta rank giornaliero
+    const rankDelta = this.getPlayerDailyRankDelta(player, roleForDisplay);
     let rankDeltaBadge = '';
-    if (rankDelta !== undefined && rankDelta !== 0) {
+    if (rankDelta !== null && rankDelta !== 0) {
       const arrowIcon = rankDelta > 0 ? 'arrow-up' : 'arrow-down';
       const arrowColor = rankDelta > 0 ? '#4ADE80' : '#F87171';
       const arrowVal = Math.abs(rankDelta);
@@ -1101,38 +1039,57 @@ class LeaderboardPage extends Component {
     const borderBottom = idx < total - 1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : '';
     const eloColor = rank <= 3 ? '#FFD700' : 'white';
 
-    // Mobile: usa sempre il best role per WR e forma
-    const mobileWr = isOverall
-      ? (player.matches[player.bestRole] > 0 ? Math.round((player.wins[player.bestRole] / player.matches[player.bestRole]) * 100) : 0)
-      : winRate;
+    // Mobile: mostra sempre il delta ELO del bestRole nella generale, o del ruolo selezionato
+    const mobileRole = player.bestRole as 0 | 1;
+    let mobileEloDelta = 0;
+    if (roleForDisplay === null) {
+      mobileEloDelta = player.elo[mobileRole] - player.eloAtDayStart[mobileRole];
+    } else {
+      mobileEloDelta = player.elo[roleForDisplay] - player.eloAtDayStart[roleForDisplay];
+    }
+    let mobileEloBadge = '';
+    if (mobileEloDelta > 0) mobileEloBadge = `<span class="font-body text-xs" style="color:var(--color-win)"> +${Math.round(mobileEloDelta)}</span>`;
+    else if (mobileEloDelta < 0) mobileEloBadge = `<span class="font-body text-xs" style="color:var(--color-loss)"> ${Math.round(mobileEloDelta)}</span>`;
+    // Se zero, non mostra nulla
+
+    const mobileWr = player.matches[mobileRole] > 0 ? Math.round((player.wins[mobileRole] / player.matches[mobileRole]) * 100) : 0;
     const mobileWrColor = mobileWr >= 60 ? '#4ADE80' : mobileWr >= 45 ? '#FFD700' : '#F87171';
-    const mobileLast5 = (roleForDisplay === null ? player.matchesDelta[player.bestRole] : player.matchesDelta[roleForDisplay] ?? []).slice(-5);
+    const mobileLast5 = (player.matchesDelta[mobileRole] ?? []).slice(-5);
     const mobileFormaDots = makeDots(mobileLast5, 5);
     const mobileFormaSum = Math.round(mobileLast5.reduce((a, d) => a + d, 0));
     const mobileFormaColor = mobileFormaSum > 0 ? '#4ADE80' : mobileFormaSum < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
     const mobileFormaStr = mobileFormaSum > 0 ? `+${mobileFormaSum}` : `${mobileFormaSum}`;
 
-    // ELO cell
+    // ELO cell: mostra delta anche per entrambi i ruoli nella generale
+    const eloDelta0 = player.elo[0] - player.eloAtDayStart[0];
+    const eloDelta1 = player.elo[1] - player.eloAtDayStart[1];
+    const badge0 = eloDelta0 > 0 ? `<span class="font-body text-xs" style="color:var(--color-win)"> +${Math.round(eloDelta0)}</span>` : (eloDelta0 < 0 ? `<span class="font-body text-xs" style="color:var(--color-loss)"> ${Math.round(eloDelta0)}</span>` : '');
+    const badge1 = eloDelta1 > 0 ? `<span class="font-body text-xs" style="color:var(--color-win)"> +${Math.round(eloDelta1)}</span>` : (eloDelta1 < 0 ? `<span class="font-body text-xs" style="color:var(--color-loss)"> ${Math.round(eloDelta1)}</span>` : '');
+
     const eloDesktopCell = isOverall
       ? `
         <div class="flex flex-col gap-0.5">
           <div class="flex items-center gap-1.5">
-            <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.4);width:20px">DIF</span>
-            ${noRole(0) ? dash : `<span style="font-family:var(--font-display);font-size:${player.bestRole === 0 ? '17px' : '14px'};color:${player.bestRole === 0 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 0 ? 700 : 400}">${Math.round(player.elo[0])}</span>`}
+            ${renderRoleBadge({ role: 'defence', size: 'base' })}
+            ${noRole(0) ? dash : `<span style="font-family:var(--font-display);font-size:${player.bestRole === 0 ? '17px' : '14px'};color:${player.bestRole === 0 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 0 ? 700 : 400}">${Math.round(player.elo[0])}</span>${badge0}`}
           </div>
           <div class="flex items-center gap-1.5">
-            <span style="font-family:var(--font-ui);font-size:9px;color:rgba(255,255,255,0.4);width:20px">ATT</span>
-            ${noRole(1) ? dash : `<span style="font-family:var(--font-display);font-size:${player.bestRole === 1 ? '17px' : '14px'};color:${player.bestRole === 1 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 1 ? 700 : 400}">${Math.round(player.elo[1])}</span>`}
+            ${renderRoleBadge({ role: 'attack', size: 'base' })}
+            ${noRole(1) ? dash : `<span style="font-family:var(--font-display);font-size:${player.bestRole === 1 ? '17px' : '14px'};color:${player.bestRole === 1 ? eloColor : 'rgba(255,255,255,0.5)'};letter-spacing:0.05em;font-weight:${player.bestRole === 1 ? 700 : 400}">${Math.round(player.elo[1])}</span>${badge1}`}
           </div>
         </div>`
       : `<div class="flex items-baseline gap-1"><span style="font-family:var(--font-display);font-size:20px;color:${eloColor};letter-spacing:0.05em">${elo}</span>${todayBadge}</div>`;
 
-    // Mobile: subrow — badge ruolo + pallini forma
+    // Mobile: badge bestRole accanto all'elo principale
+    const mobileBestRoleBadge = renderRoleBadge({ role: player.bestRole === 0 ? 'defence' : 'attack', size: 'base' });
+
+    // Mobile: subrow — badge ruolo + pallini forma + delta elo
     const mobileSubRow = `
       <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
         ${renderRoleBadge({ playerRole: player.role, defenceMatches: player.matches[0], attackMatches: player.matches[1], size: 'sm' })}
         <div class="flex items-center gap-px">${mobileFormaDots}</div>
         ${mobileLast5.length > 0 ? `<span style="font-family:var(--font-ui);font-size:7px;color:${mobileFormaColor};font-weight:600">${mobileFormaStr}</span>` : ''}
+        ${mobileEloBadge}
       </div>`;
 
     const className = playerClass >= 0 ? getClassName(playerClass) : '';
@@ -1141,13 +1098,15 @@ class LeaderboardPage extends Component {
         <div data-tooltip="${className}">
           ${renderPlayerAvatar({ initials: getInitials(player.name), color, size: sz, playerId: player.id, playerClass: playerClass })}
         </div>
-        <div class="min-w-0 flex-1 relative z-10">
+        <div class="min-w-0 flex-1 relative z-10 flex items-center gap-1">
           <div class="text-white group-hover:text-(--color-gold) transition-colors truncate"
-               style="font-family:var(--font-ui); font-size:${sz === 'sm' ? '13px' : '14px'}; font-weight:600">
+               style="font-family:var(--font-ui); font-size:${sz === 'sm' ? '13px' : '14px'}; font-weight:600; display:inline-block;">
             ${player.name}
           </div>
-          ${withSubrow ? mobileSubRow : ''}
+          ${sz === 'sm' && isOverall ? `<span style="display:inline-flex;align-items:center;height:20px;margin-left:3px;flex-shrink:0">${renderRoleBadge({ role: player.bestRole === 0 ? 'defence' : 'attack', size: 'base' })}</span>` : ''}
         </div>
+        
+        
       </div>`;
 
     return `
@@ -1168,8 +1127,8 @@ class LeaderboardPage extends Component {
           <!-- ELO -->
           <div class="flex-none w-14 sm:w-[96px]">
             <div class="sm:hidden">
-              <span style="font-family:var(--font-display);font-size:16px;color:${eloColor};letter-spacing:0.04em;line-height:1">${elo}</span>
-              ${todayBadge ? `<div style="line-height:1;margin-top:1px">${todayBadge}</div>` : ''}
+              <span style="font-family:var(--font-display);font-size:16px;color:${eloColor};letter-spacing:0.04em;line-height:1;vertical-align:middle;white-space:nowrap">${elo}</span>
+              ${mobileEloBadge ? `<div style="line-height:1;margin-top:1px">${mobileEloBadge}</div>` : ''}
             </div>
             <div class="hidden sm:block">${eloDesktopCell}</div>
           </div>
@@ -1268,9 +1227,8 @@ class LeaderboardPage extends Component {
     if (!tbody) return;
 
     const players = this.getSortedPlayers();
-    const todayDeltas = this.getTodayEloDeltas();
-    const todayRankDeltas = this.getTodayRankDeltas();
     const selectedPlayerId = Number(localStorage.getItem('biliardino_player_id') || 0);
+    const roleForDisplay = this.getRoleIndex();
 
     if (players.length === 0) {
       tbody.innerHTML = `
@@ -1283,7 +1241,7 @@ class LeaderboardPage extends Component {
     }
 
     tbody.innerHTML = players.map((p, idx) =>
-      this.renderRankingRow(p, idx, players.length, todayDeltas, todayRankDeltas, selectedPlayerId, this.getRoleIndex())
+      this.renderRankingRow(p, idx, players.length, selectedPlayerId, roleForDisplay)
     ).join('');
 
     refreshIcons();

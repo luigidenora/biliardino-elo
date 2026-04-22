@@ -4,6 +4,8 @@ import { IPlayer, IPlayerDTO } from '@/models/player.interface';
 export interface IRepository {
   updatePlayersHash(): Promise<void>;
   updateMatchesHash(): Promise<void>;
+  getPlayersHash(): Promise<number>;
+  getMatchesHash(): Promise<number>;
   fetchPlayers(): Promise<IPlayer[]>;
   fetchMatches(): Promise<IMatch[]>;
   saveMatch(match: IMatchDTO, merge?: boolean): Promise<void>;

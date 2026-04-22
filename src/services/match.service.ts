@@ -1,6 +1,6 @@
 import { computeMatch } from '@/utils/update-elo.util';
 import { IMatch, IMatchDTO, ITeam } from '../models/match.interface';
-import { computeRanks, updateAllPlayerRecords } from './player.service';
+import { computeEloDayStart, computeRanks, updateAllPlayerRecords } from './player.service';
 import { fetchMatches, parseMatchDTO } from './repository.service';
 
 let matches: IMatch[] = [];
@@ -47,12 +47,29 @@ export function editMatch(id: number, teamA: ITeam, teamB: ITeam, score: [number
 }
 
 function computeMatches(): void {
-  console.time('computeMatches');
+  let computeDayStart = true;
+
   for (const match of matches) {
+    if (computeDayStart && isToday(match.createdAt)) {
+      computeRanks('rankAtDayStart');
+      computeEloDayStart();
+      computeDayStart = false;
+    }
+
     computeMatch(match, false);
   }
 
   updateAllPlayerRecords();
-  computeRanks();
-  console.timeEnd('computeMatches');
+  computeRanks('rank');
+}
+
+function isToday(ts: number): boolean {
+  const d = new Date(ts);
+  const now = new Date();
+
+  return (
+    d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate()
+  );
 }

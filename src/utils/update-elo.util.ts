@@ -19,6 +19,6 @@ export function computeMatch(match: IMatch, computeStats: boolean): void {
     updatePlayerRecords(match.teamB.defence, 0);
     updatePlayerRecords(match.teamB.attack, 1);
 
-    computeRanks();
+    computeRanks('rank');
   }
 }

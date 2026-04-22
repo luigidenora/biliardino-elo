@@ -12,15 +12,18 @@ export type MatchStats = { match: IMatch; value: number };
 
 export interface IPlayer extends IPlayerDTO {
   elo: [number, number]; // [defenderElo, attackerElo]
+  eloAtDayStart: [number, number];
   matches: [number, number];
   wins: [number, number];
   goalsFor: [number, number];
   goalsAgainst: [number, number];
   rank: [number, number, number]; // [rankDefender, rankAttacker, rankOverall]
+  rankAtDayStart: [number, number, number];
   class: [number, number];
   streak: [number, number];
   bestRole: number; // 0 defender, 1 attacker
   consistency: [number, number];
+  // rating: [number, number];
 
   teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
   opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];

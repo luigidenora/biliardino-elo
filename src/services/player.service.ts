@@ -278,13 +278,20 @@ export function updateAllPlayerRecords(): void {
   }
 }
 
-export function computeRanks(): void {
-  computeRanksRole(0);
-  computeRanksRole(1);
-  computeRanksRole(2);
+export function computeEloDayStart(): void {
+  for (const player of playersArray) {
+    player.eloAtDayStart[0] = player.elo[0];
+    player.eloAtDayStart[1] = player.elo[1];
+  }
 }
 
-function computeRanksRole(role: number): void {
+export function computeRanks(rankKey: 'rank' | 'rankAtDayStart'): void {
+  computeRanksRole(0, rankKey);
+  computeRanksRole(1, rankKey);
+  computeRanksRole(2, rankKey);
+}
+
+function computeRanksRole(role: number, rankKey: 'rank' | 'rankAtDayStart'): void {
   let comparer: (a: IPlayer, b: IPlayer) => number;
 
   if (role === 2) {
@@ -318,7 +325,7 @@ function computeRanksRole(role: number): void {
       previousClass = playerClass;
     }
 
-    player.rank[role] = rank;
+    player[rankKey][role] = rank;
   }
 }
 
