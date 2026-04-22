@@ -68,7 +68,6 @@ class MatchmakingPage extends Component {
   private lobbyExists = false;
   private lobbyConfirmedCount = 0;
   private lobbyLoading = true;
-  private showOnlyConfirmed = false;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -732,25 +731,17 @@ class MatchmakingPage extends Component {
 
     const filterConfirmedBtn = this.$id('filter-confirmed-btn');
     if (filterConfirmedBtn) {
-      filterConfirmedBtn.style.cssText = this.showOnlyConfirmed
-        ? 'border-color:rgba(74,222,128,0.5);color:#4ADE80'
-        : '';
       filterConfirmedBtn.addEventListener('click', () => {
-        this.showOnlyConfirmed = !this.showOnlyConfirmed;
-        filterConfirmedBtn.style.cssText = this.showOnlyConfirmed
-          ? 'border-color:rgba(74,222,128,0.5);color:#4ADE80'
-          : '';
-        if (this.showOnlyConfirmed) {
-          for (const playerId of this.confirmedPlayerIds) {
-            if (this.playerStates.get(playerId) === 0) {
-              this.playerStates.set(playerId, 1);
-              this.updateToggleButton(playerId, 1);
-            }
+        for (const playerId of this.confirmedPlayerIds) {
+          if (this.playerStates.get(playerId) === 0) {
+            this.playerStates.set(playerId, 1);
+            this.updateToggleButton(playerId, 1);
           }
-          this.updateProgressBar();
-          this.updateGenerateButton();
         }
-        this.filterPlayerRows();
+        this.updateProgressBar();
+        this.updateGenerateButton();
+        filterConfirmedBtn.style.cssText = 'border-color:rgba(74,222,128,0.5);color:#4ADE80';
+        setTimeout(() => { filterConfirmedBtn.style.cssText = ''; }, 1200);
       });
     }
 
@@ -1374,13 +1365,6 @@ class MatchmakingPage extends Component {
     for (const row of rows) {
       const nameEl = row.querySelector('.player-name') as HTMLElement | null;
       if (!nameEl) continue;
-
-      const playerId = Number(row.dataset.playerId);
-
-      if (this.showOnlyConfirmed && !this.confirmedPlayerIds.has(playerId)) {
-        row.style.display = 'none';
-        continue;
-      }
 
       const originalName = row.dataset.playerName ?? '';
 
