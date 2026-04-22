@@ -732,11 +732,24 @@ class MatchmakingPage extends Component {
 
     const filterConfirmedBtn = this.$id('filter-confirmed-btn');
     if (filterConfirmedBtn) {
+      filterConfirmedBtn.style.cssText = this.showOnlyConfirmed
+        ? 'border-color:rgba(74,222,128,0.5);color:#4ADE80'
+        : '';
       filterConfirmedBtn.addEventListener('click', () => {
         this.showOnlyConfirmed = !this.showOnlyConfirmed;
         filterConfirmedBtn.style.cssText = this.showOnlyConfirmed
           ? 'border-color:rgba(74,222,128,0.5);color:#4ADE80'
           : '';
+        if (this.showOnlyConfirmed) {
+          for (const playerId of this.confirmedPlayerIds) {
+            if (this.playerStates.get(playerId) === 0) {
+              this.playerStates.set(playerId, 1);
+              this.updateToggleButton(playerId, 1);
+            }
+          }
+          this.updateProgressBar();
+          this.updateGenerateButton();
+        }
         this.filterPlayerRows();
       });
     }
@@ -1429,6 +1442,7 @@ class MatchmakingPage extends Component {
     refreshIcons();
     this.bindToggleButtons();
     this.bindSearchFilter();
+    this.bindActionButtons();
     this.updateConfirmationsPanel(LobbyService.getState() ?? {
       exists: false, ttl: 0, match: null, count: 0, confirmations: [], messages: [], messageCount: 0
     });

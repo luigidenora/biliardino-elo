@@ -55,6 +55,11 @@ class AddPlayerPage extends Component {
     const slider = this.$id('player-defence') as HTMLInputElement | null;
     slider?.addEventListener('input', () => this.updateDefenceDisplay());
 
+    // Bind ELO radio buttons to update visual state on selection
+    for (const radio of this.$$('input[name="player-elo"]') as HTMLInputElement[]) {
+      radio.addEventListener('change', () => this.updateEloLabels());
+    }
+
     // GSAP animations
     gsap.from('.form-card', { y: 20, duration: 0.4, ease: 'power2.out' });
     this.cleanupObserver = animateVisible({
@@ -121,7 +126,7 @@ class AddPlayerPage extends Component {
             </label>
             <div class="grid grid-cols-3 gap-2">
               ${[1000, 1100, 1200].map(elo => `
-                <label class="flex items-center justify-center px-3 py-2.5 rounded-lg cursor-pointer transition-all
+                <label class="elo-label flex items-center justify-center px-3 py-2.5 rounded-lg cursor-pointer transition-all
                               ${elo === 1200 ? 'ring-2 ring-(--color-gold)' : ''}"
                        style="background:rgba(255,215,0,${elo === 1200 ? '0.15' : '0.05'});
                               border:1px solid rgba(255,215,0,${elo === 1200 ? '0.4' : '0.15'})">
@@ -229,6 +234,21 @@ class AddPlayerPage extends Component {
   }
 
   // ── Form Logic ─────────────────────────────────────────────
+
+  private updateEloLabels(): void {
+    for (const label of this.$$('.elo-label') as HTMLElement[]) {
+      const input = label.querySelector<HTMLInputElement>('input[type="radio"]');
+      if (!input) continue;
+      const checked = input.checked;
+      label.style.background = `rgba(255,215,0,${checked ? '0.15' : '0.05'})`;
+      label.style.border = `1px solid rgba(255,215,0,${checked ? '0.4' : '0.15'})`;
+      if (checked) {
+        label.classList.add('ring-2', 'ring-(--color-gold)');
+      } else {
+        label.classList.remove('ring-2', 'ring-(--color-gold)');
+      }
+    }
+  }
 
   private updateDefenceDisplay(): void {
     const slider = this.$id('player-defence') as HTMLInputElement | null;
