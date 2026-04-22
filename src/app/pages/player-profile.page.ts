@@ -20,6 +20,7 @@ import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
 import { renderRoleBadge } from '../components/role-badge.component';
 import { refreshIcons } from '../icons';
+import { router } from '../router';
 import { html, rawHtml } from '../utils/html-template.util';
 import template from './player-profile.page.html?raw';
 
@@ -131,9 +132,7 @@ export default class PlayerProfilePage extends Component {
           <p class="font-body text-sm" style="color:var(--color-text-secondary)">
             Il giocatore con ID ${id} non esiste.
           </p>
-          <a href="/" class="btn-gold px-6 py-2.5 text-sm rounded-lg">
-            TORNA ALLA CLASSIFICA
-          </a>
+          <a href="/" class="btn-gold px-6 py-2.5 text-sm rounded-lg js-home-link">TORNA ALLA CLASSIFICA</a>
         </div>
       `;
     }
@@ -441,9 +440,10 @@ export default class PlayerProfilePage extends Component {
         ? renderPlayerAvatar({ initials: getInitials(p.name), color: avatarColor, size: 'md', playerId: r.id, playerClass: p.class[role] })
         : '';
       return `
-        <a href="/profile/${r.id}"
-           class="flex flex-col items-center gap-1 p-2 rounded-lg transition-all"
-           style="background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)">
+          <a href="/profile/${r.id}"
+            class="flex flex-col items-center gap-1 p-2 rounded-lg transition-all js-profile-link"
+            data-player-id="${r.id}"
+            style="background:rgba(255,255,255,0.03);border:1px solid var(--glass-border)">
           <div class="shrink-0 mt-1">${avatarHtml}</div>
           <p class="font-body text-xs text-center leading-tight w-full truncate"
              style="color:var(--color-text-secondary)">${r.name}</p>
@@ -669,7 +669,7 @@ export default class PlayerProfilePage extends Component {
         : '';
       const name = p ? p.name : '—';
       const subtitle = def.stat ? def.fmt(def.stat.value) : '';
-      const avatarEl = avatar ? `<a href="/profile/${p!.id}" class="shrink-0">${avatar}</a>` : '';
+      const avatarEl = avatar ? `<a href="/profile/${p!.id}" class="shrink-0 js-profile-link" data-player-id="${p!.id}">${avatar}</a>` : '';
       return `
         <div class="rounded-xl p-3" style="background:rgba(0,0,0,0.25);border:1px solid var(--glass-border)">
           <div class="flex items-center gap-1.5 mb-2">
@@ -679,7 +679,7 @@ export default class PlayerProfilePage extends Component {
           <div class="flex items-center gap-2">
             ${avatarEl}
             <div class="min-w-0">
-              <a href="/profile/${p?.id ?? ''}" class="font-body text-xs font-medium truncate block" style="color:var(--color-text-primary)">${name}</a>
+              <a href="/profile/${p?.id ?? ''}" class="font-body text-xs font-medium truncate block js-profile-link" data-player-id="${p?.id ?? ''}" style="color:var(--color-text-primary)">${name}</a>
               <p class="font-body text-[10px] mt-0.5" style="color:${def.color ?? 'var(--color-text-secondary)'}">${subtitle}</p>
             </div>
           </div>
@@ -720,7 +720,7 @@ export default class PlayerProfilePage extends Component {
         playerId: pid,
         hideFrame: true
       });
-      return `<a href="/profile/${pid}" class="shrink-0">${avatar}</a>`;
+      return `<a href="/profile/${pid}" class="shrink-0 js-profile-link" data-player-id="${pid}">${avatar}</a>`;
     };
 
     return items.map((item) => {
@@ -1071,6 +1071,20 @@ export default class PlayerProfilePage extends Component {
     if (!player) return;
 
     Chart.register(...registerables);
+    // Delegated click handler per i link profilo generati dinamicamente e home
+    this.el?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a.js-profile-link') as HTMLAnchorElement | null;
+      if (link && link.dataset.playerId) {
+        e.preventDefault();
+        router.navigate(`/profile/${link.dataset.playerId}`);
+      }
+      const homeLink = target.closest('a.js-home-link') as HTMLAnchorElement | null;
+      if (homeLink) {
+        e.preventDefault();
+        router.navigate('/');
+      }
+    });
     refreshIcons();
     // Fix: reset padding e posizione delle frecce e contenitore principale
     const heroCard = this.$('#hero-card');
@@ -1105,7 +1119,7 @@ export default class PlayerProfilePage extends Component {
     if (prevBtn) {
       if (prevPlayer) {
         prevBtn.addEventListener('click', () => {
-          globalThis.location.href = `/profile/${prevPlayer.id}`;
+          router.navigate(`/profile/${prevPlayer.id}`);
         });
         prevBtn.style.opacity = '1';
         prevBtn.style.pointerEvents = '';
@@ -1117,7 +1131,7 @@ export default class PlayerProfilePage extends Component {
     if (nextBtn) {
       if (nextPlayer) {
         nextBtn.addEventListener('click', () => {
-          globalThis.location.href = `/profile/${nextPlayer.id}`;
+          router.navigate(`/profile/${nextPlayer.id}`);
         });
         nextBtn.style.opacity = '1';
         nextBtn.style.pointerEvents = '';
