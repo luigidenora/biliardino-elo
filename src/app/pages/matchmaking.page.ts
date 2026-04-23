@@ -1100,13 +1100,13 @@ class MatchmakingPage extends Component {
       console.error('Error clearing running match:', e);
     }
 
-    // Reset state
+    // Mantieni la lobby e le conferme attive dopo il salvataggio della partita
     this.generatedMatch = null;
-    this.confirmedPlayerIds.clear();
-    this.lobbyExists = false;
-    this.lobbyConfirmedCount = 0;
-    appState.lobbyActive = false;
-    appState.emit('lobby-change');
+    // this.confirmedPlayerIds.clear();
+    // this.lobbyExists = false;
+    // this.lobbyConfirmedCount = 0;
+    // appState.lobbyActive = false;
+    // appState.emit('lobby-change');
     this.refreshMatchPanels();
     this.refreshPlayerListPanel();
   }
