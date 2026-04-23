@@ -68,7 +68,6 @@ class MatchmakingPage extends Component {
   private lobbyExists = false;
   private lobbyConfirmedCount = 0;
   private lobbyLoading = true;
-  private showOnlyConfirmed = false;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -730,15 +729,9 @@ class MatchmakingPage extends Component {
       deselectAllBtn.addEventListener('click', () => this.handleDeselectAll());
     }
 
-    const filterConfirmedBtn = this.$id('filter-confirmed-btn');
+    const filterConfirmedBtn = this.$id('confirmed-only-btn');
     if (filterConfirmedBtn) {
-      filterConfirmedBtn.addEventListener('click', () => {
-        this.showOnlyConfirmed = !this.showOnlyConfirmed;
-        filterConfirmedBtn.style.cssText = this.showOnlyConfirmed
-          ? 'border-color:rgba(74,222,128,0.5);color:#4ADE80'
-          : '';
-        this.filterPlayerRows();
-      });
+      filterConfirmedBtn.addEventListener('click', () => this.handleConfirmedOnly());
     }
 
     // Score input blur validation (both panels)
@@ -1111,6 +1104,15 @@ class MatchmakingPage extends Component {
     this.refreshPlayerListPanel();
   }
 
+  private handleConfirmedOnly(): void {
+    for (const [id] of this.playerStates) {
+      this.playerStates.set(id, this.confirmedPlayerIds.has(id) ? 1 : 0);
+      this.updateToggleButton(id, this.confirmedPlayerIds.has(id) ? 1 : 0);
+    }
+    this.updateProgressBar();
+    this.updateGenerateButton();
+  }
+
   private handleSelectAll(): void {
     for (const [id] of this.playerStates) {
       this.playerStates.set(id, 1);
@@ -1362,13 +1364,6 @@ class MatchmakingPage extends Component {
       const nameEl = row.querySelector('.player-name') as HTMLElement | null;
       if (!nameEl) continue;
 
-      const playerId = Number(row.dataset.playerId);
-
-      if (this.showOnlyConfirmed && !this.confirmedPlayerIds.has(playerId)) {
-        row.style.display = 'none';
-        continue;
-      }
-
       const originalName = row.dataset.playerName ?? '';
 
       if (!this.searchQuery) {
@@ -1429,6 +1424,7 @@ class MatchmakingPage extends Component {
     refreshIcons();
     this.bindToggleButtons();
     this.bindSearchFilter();
+    this.bindActionButtons();
     this.updateConfirmationsPanel(LobbyService.getState() ?? {
       exists: false, ttl: 0, match: null, count: 0, confirmations: [], messages: [], messageCount: 0
     });

@@ -14,9 +14,16 @@ import gsap from 'gsap';
 import { animateVisible } from '@/utils/animate-visible.util';
 import { Component } from '../components/component.base';
 import { getInitials, renderPlayerAvatar } from '../components/player-avatar.component';
+import { renderRoleBadge } from '../components/role-badge.component';
 import { refreshIcons } from '../icons';
 
 import type { IPlayer } from '@/models/player.interface';
+
+const ROLE_OPTIONS = [
+  { value: '-1', icon: 'shield', label: 'DIFENSORE', color: '#60a5fa', bg: '96,165,250' },
+  { value: '0', icon: 'scale', label: 'ENTRAMBI', color: '#FFD700', bg: '255,215,0' },
+  { value: '1', icon: 'sword', label: 'ATTACCANTE', color: '#f87171', bg: '248,113,113' }
+] as const;
 
 const CLASS_COLORS: Record<number, string> = {
   0: '#FFD700',
@@ -51,9 +58,10 @@ class AddPlayerPage extends Component {
     const form = this.$('#add-player-form') as HTMLFormElement | null;
     form?.addEventListener('submit', e => this.handleSubmit(e));
 
-    // Bind defence slider to update display
-    const slider = this.$id('player-defence') as HTMLInputElement | null;
-    slider?.addEventListener('input', () => this.updateDefenceDisplay());
+    // Bind role radio buttons to update visual state on selection
+    for (const radio of this.$$('input[name="player-role"]') as HTMLInputElement[]) {
+      radio.addEventListener('change', () => this.updateRoleLabels());
+    }
 
     // GSAP animations
     gsap.from('.form-card', { y: 20, duration: 0.4, ease: 'power2.out' });
@@ -114,45 +122,24 @@ class AddPlayerPage extends Component {
                    required />
           </div>
 
-          <!-- ELO -->
+          <!-- Role -->
           <div>
             <label class="font-ui text-xs block mb-2" style="color:rgba(255,255,255,0.5); letter-spacing:0.1em">
-              ELO INIZIALE
+              RUOLO
             </label>
             <div class="grid grid-cols-3 gap-2">
-              ${[1000, 1100, 1200].map(elo => `
-                <label class="flex items-center justify-center px-3 py-2.5 rounded-lg cursor-pointer transition-all
-                              ${elo === 1200 ? 'ring-2 ring-(--color-gold)' : ''}"
-                       style="background:rgba(255,215,0,${elo === 1200 ? '0.15' : '0.05'});
-                              border:1px solid rgba(255,215,0,${elo === 1200 ? '0.4' : '0.15'})">
-                  <input type="radio" name="player-elo" value="${elo}"
-                         ${elo === 1200 ? 'checked' : ''}
+              ${ROLE_OPTIONS.map(r => `
+                <label class="role-label flex flex-col items-center gap-1.5 px-2 py-3 rounded-lg cursor-pointer transition-all"
+                       style="background:rgba(${r.bg},${r.value === '0' ? '0.15' : '0.05'});
+                              border:1px solid rgba(${r.bg},${r.value === '0' ? '0.4' : '0.15'});
+                              box-shadow:${r.value === '0' ? `0 0 0 2px ${r.color}` : 'none'}">
+                  <input type="radio" name="player-role" value="${r.value}"
+                         ${r.value === '0' ? 'checked' : ''}
                          class="sr-only" />
-                  <span class="font-display text-lg" style="color:var(--color-gold); letter-spacing:0.05em">
-                    ${elo}
-                  </span>
+                  <i data-lucide="${r.icon}" style="width:16px;height:16px;color:${r.color}"></i>
+                  <span class="font-ui text-[9px]" style="color:${r.color}; letter-spacing:0.08em">${r.label}</span>
                 </label>
               `).join('')}
-            </div>
-          </div>
-
-          <!-- Defence Ratio -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="font-ui text-xs" style="color:rgba(255,255,255,0.5); letter-spacing:0.1em">
-                RAPPORTO DIFESA
-              </label>
-              <span id="defence-display" class="font-display text-sm" style="color:var(--color-gold)">
-                50%
-              </span>
-            </div>
-            <input id="player-defence" type="range" min="0" max="100" value="50" step="5"
-                   class="w-full h-2 rounded-full appearance-none cursor-pointer"
-                   style="background:linear-gradient(90deg, var(--color-team-blue) 0%, rgba(255,255,255,0.15) 50%, var(--color-team-red) 100%)" />
-            <div class="flex justify-between mt-1">
-              <span class="font-body text-xs" style="color:rgba(49,130,206,0.6)">ATT</span>
-              <span class="font-body text-xs" style="color:rgba(255,255,255,0.3)">50/50</span>
-              <span class="font-body text-xs" style="color:rgba(229,62,62,0.6)">DIF</span>
             </div>
           </div>
 
@@ -197,26 +184,25 @@ class AddPlayerPage extends Component {
   }
 
   private renderPlayerRow(player: IPlayer): string {
-    const color = CLASS_COLORS[player.class] ?? '#8B7D6B';
+    const classIdx = Array.isArray(player.class) ? player.class[2] ?? player.class[0] : player.class as number;
+    const color = CLASS_COLORS[classIdx] ?? '#8B7D6B';
     const initials = getInitials(player.name);
     const elo = getDisplayElo(player);
-    const className = player.class >= 0 ? getClassName(player.class) : 'Non classificato';
-    const defPct = Math.round(player.defence * 100);
+    const className = classIdx >= 0 ? getClassName(classIdx) : 'Non classificato';
+    const roleBadge = renderRoleBadge({ playerRole: player.role, size: 'sm' });
 
     return `
       <a href="/profile/${player.id}"
          class="player-row flex items-center justify-between p-2.5 md:p-3 rounded-lg hover:bg-white/5 transition-colors"
          style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
         <div class="flex items-center gap-3 min-w-0">
-          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId: player.id, playerClass: player.class })}
+          ${renderPlayerAvatar({ initials, color, size: 'sm', playerId: player.id, playerClass: classIdx })}
           <div class="min-w-0">
             <div class="text-white font-ui text-sm truncate">${player.name}</div>
             <div class="flex items-center gap-2 mt-0.5">
               <span class="font-ui text-xs" style="color:${color}">${className}</span>
               <span style="color:rgba(255,255,255,0.2)">&middot;</span>
-              <span class="font-ui text-xs" style="color:rgba(255,255,255,0.4)">
-                DIF ${defPct}%
-              </span>
+              ${roleBadge}
             </div>
           </div>
         </div>
@@ -230,11 +216,16 @@ class AddPlayerPage extends Component {
 
   // ── Form Logic ─────────────────────────────────────────────
 
-  private updateDefenceDisplay(): void {
-    const slider = this.$id('player-defence') as HTMLInputElement | null;
-    const display = this.$id('defence-display');
-    if (slider && display) {
-      display.textContent = `${slider.value}%`;
+  private updateRoleLabels(): void {
+    for (const label of this.$$('.role-label') as HTMLElement[]) {
+      const input = label.querySelector<HTMLInputElement>('input[type="radio"]');
+      if (!input) continue;
+      const checked = input.checked;
+      const cfg = ROLE_OPTIONS.find(r => r.value === input.value);
+      if (!cfg) continue;
+      label.style.background = `rgba(${cfg.bg},${checked ? '0.15' : '0.05'})`;
+      label.style.border = `1px solid rgba(${cfg.bg},${checked ? '0.4' : '0.15'})`;
+      label.style.boxShadow = checked ? `0 0 0 2px ${cfg.color}` : 'none';
     }
   }
 
@@ -248,14 +239,11 @@ class AddPlayerPage extends Component {
       const name = (this.$id('player-name') as HTMLInputElement)?.value?.trim();
       if (!name) throw new Error('Inserisci un nome.');
 
-      const eloRadio = document.querySelector<HTMLInputElement>('input[name="player-elo"]:checked');
-      if (!eloRadio) throw new Error('Seleziona un ELO iniziale.');
-      const elo = Number(eloRadio.value);
+      const roleRadio = this.$$('input[name="player-role"]').find(el => (el as HTMLInputElement).checked) as HTMLInputElement | undefined;
+      if (!roleRadio) throw new Error('Seleziona un ruolo.');
+      const role = Number(roleRadio.value) as -1 | 0 | 1;
 
-      const defenceSlider = this.$id('player-defence') as HTMLInputElement;
-      const defence = Number(defenceSlider?.value ?? 50) / 100;
-
-      const newPlayer = createPlayerDTO(name, elo, defence);
+      const newPlayer = createPlayerDTO(name, role);
       await savePlayer(newPlayer);
 
       if (messageEl) {
@@ -266,7 +254,7 @@ class AddPlayerPage extends Component {
       // Reset form
       const form = this.$('#add-player-form') as HTMLFormElement | null;
       form?.reset();
-      this.updateDefenceDisplay();
+      this.updateRoleLabels();
 
       // Re-render players list
       const players = [...getAllPlayers()].sort((a, b) => a.name.localeCompare(b.name));

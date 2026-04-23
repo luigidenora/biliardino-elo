@@ -59,6 +59,11 @@ function computeMatches(): void {
     computeMatch(match, false);
   }
 
+  if (computeDayStart) {
+    computeRanks('rankAtDayStart');
+    computeEloDayStart();
+  }
+
   updateAllPlayerRecords();
   computeRanks('rank');
 }
