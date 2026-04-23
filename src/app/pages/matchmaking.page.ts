@@ -729,20 +729,9 @@ class MatchmakingPage extends Component {
       deselectAllBtn.addEventListener('click', () => this.handleDeselectAll());
     }
 
-    const filterConfirmedBtn = this.$id('filter-confirmed-btn');
+    const filterConfirmedBtn = this.$id('confirmed-only-btn');
     if (filterConfirmedBtn) {
-      filterConfirmedBtn.addEventListener('click', () => {
-        for (const playerId of this.confirmedPlayerIds) {
-          if (this.playerStates.get(playerId) === 0) {
-            this.playerStates.set(playerId, 1);
-            this.updateToggleButton(playerId, 1);
-          }
-        }
-        this.updateProgressBar();
-        this.updateGenerateButton();
-        filterConfirmedBtn.style.cssText = 'border-color:rgba(74,222,128,0.5);color:#4ADE80';
-        setTimeout(() => { filterConfirmedBtn.style.cssText = ''; }, 1200);
-      });
+      filterConfirmedBtn.addEventListener('click', () => this.handleConfirmedOnly());
     }
 
     // Score input blur validation (both panels)
@@ -1113,6 +1102,15 @@ class MatchmakingPage extends Component {
     appState.emit('lobby-change');
     this.refreshMatchPanels();
     this.refreshPlayerListPanel();
+  }
+
+  private handleConfirmedOnly(): void {
+    for (const [id] of this.playerStates) {
+      this.playerStates.set(id, this.confirmedPlayerIds.has(id) ? 1 : 0);
+      this.updateToggleButton(id, this.confirmedPlayerIds.has(id) ? 1 : 0);
+    }
+    this.updateProgressBar();
+    this.updateGenerateButton();
   }
 
   private handleSelectAll(): void {
