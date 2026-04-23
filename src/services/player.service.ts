@@ -1,15 +1,28 @@
 import { IMatch, ITeam } from '@/models/match.interface';
-import { IPlayer, IPlayerDTO } from '@/models/player.interface';
+import { IPlayer, IPlayerDTO, PlayerRadarStats } from '@/models/player.interface';
 import { DerankTreshold, FinalK, FirstRankUp, MatchesToRank, MatchesToTransition, RankTreshold, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
+
+type Ranges = { sigma: MinMax; mu: MinMax; winRate: MinMax; elo: MinMax; form: MinMax; opponentElo: MinMax; goalRatio: MinMax };
+type Consistency = { sigma: number; mu: number };
+type MinMax = { min: number; max: number };
 
 const playersMap = new Map<number, IPlayer>();
 let playersArray: IPlayer[] = [];
 
+const ratingWeight = {
+  elo: 1,
+  winRate: 0.75,
+  opponentElo: 1,
+  form: 0.5,
+  goalRatio: 0.75,
+  consistency: 1
+};
+
 try {
   await loadPlayers();
 } catch (e) {
-  console.error('[player.service] Failed to load players from Firebase:', e);
+  console.error('[player.service] Failed to load players:', e);
 }
 
 export function getPlayerById(id: number): IPlayer | undefined {
@@ -218,9 +231,64 @@ export function updateAverage(average: number, count: number, value: number): nu
   return (average * count + value) / (count + 1);
 }
 
-export function updatePlayerRecords(playerId: number, role: number): void {
+export function getPlayerRanges(): Ranges {
+  const ranges: Ranges = {
+    elo: { min: Infinity, max: -Infinity },
+    winRate: { min: Infinity, max: -Infinity },
+    form: { min: Infinity, max: -Infinity },
+    opponentElo: { min: Infinity, max: -Infinity },
+    goalRatio: { min: Infinity, max: -Infinity },
+    sigma: { min: Infinity, max: -Infinity },
+    mu: { min: Infinity, max: -Infinity }
+  };
+
+  for (const p of getAllPlayers()) {
+    checkPlayerRanges(p, 0, ranges);
+    checkPlayerRanges(p, 1, ranges);
+  }
+
+  return ranges;
+}
+
+function checkPlayerRanges(player: IPlayer, role: number, ranges: Ranges): void {
+  if (player.matches[role] < MatchesToRank) return;
+
+  const elo = player.elo[role];
+  if (elo < ranges.elo.min) ranges.elo.min = elo;
+  if (elo > ranges.elo.max) ranges.elo.max = elo;
+
+  const { sigma, mu } = getSigmaMu(player, role, MatchesToRank);
+  if (sigma < ranges.sigma.min) ranges.sigma.min = sigma;
+  if (sigma > ranges.sigma.max) ranges.sigma.max = sigma;
+  if (mu < ranges.mu.min) ranges.mu.min = mu;
+  if (mu > ranges.mu.max) ranges.mu.max = mu;
+
+  const winRate = player.wins[role] / player.matches[role];
+  if (winRate < ranges.winRate.min) ranges.winRate.min = winRate;
+  if (winRate > ranges.winRate.max) ranges.winRate.max = winRate;
+
+  const opponentElo = player.avgOpponentElo[role];
+  if (opponentElo < ranges.opponentElo.min) ranges.opponentElo.min = opponentElo;
+  if (opponentElo > ranges.opponentElo.max) ranges.opponentElo.max = opponentElo;
+
+  const goalRatio = player.goalsFor[role] / Math.max(1, player.goalsAgainst[role]);
+  if (goalRatio < ranges.goalRatio.min) ranges.goalRatio.min = goalRatio;
+  if (goalRatio > ranges.goalRatio.max) ranges.goalRatio.max = goalRatio;
+
+  const form = player.matchesDelta[role].slice(-10).reduce((sum, v) => sum + v, 0) / 10;
+  if (form < ranges.form.min) ranges.form.min = form;
+  if (form > ranges.form.max) ranges.form.max = form;
+}
+
+export function updatePlayerRecords(playerId: number, role: number, ranges: Ranges): void {
   const player = getPlayerById(playerId);
   if (!player) throw new Error('Player not found when updating records.');
+
+  player.stats[0] = computeStats(player, 0, ranges);
+  player.stats[1] = computeStats(player, 1, ranges);
+
+  player.rating[0] = getRating(player, 0);
+  player.rating[1] = getRating(player, 1);
 
   const teammatesStats = player.teammatesStats[role];
   for (const idMate in teammatesStats) {
@@ -271,11 +339,40 @@ export function updatePlayerRecords(playerId: number, role: number): void {
   }
 }
 
-export function updateAllPlayerRecords(): void {
+export function updateAllPlayerRecords(ranges: Ranges): void {
   for (const player of playersArray) {
-    updatePlayerRecords(player.id, 0);
-    updatePlayerRecords(player.id, 1);
+    updatePlayerRecords(player.id, 0, ranges);
+    updatePlayerRecords(player.id, 1, ranges);
   }
+}
+
+function computeStats(player: IPlayer, role: number, ranges: Ranges): PlayerRadarStats | null {
+  if (player.matches[role] < MatchesToRank) return null;
+
+  const consistency = calculateConsistency(player, role, ranges.sigma, ranges.mu);
+  const winRate = norm(player.wins[role] / player.matches[role], ranges.winRate.min, ranges.winRate.max);
+  const elo = norm(player.elo[role], ranges.elo.min, ranges.elo.max);
+  const goalRatio = norm(player.goalsFor[role] / Math.max(1, player.goalsAgainst[role]), ranges.goalRatio.min, ranges.goalRatio.max);
+  const opponentElo = norm(player.avgOpponentElo[role], ranges.opponentElo.min, ranges.opponentElo.max);
+  const form = norm(player.matchesDelta[role].slice(-10).reduce((sum, v) => sum + v, 0) / 10, ranges.form.min, ranges.form.max);
+
+  return { consistency, winRate, elo, form, opponentElo, goalRatio };
+}
+
+function getRating(player: IPlayer, role: number): number {
+  const stats = player.stats[role];
+  if (!stats) return -1;
+
+  const total = ratingWeight.consistency + ratingWeight.winRate + ratingWeight.elo + ratingWeight.opponentElo + ratingWeight.form + ratingWeight.goalRatio;
+
+  return (
+    stats.consistency * ratingWeight.consistency
+    + stats.winRate * ratingWeight.winRate
+    + stats.elo * ratingWeight.elo
+    + stats.opponentElo * ratingWeight.opponentElo
+    + stats.form * ratingWeight.form
+    + stats.goalRatio * ratingWeight.goalRatio
+  ) * 2 / total;
 }
 
 export function computeEloDayStart(): void {
@@ -329,33 +426,13 @@ function computeRanksRole(role: number, rankKey: 'rank' | 'rankAtDayStart'): voi
   }
 }
 
-function standardDeviation(values: number[]): number {
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
-  return Math.sqrt(variance);
-}
-
-export function calculateConsistency(player: IPlayer, role: number): number {
-  // OPTIMIZE sta calcolando due volte tutta sta roba e sta ricalcolando pure il player stesso
+export function calculateConsistency(player: IPlayer, role: number, sigmaRange: MinMax, muRange: MinMax): number {
   const matches = player.history[role];
   if (matches.length === 0) return 0;
 
-  const results: { sigma: number; mu: number }[] = [];
-
-  for (const p of getAllPlayers()) {
-    results.push(getSigmaMu(p, 0, MatchesToRank), getSigmaMu(p, 1, MatchesToRank));
-  }
-
-  const sigmas = results.map(r => r.sigma).filter(sigma => Number.isFinite(sigma));
-  const mus = results.map(r => r.mu).filter(mu => Number.isFinite(mu));
-  const maxSigma = Math.max(...sigmas);
-  const minSigma = Math.min(...sigmas);
-  const maxMu = Math.max(...mus);
-  const minMu = Math.min(...mus);
-
   const { sigma, mu } = getSigmaMu(player, role, 1);
-  const sigmaNorm = 1 - normClamp(sigma, minSigma, maxSigma);
-  const muNorm = normClamp(mu, minMu, maxMu);
+  const sigmaNorm = 1 - normClamp(sigma, sigmaRange.min, sigmaRange.max);
+  const muNorm = normClamp(mu, muRange.min, muRange.max);
 
   console.log(`Player ${player.name} - Role ${role === 0 ? 'Defender' : 'Attacker'} - Consistency calculation: sigma=${sigma.toFixed(3)} (norm ${sigmaNorm.toFixed(3)}), mu=${mu.toFixed(3)} (norm ${muNorm.toFixed(3)})`);
 
@@ -363,7 +440,7 @@ export function calculateConsistency(player: IPlayer, role: number): number {
   return consistency;
 }
 
-function getSigmaMu(player: IPlayer, role: number, minMatches: number): { sigma: number; mu: number } {
+function getSigmaMu(player: IPlayer, role: number, minMatches: number): Consistency {
   const matches = player.history[role];
   if (matches.length < minMatches) return { sigma: 0.5, mu: 0 };
 
@@ -383,7 +460,17 @@ function getSigmaMu(player: IPlayer, role: number, minMatches: number): { sigma:
   return { sigma, mu };
 }
 
+function standardDeviation(values: number[]): number {
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
 function normClamp(value: number, min: number, max: number): number {
-  const norm = (value - min) / (max - min);
-  return Math.max(0, Math.min(1, norm));
+  const normValue = norm(value, min, max);
+  return Math.max(0, Math.min(1, normValue));
+}
+
+function norm(value: number, min: number, max: number): number {
+  return (value - min) / (max - min);
 }

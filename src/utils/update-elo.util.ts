@@ -1,6 +1,6 @@
 import { IMatch } from '@/models/match.interface';
 import { updateMatch } from '@/services/elo.service';
-import { computeRanks, getPlayerById, updatePlayer, updatePlayerRecords } from '@/services/player.service';
+import { computeRanks, getPlayerById, getPlayerRanges, updatePlayer, updatePlayerRecords } from '@/services/player.service';
 
 export function computeMatch(match: IMatch, computeStats: boolean): void {
   if (!updateMatch(match)) return;
@@ -14,10 +14,12 @@ export function computeMatch(match: IMatch, computeStats: boolean): void {
   updatePlayer(match.teamB.attack, match.teamB.defence, match.teamA, 1, match);
 
   if (computeStats) {
-    updatePlayerRecords(match.teamA.defence, 0);
-    updatePlayerRecords(match.teamA.attack, 1);
-    updatePlayerRecords(match.teamB.defence, 0);
-    updatePlayerRecords(match.teamB.attack, 1);
+    const ranges = getPlayerRanges();
+
+    updatePlayerRecords(match.teamA.defence, 0, ranges);
+    updatePlayerRecords(match.teamA.attack, 1, ranges);
+    updatePlayerRecords(match.teamB.defence, 0, ranges);
+    updatePlayerRecords(match.teamB.attack, 1, ranges);
 
     computeRanks('rank');
   }

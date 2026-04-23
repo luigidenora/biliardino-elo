@@ -1,6 +1,6 @@
 import { computeMatch } from '@/utils/update-elo.util';
 import { IMatch, IMatchDTO, ITeam } from '../models/match.interface';
-import { computeEloDayStart, computeRanks, updateAllPlayerRecords } from './player.service';
+import { computeEloDayStart, computeRanks, getAllPlayers, getPlayerRanges, updateAllPlayerRecords } from './player.service';
 import { fetchMatches, parseMatchDTO } from './repository.service';
 
 let matches: IMatch[] = [];
@@ -64,8 +64,11 @@ function computeMatches(): void {
     computeEloDayStart();
   }
 
-  updateAllPlayerRecords();
+  const ranges = getPlayerRanges();
+  updateAllPlayerRecords(ranges);
   computeRanks('rank');
+
+  console.log(getAllPlayers());
 }
 
 function isToday(ts: number): boolean {

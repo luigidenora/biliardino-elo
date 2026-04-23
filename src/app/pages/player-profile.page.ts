@@ -11,7 +11,7 @@
 import { IMatch } from '@/models/match.interface';
 import { IPlayer } from '@/models/player.interface';
 import { MatchesToRank } from '@/services/elo.service';
-import { calculateConsistency, getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
+import { getAllPlayers, getBonusK, getPlayerById } from '@/services/player.service';
 import { getClassName } from '@/utils/get-class-name.util';
 import { getAvgAgainstColor, getAvgForColor, getGoalRatioColor, getWinRateColor } from '@/utils/stats-thresholds.util';
 import { Chart, registerables } from 'chart.js';
@@ -157,14 +157,8 @@ export default class PlayerProfilePage extends Component {
     this.radarDataDif = this.computeRadarDataForRole(player, 0, radarRanges);
     this.radarDataAtt = this.computeRadarDataForRole(player, 1, radarRanges);
 
-    // Calcolo rating attacco/difesa (media valori radar / 60, arrotondato a 2 decimali)
-    const calcRadarRating = (arr: number[]): number => {
-      if (!arr.length) return 0;
-      const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
-      return Math.round((avg / 60) * 100) / 100;
-    };
-    const ratingDef = player.matches[0] >= MatchesToRank ? calcRadarRating(this.radarDataDif) : '-';
-    const ratingAtt = player.matches[1] >= MatchesToRank ? calcRadarRating(this.radarDataAtt) : '-';
+    const ratingDef = player.matches[0] >= MatchesToRank ? Math.round(player.rating[0] * 100) / 100 : '-';
+    const ratingAtt = player.matches[1] >= MatchesToRank ? Math.round(player.rating[1] * 100) / 100 : '-';
 
     // Match history — combined, sorted chronologically, then reversed (newest first)
     const combinedHistory = [...player.history[0], ...player.history[1]]
@@ -587,9 +581,9 @@ export default class PlayerProfilePage extends Component {
     // Difficoltà: ELO medio degli avversari affrontati, normalizzato
     const difficoltaScore = norm(player.avgOpponentElo[role], globalMinOppElo, globalMaxOppElo);
 
-    const costanzaScore = norm(calculateConsistency(player, role), 0, 1);
+    const costanzaScore = player.stats[role]?.consistency ?? 0;
 
-    return [eloScore, winRate, goalRatioScore, formaScore, difficoltaScore, costanzaScore];
+    return [eloScore, winRate, goalRatioScore, formaScore, difficoltaScore, costanzaScore * 100];
   }
 
   // ── Companion Cards ───────────────────────────────────────

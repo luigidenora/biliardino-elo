@@ -9,6 +9,7 @@ export interface IPlayerDTO {
 export type MatchPlayerStats = { matches: number; wins: number; delta: number };
 export type PlayerStats = { player: number; value: number };
 export type MatchStats = { match: IMatch; value: number };
+export type PlayerRadarStats = { consistency: number; elo: number; winRate: number; goalRatio: number; opponentElo: number; form: number };
 
 export interface IPlayer extends IPlayerDTO {
   elo: [number, number]; // [defenderElo, attackerElo]
@@ -22,8 +23,8 @@ export interface IPlayer extends IPlayerDTO {
   class: [number, number];
   streak: [number, number];
   bestRole: number; // 0 defender, 1 attacker
-  consistency: [number, number];
-  // rating: [number, number];
+  stats: [PlayerRadarStats | null, PlayerRadarStats | null];
+  rating: [number, number];
 
   teammatesStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];
   opponentsStats: [{ [x: number]: MatchPlayerStats }, { [x: number]: MatchPlayerStats }];

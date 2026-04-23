@@ -57,10 +57,10 @@ interface MatchmakingRanges {
 }
 
 const config: IMatchmakingConfig = {
-  matchBalanceWeight: 0.15,
-  playersDifferenceWeight: 0.25,
-  priorityWeight: 0.15,
-  diversityTeamWeight: 0.25,
+  matchBalanceWeight: 0.2,
+  playersDifferenceWeight: 0.2,
+  priorityWeight: 0.2,
+  diversityTeamWeight: 0.2,
   diversityOpponentWeight: 0.15,
   randomness: 0.05
 };
