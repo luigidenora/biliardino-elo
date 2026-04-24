@@ -1053,6 +1053,7 @@ class MatchmakingPage extends Component {
       this.refreshMatchPanels();
     } finally {
       this.isSaving = false;
+      this.updateGenerateButton();
     }
   }
 
