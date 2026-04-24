@@ -308,7 +308,7 @@ class UserDropdownComponent {
       const resp = await fetch(`${API_BASE_URL}/subscription`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: Number(savedPlayerId), endpoint, subscription: subObj })
+        body: JSON.stringify({ playerId: Number(savedPlayerId), endpoint, subscription: subObj, deviceId: localStorage.getItem('biliardino_device_id') })
       });
 
       if (!resp.ok && resp.status !== 404) throw new Error(`DELETE failed: ${resp.status}`);

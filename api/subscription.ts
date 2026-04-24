@@ -21,9 +21,16 @@ interface SubscriptionData {
   createdAt: string;
 }
 
-function generateId(playerId: number, subscription: PushSubscription): string {
-  const deviceHash = createHash('sha256').update(subscription.endpoint).digest('hex').slice(0, 16);
+function generateId(playerId: number, subscription: PushSubscription, deviceId?: string): string {
+  const deviceHash = deviceId
+    ? deviceId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32)
+    : createHash('sha256').update(subscription.endpoint).digest('hex').slice(0, 16);
   return `${playerId}-subs/${deviceHash}.json`;
+}
+
+function resolveDeviceHash(endpointOrDeviceId: string, isDeviceId: boolean): string {
+  if (isDeviceId) return endpointOrDeviceId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32);
+  return createHash('sha256').update(endpointOrDeviceId).digest('hex').slice(0, 16);
 }
 
 async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelResponse> {
@@ -37,12 +44,13 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
         playerId?: string | number;
         playerName?: string;
         verify?: boolean;
+        deviceId?: string;
       };
 
       // If client only wants to verify whether the local subscription exists on server,
       // handle that server-side without returning the list of server endpoints.
       if (body.verify) {
-        const { subscription, playerId: rawPlayerId } = body;
+        const { subscription, playerId: rawPlayerId, deviceId } = body;
         if (!subscription || !rawPlayerId) {
           return res.status(400).json({ error: 'Missing subscription or playerId for verification' });
         }
@@ -50,9 +58,10 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
         const endpointValue = subscription.endpoint;
         if (!endpointValue) return res.status(400).json({ error: 'Missing subscription endpoint' });
 
-        // Compute same device hash used when saving subscriptions and look for a matching blob
-        const deviceHash = createHash('sha256').update(endpointValue).digest('hex').slice(0, 16);
-        const targetPathname = `${deviceHash}.json`;
+        const targetHash = deviceId
+          ? resolveDeviceHash(deviceId, true)
+          : resolveDeviceHash(endpointValue, false);
+        const targetPathname = `${targetHash}.json`;
 
         const { blobs } = await list();
         const matching = blobs.filter(b => b.pathname === targetPathname || b.pathname.endsWith(targetPathname));
@@ -60,7 +69,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
         return res.status(200).json({ exists: matching.length > 0, count: matching.length });
       }
 
-      const { subscription, playerId: rawPlayerId, playerName: rawPlayerName } = body;
+      const { subscription, playerId: rawPlayerId, playerName: rawPlayerName, deviceId } = body;
 
       // Validazione input for create
       if (!subscription || !rawPlayerId || !rawPlayerName) {
@@ -71,7 +80,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       const playerIdNum = validatePlayerId(rawPlayerId);
       const playerName = validateString(rawPlayerName, 'playerName', 100);
 
-      const key = generateId(playerIdNum, subscription);
+      const key = generateId(playerIdNum, subscription, deviceId);
       const data: SubscriptionData = {
         subscription,
         playerId: playerIdNum, // Salva come numero
@@ -125,26 +134,30 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
   if (req.method === 'DELETE') {
     try {
-      const { playerId: rawPlayerId, subscription, endpoint } = req.body as {
+      const { playerId: rawPlayerId, subscription, endpoint, deviceId } = req.body as {
         playerId?: string | number;
         subscription?: PushSubscription;
         endpoint?: string;
+        deviceId?: string;
       };
 
-      if (!rawPlayerId || (!subscription && !endpoint)) {
-        return res.status(400).json({ error: 'Missing playerId or subscription/endpoint' });
+      if (!rawPlayerId || (!subscription && !endpoint && !deviceId)) {
+        return res.status(400).json({ error: 'Missing playerId or subscription/endpoint/deviceId' });
       }
 
       const playerIdNum = validatePlayerId(rawPlayerId);
 
-      const endpointValue = endpoint ?? subscription?.endpoint;
-      if (!endpointValue) {
-        return res.status(400).json({ error: 'Missing subscription endpoint' });
+      let targetHash: string;
+      if (deviceId) {
+        targetHash = resolveDeviceHash(deviceId, true);
+      } else {
+        const endpointValue = endpoint ?? subscription?.endpoint;
+        if (!endpointValue) {
+          return res.status(400).json({ error: 'Missing subscription endpoint' });
+        }
+        targetHash = resolveDeviceHash(endpointValue, false);
       }
-
-      // Compute device hash same as generateId
-      const deviceHash = createHash('sha256').update(endpointValue).digest('hex').slice(0, 16);
-      const targetPathname = `${deviceHash}.json`;
+      const targetPathname = `${targetHash}.json`;
 
       const { blobs } = await list();
 
