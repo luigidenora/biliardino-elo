@@ -745,6 +745,11 @@ class MatchmakingPage extends Component {
       deselectAllBtn.addEventListener('click', () => this.handleDeselectAll());
     }
 
+    const presenzeBtn = this.$id('presenze-btn');
+    if (presenzeBtn) {
+      presenzeBtn.addEventListener('click', () => this.handlePresenze());
+    }
+
     const filterConfirmedBtn = this.$id('confirmed-only-btn');
     if (filterConfirmedBtn) {
       filterConfirmedBtn.addEventListener('click', () => this.handleConfirmedOnly());
@@ -1218,6 +1223,21 @@ class MatchmakingPage extends Component {
     // appState.emit('lobby-change');
     this.refreshMatchPanels();
     this.refreshPlayerListPanel();
+  }
+
+  private handlePresenze(): void {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayKey = days[new Date().getDay()];
+    const availableNames: string[] = availabilityList[todayKey] || [];
+    const players = getAllPlayers();
+    const availableIds = new Set(players.filter(p => availableNames.includes(p.name)).map(p => p.id));
+    for (const [id] of this.playerStates) {
+      const state: PlayerState = availableIds.has(id) ? 1 : 0;
+      this.playerStates.set(id, state);
+      this.updateToggleButton(id, state);
+    }
+    this.updateProgressBar();
+    this.updateGenerateButton();
   }
 
   private handleConfirmedOnly(): void {
