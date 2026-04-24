@@ -29,8 +29,21 @@ export async function getMatchesHash(): Promise<number> {
   if (error || !data || typeof data.hashMatches !== 'number') return -1;
   return data.hashMatches;
 }
-const CACHE_HASH_PLAYERS_KEY = 'supabase_cache_hash_players';
-const CACHE_HASH_MATCHES_KEY = 'supabase_cache_hash_matches';
+
+/**
+ * Restituisce entrambi gli hash in una singola query (ottimizzazione).
+ */
+export async function getBothHashes(): Promise<{ hashPlayers: number; hashMatches: number }> {
+  const { data, error } = await supabase
+    .from('cache-control')
+    .select('hashPlayers, hashMatches')
+    .eq('firestore_id', CACHE_CONTROL_ID)
+    .single<{ hashPlayers: number; hashMatches: number }>();
+  if (error || !data) return { hashPlayers: -1, hashMatches: -1 };
+  return data;
+}
+export const CACHE_HASH_PLAYERS_KEY = 'supabase_cache_hash_players';
+export const CACHE_HASH_MATCHES_KEY = 'supabase_cache_hash_matches';
 const PLAYERS_DATA_KEY = 'supabase_players_data';
 const MATCHES_DATA_KEY = 'supabase_matches_data';
 
@@ -96,9 +109,18 @@ function mapPlayerRow(row: { id: string; name: string; role: -1 | 0 | 1 }): IPla
 
 export async function fetchPlayers(): Promise<IPlayer[]> {
   try {
+    const remoteHash = await getPlayersHash();
+    const localHash = Number(localStorage.getItem(CACHE_HASH_PLAYERS_KEY) ?? 'NaN');
+    const raw = localStorage.getItem(PLAYERS_DATA_KEY);
+
+    if (remoteHash !== -1 && remoteHash === localHash && raw) {
+      return (JSON.parse(raw) as { id: string; name: string; role: -1 | 0 | 1 }[]).map(mapPlayerRow);
+    }
+
     const { data, error } = await supabase.from('playersShark').select('*');
     if (error) throw error;
     localStorage.setItem(PLAYERS_DATA_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_HASH_PLAYERS_KEY, String(remoteHash));
     return data.map(mapPlayerRow);
   } catch (err) {
     const raw = localStorage.getItem(PLAYERS_DATA_KEY);
@@ -126,9 +148,18 @@ function mapMatchRow(row: MatchRow): IMatch {
 
 export async function fetchMatches(): Promise<IMatch[]> {
   try {
+    const remoteHash = await getMatchesHash();
+    const localHash = Number(localStorage.getItem(CACHE_HASH_MATCHES_KEY) ?? 'NaN');
+    const raw = localStorage.getItem(MATCHES_DATA_KEY);
+
+    if (remoteHash !== -1 && remoteHash === localHash && raw) {
+      return (JSON.parse(raw) as MatchRow[]).map(mapMatchRow);
+    }
+
     const { data, error } = await supabase.from('matchesShark').select('*');
     if (error) throw error;
     localStorage.setItem(MATCHES_DATA_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_HASH_MATCHES_KEY, String(remoteHash));
     return data.map(mapMatchRow);
   } catch (err) {
     const raw = localStorage.getItem(MATCHES_DATA_KEY);

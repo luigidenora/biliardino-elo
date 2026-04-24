@@ -16,6 +16,9 @@ import '../pwa';
 
 // ── App ────────────────────────────────────────────────────
 import '@/services/match.service';
+import { initDataSync } from '@/services/data-sync.service';
+import { reloadMatchesAndRecompute } from '@/services/match.service';
+import { reloadPlayers } from '@/services/player.service';
 import { LayoutComponent } from './components/layout.component';
 import { pullToRefresh } from './components/pull-to-refresh.component';
 import { userDropdown } from './components/user-dropdown.component';
@@ -108,6 +111,13 @@ async function bootstrap(): Promise<void> {
 
   pullToRefresh.mount();
   trace('Bootstrap', 'pullToRefresh mounted');
+
+  // 3b. Initialize real-time data sync (Supabase Realtime)
+  initDataSync({
+    onPlayersChanged: reloadPlayers,
+    onMatchesChanged: reloadMatchesAndRecompute
+  });
+  trace('Bootstrap', 'data sync (Realtime) initialized');
 
   // 4. Wait for players and matches to be loaded before routing
   trace('Bootstrap', 'waiting for data (players + matches)');
