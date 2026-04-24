@@ -418,7 +418,7 @@ class LeaderboardPage extends Component {
         
           <div class="font-ui text-xs" style="color:#FFD700; letter-spacing:0.08em">ATTENZIONE</div>
           <div class="font-body" style="font-size:11px; color:rgba(255,255,255,0.5)">
-            Il biliardino non e scontato: solo in pausa e con rispetto, per evitare sanzioni.
+            Il biliardino non è scontato: solo in pausa e con rispetto, per evitare sanzioni.
           </div>
         </div>
       </div>

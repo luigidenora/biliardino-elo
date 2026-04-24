@@ -55,10 +55,11 @@ export const subscribeToPushNotifications = async (playerId: number, playerName:
 
   // Register with server (idempotent on server side). This is called when local
   // state and PushManager state disagree, or local state is missing.
+  const deviceId = getOrCreateDeviceId();
   const response = await fetch(`${API_BASE_URL}/subscription`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription, playerId, playerName })
+    body: JSON.stringify({ subscription, playerId, playerName, deviceId })
   });
   if (header) header.classList.remove(styles.loading);
   if (!response.ok) throw new Error('Subscription registration failed');
@@ -193,7 +194,7 @@ function createNotificationButton(): HTMLElement {
         const resp = await fetch(`${API_BASE_URL}/subscription`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerId: Number(savedPlayerId), endpoint: endpointToDelete, subscription: subObj })
+          body: JSON.stringify({ playerId: Number(savedPlayerId), endpoint: endpointToDelete, subscription: subObj, deviceId: localStorage.getItem(DEVICE_ID_KEY) })
         });
 
         if (resp.ok || resp.status === 404) {
@@ -521,6 +522,16 @@ const SUBSCRIPTION_KEY = 'biliardino_subscription';
 const SUBSCRIPTION_VERIFIED_KEY = 'biliardino_subscription_verified';
 const PLAYER_ID_KEY = 'biliardino_player_id';
 const PLAYER_NAME_KEY = 'biliardino_player_name';
+const DEVICE_ID_KEY = 'biliardino_device_id';
+
+function getOrCreateDeviceId(): string {
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID().replace(/-/g, '');
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+  }
+  return deviceId;
+}
 
 const NOTIF_STATES = {
   DISABLED: 'disabled', // browser notifications not granted
