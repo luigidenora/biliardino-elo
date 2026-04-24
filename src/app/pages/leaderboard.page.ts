@@ -1027,7 +1027,7 @@ class LeaderboardPage extends Component {
     ).join('');
     const makeFormaRow = (arr: number[], r: 0 | 1) => {
       if (noRole(r)) return `<div style="opacity:${opacity(r)}">${dash}</div>`;
-      const last = arr.slice(-5);
+      const last = arr.slice(-5).reverse();
       const sum = Math.round(last.reduce((a, d) => a + d, 0));
       const fc = sum > 0 ? '#4ADE80' : sum < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
       const fs = sum > 0 ? `+${sum}` : `${sum}`;
@@ -1038,7 +1038,7 @@ class LeaderboardPage extends Component {
         </div>`;
     };
     const deltaArr = roleForDisplay === null ? null : (player.matchesDelta[roleForDisplay] || []);
-    const last5 = deltaArr ? deltaArr.slice(-5) : [];
+    const last5 = deltaArr ? deltaArr.slice(-5).reverse() : [];
     const formaEloSum = last5.reduce((acc, d) => acc + d, 0);
     const formaEloRounded = Math.round(formaEloSum);
     const formaEloColor = formaEloRounded > 0 ? '#4ADE80' : formaEloRounded < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
@@ -1077,7 +1077,7 @@ class LeaderboardPage extends Component {
 
     const mobileWr = player.matches[mobileRole] > 0 ? Math.round((player.wins[mobileRole] / player.matches[mobileRole]) * 100) : 0;
     const mobileWrColor = mobileWr >= 60 ? '#4ADE80' : mobileWr >= 45 ? '#FFD700' : '#F87171';
-    const mobileLast5 = (player.matchesDelta[mobileRole] ?? []).slice(-5);
+    const mobileLast5 = (player.matchesDelta[mobileRole] ?? []).slice(-5).reverse();
     const mobileFormaDots = makeDots(mobileLast5, 5);
     const mobileFormaSum = Math.round(mobileLast5.reduce((a, d) => a + d, 0));
     const mobileFormaColor = mobileFormaSum > 0 ? '#4ADE80' : mobileFormaSum < 0 ? '#F87171' : 'rgba(255,255,255,0.3)';
