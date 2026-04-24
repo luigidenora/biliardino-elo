@@ -45,7 +45,7 @@ export function renderMatchmakingPlayerList({
   const progressPct = Math.min(100, (selectedCount / minPlayers) * 100);
   const progressComplete = selectedCount >= minPlayers;
 
-  const playerRows = players.map((player, idx) => {
+  const renderRow = (player: IPlayer, idx: number) => {
     const state = playerStates.get(player.id) ?? 0;
     const initials = getInitials(player.name);
     const isConfirmed = confirmedPlayerIds.has(player.id);
@@ -65,7 +65,7 @@ export function renderMatchmakingPlayerList({
           ${renderPlayerAvatar({ initials, color: 'rgba(255,255,255,0.25)', size: 'sm', online: isConfirmed ? true : undefined, playerId: player.id })}
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="player-name font-ui truncate text-sm font-semibold ${isConfirmed ? 'text-white' : 'text-white'}" data-original-name="${player.name}">
+              <span class="player-name font-ui truncate text-sm font-semibold text-white" data-original-name="${player.name}">
                 ${player.name}
               </span>
               ${roleBadge}
@@ -92,7 +92,21 @@ export function renderMatchmakingPlayerList({
         </div>
       </div>
     `;
-  }).join('');
+  };
+
+  const selected = players.filter(p => (playerStates.get(p.id) ?? 0) > 0);
+  const unselected = players.filter(p => (playerStates.get(p.id) ?? 0) === 0);
+
+  const selectedRows = selected.map((p, i) => renderRow(p, i)).join('');
+  const unselectedRows = unselected.map((p, i) => renderRow(p, i)).join('');
+
+  const divider = selected.length > 0 && unselected.length > 0
+    ? `<div class="px-4 py-1.5 flex items-center gap-2" style="background:rgba(10,25,18,0.5); border-bottom:1px solid rgba(255,255,255,0.06)">
+         <span class="font-ui text-[10px] text-white/25 tracking-[0.12em]">NON SELEZIONATI</span>
+       </div>`
+    : '';
+
+  const playerRows = selectedRows + divider + unselectedRows;
 
   return html(playerListTemplate, {
     selectedCount,
