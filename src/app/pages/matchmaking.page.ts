@@ -65,6 +65,7 @@ class MatchmakingPage extends Component {
   private isSaving = false;
   private searchQuery = '';
   private useRelaxedClassDiff = false;
+  private autoNotifyExtracted = false;
   private lobbyExists = false;
   private lobbyConfirmedCount = 0;
   private lobbyLoading = true;
@@ -313,6 +314,23 @@ class MatchmakingPage extends Component {
   private renderGenerateButton(): string {
     const enabled = this.getSelectedCount() >= MIN_PLAYERS;
     return `
+      <!-- Auto-notify extracted toggle -->
+      <label id="auto-notify-toggle-label" class="flex items-center gap-3 cursor-pointer select-none px-1">
+        <div class="relative">
+          <input type="checkbox" id="auto-notify-extracted-toggle" class="sr-only" ${this.autoNotifyExtracted ? 'checked' : ''}>
+          <div id="auto-notify-track" class="w-9 h-5 rounded-full transition-colors duration-200"
+               style="background:${this.autoNotifyExtracted ? 'rgba(129,140,248,0.5)' : 'rgba(255,255,255,0.1)'}; border:1px solid rgba(255,255,255,0.15)">
+            <div id="auto-notify-thumb" class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                 style="background:#818CF8; transform:translateX(${this.autoNotifyExtracted ? '16px' : '0px'})"></div>
+          </div>
+        </div>
+        <span class="font-ui" style="font-size:11px; color:rgba(255,255,255,0.55); letter-spacing:0.08em">
+          NOTIFICA ESTRATTI: <span style="color:${this.autoNotifyExtracted ? '#818CF8' : 'rgba(255,255,255,0.35)'}">
+            ${this.autoNotifyExtracted ? 'ON' : 'OFF'}
+          </span>
+        </span>
+      </label>
+
       <!-- Class diff toggle -->
       <label id="class-diff-toggle-label" class="flex items-center gap-3 cursor-pointer select-none px-1">
         <div class="relative">
@@ -759,6 +777,28 @@ class MatchmakingPage extends Component {
       });
     }
 
+    // Auto-notify extracted toggle (rendered in both panels)
+    for (const checkbox of this.$$('#auto-notify-extracted-toggle') as HTMLInputElement[]) {
+      checkbox.addEventListener('change', () => {
+        this.autoNotifyExtracted = checkbox.checked;
+        // Sync all toggle instances
+        for (const cb of this.$$('#auto-notify-extracted-toggle') as HTMLInputElement[]) {
+          cb.checked = this.autoNotifyExtracted;
+        }
+        for (const track of this.$$('#auto-notify-track')) {
+          track.style.background = this.autoNotifyExtracted ? 'rgba(129,140,248,0.5)' : 'rgba(255,255,255,0.1)';
+        }
+        for (const thumb of this.$$('#auto-notify-thumb')) {
+          thumb.style.transform = `translateX(${this.autoNotifyExtracted ? '16px' : '0px'})`;
+        }
+        const labels = this.$$('#auto-notify-toggle-label span span');
+        for (const span of labels) {
+          span.textContent = this.autoNotifyExtracted ? 'ON' : 'OFF';
+          (span as HTMLElement).style.color = this.autoNotifyExtracted ? '#818CF8' : 'rgba(255,255,255,0.35)';
+        }
+      });
+    }
+
     // Class diff toggle (rendered in both panels)
     for (const checkbox of this.$$('#class-diff-toggle') as HTMLInputElement[]) {
       checkbox.addEventListener('change', () => {
@@ -1089,6 +1129,43 @@ class MatchmakingPage extends Component {
 
   // ── Actions ───────────────────────────────────────────────────
 
+  private async fireAutoNotifyExtracted(match: IMatchProposal): Promise<void> {
+    const token = localStorage.getItem('biliardino_admin_token');
+    if (!token) return;
+
+    const playerIds = [
+      match.teamA.defence.id,
+      match.teamA.attack.id,
+      match.teamB.defence.id,
+      match.teamB.attack.id
+    ];
+
+    const durationSelects = this.$$('#lobby-duration-select') as HTMLSelectElement[];
+    const durationSeconds = durationSelects[0]
+      ? parseInt(durationSelects[0].value, 10)
+      : LOBBY_TTL_DEFAULT;
+
+    await fetch(`${API_BASE_URL}/send-broadcast`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title: 'Sei stato estratto!',
+        body: 'Il matchmaking ti ha selezionato per la prossima partita. Conferma la tua presenza in lobby.',
+        playerIds,
+        durationSeconds
+      })
+    });
+
+    this.lobbyExists = true;
+    this.patchLobbyPanels();
+    appState.lobbyActive = true;
+    appState.emit('lobby-change');
+    await LobbyService.refreshNow();
+  }
+
   private async handleGenerateMatch(): Promise<void> {
     if (this.isGenerating || this.generatedMatch) return;
 
@@ -1115,6 +1192,13 @@ class MatchmakingPage extends Component {
 
       // Persist to Firestore so it survives refresh
       await this.persistCurrentMatch();
+
+      // Auto-notify extracted players if toggle is on
+      if (this.autoNotifyExtracted && this.generatedMatch) {
+        this.fireAutoNotifyExtracted(this.generatedMatch).catch(
+          err => console.error('[Matchmaking] Auto-notify extracted error:', err)
+        );
+      }
 
       // Re-render the match panel
       this.refreshMatchPanels();
