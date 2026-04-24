@@ -11,6 +11,8 @@ import template from './layout.component.html?raw';
 import { bottomNav } from './bottom-nav.component';
 import { mobileDrawer } from './mobile-drawer.component';
 
+declare const __SW_VERSION__: string;
+
 export class LayoutComponent {
   private header = new HeaderComponent();
 
@@ -22,6 +24,9 @@ export class LayoutComponent {
   }
 
   mount(): void {
+    const versionEl = document.getElementById('pwa-version');
+    if (versionEl) versionEl.textContent = __SW_VERSION__;
+
     this.header.mount();
     mobileDrawer.mount();
     bottomNav.mount();
