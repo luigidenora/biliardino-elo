@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Updated automatically by scripts/generate-sw-version.js
-const VERSION = '2.1.2604221925+20260422192357';
+const VERSION = '2.1.2604241127+20260424112451';
 const CACHE_NAME = `calcio-balilla-${VERSION}`;
 
 // self.__WB_MANIFEST è iniettato da vite-plugin-pwa a build time con tutti i chunk Vite
@@ -19,6 +19,7 @@ self.addEventListener('install', (event) => {
       .then(cache => cache.addAll(PRECACHE_ASSETS))
       .catch(err => console.warn('[SW] precache partial failure:', err))
   );
+  // Corretto skipWaiting()
   self.skipWaiting();
 });
 
@@ -65,93 +66,190 @@ self.addEventListener('fetch', (event) => {
   // Supabase Realtime (WebSocket + HTTP long-polling fallback): mai cacheato
   if (/supabase\.co\/realtime\/v1\//i.test(url.href)) return;
 
-  // Supabase REST: recupera subito la cache e poi aggiorna da chiamata rest
+  // Supabase REST: network-first (dati sempre freschi, cache come fallback offline)
   if (SUPABASE_REST.test(url.href)) {
-    event.respondWith(staleWhileRevalidate(request));
+    const { respondWith, updateCache } = networkFirst(request);
+    event.respondWith(respondWith);
+    event.waitUntil(updateCache);
     return;
   }
 
-  // Navigation requests: stale-while-revalidate.
-  // index.html è in PRECACHE (iniettato da __WB_MANIFEST) e la rotazione di VERSION
-  // garantisce coerenza con i chunk JS/CSS ad ogni deploy.
+  // Navigation requests: network-first (sempre dati freschi)
   if (request.mode === 'navigate') {
-    event.respondWith(staleWhileRevalidate(request));
+    const { respondWith, updateCache } = networkFirst(request);
+    event.respondWith(respondWith);
+    event.waitUntil(updateCache);
     return;
   }
 
   // Tutti gli altri cross-origin: passa direttamente
   if (url.origin !== self.location.origin) return;
 
-  // Tutti gli asset same-origin (JS, CSS, icone, avatar, classi, manifest): cache-first
-  // JS/CSS sono in PRECACHE dal build → serviti da cache anche offline
-  event.respondWith(cacheFirst(request));
+  // Asset same-origin: stale-while-revalidate
+  const { respondWith, updateCache } = staleWhileRevalidate(request);
+  event.respondWith(respondWith);
+  event.waitUntil(updateCache);
 });
 
 // ── Strategies ───────────────────────────────────────────────
 
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) {
-    // Aggiorna in background senza bloccare
-    fetch(request).then((res) => {
-      if (res.ok) caches.open(CACHE_NAME).then(c => c.put(request, res)).catch(() => { });
-    }).catch(() => { });
-    return cached;
-  }
-  const res = await fetch(request).catch(() => null);
-  if (res?.ok) {
-    const cloned = res.clone();
-    caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch((err) => {
-      console.warn('[SW] cacheFirst failed to cache:', request.url, err);
-    });
-  }
-  return res || new Response('Not found', { status: 404 });
-}
-
-async function staleWhileRevalidate(request) {
+/**
+ * Strategia stale-while-revalidate:
+ * - Restituisce immediatamente la versione in cache se presente (stale),
+ *   altrimenti attende la risposta di rete (revalidate).
+ * - In background aggiorna la cache con la risposta fresca.
+ *
+ * @param {Request} request
+ * @returns {{ respondWith: Promise<Response>, updateCache: Promise<void> }}
+ */
+function staleWhileRevalidate(request) {
   const pathname = new URL(request.url).pathname;
-  const cached = await caches.match(request);
+  const cachedPromise = caches.match(request);
 
-  if (cached) {
-    console.info(`[SW] Stale: ritorniamo cache per ${pathname}`);
-  }
+  // Fetch di rete condiviso tra respondWith e updateCache
+  const networkFetch = fetch(request)
+    .then(res => {
+      if (res.ok) {
+        console.info(`[SW] Fresh: nuovi dati disponibili per ${pathname}, aggiornamento cache`);
+      } else {
+        console.warn(`[SW] Fresh: errore ${res.status} per ${pathname}`);
+      }
+      return res;
+    })
+    .catch(err => {
+      console.warn(`[SW] Fresh: fallimento fetch per ${pathname} - siamo offline?`, err);
+      return null;
+    });
 
-  const fresh = fetch(request).then((res) => {
-    if (res.ok) {
-      console.info(`[SW] Fresh: nuovi dati disponibili per ${pathname}, aggiornamento cache`);
-      const cloned = res.clone();
-      caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch(() => { });
-    } else {
-      console.warn(`[SW] Fresh: errore ${res.status} per ${pathname}`);
+  const respondWith = (async () => {
+    const cached = await cachedPromise;
+    if (cached) {
+      console.info(`[SW] Stale: ritorniamo cache per ${pathname}`);
+      return cached;
     }
-    return res;
-  }).catch((err) => {
-    console.warn(`[SW] Fresh: fallimento fetch per ${pathname} - siamo offline?`, err);
-    return cached || new Response(JSON.stringify({ error: 'offline' }), { status: 503 });
-  });
 
-  return cached || fresh;
+    const res = await networkFetch;
+    if (res?.ok) {
+      const cloned = res.clone();
+      caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch(() => {});
+      return res;
+    }
+
+    return new Response(JSON.stringify({ error: 'offline' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  })();
+
+  const updateCache = (async () => {
+    const res = await networkFetch;
+    if (res?.ok) {
+      const cloned = res.clone();
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, cloned);
+      } catch (err) {
+        console.warn('[SW] Errore scrittura cache per', request.url, err);
+      }
+    }
+  })();
+
+  return { respondWith, updateCache };
 }
+
+/**
+ * Strategia network-first:
+ * - Prova sempre la rete; se OK, restituisce i dati e aggiorna la cache.
+ * - Se la rete fallisce, cerca nella cache; se non trovata, errore 503.
+ *
+ * @param {Request} request
+ * @returns {{ respondWith: Promise<Response>, updateCache: Promise<void> }}
+ */
+function networkFirst(request) {
+  const pathname = new URL(request.url).pathname;
+
+  const networkFetch = fetch(request)
+    .catch(err => {
+      console.warn(`[SW] Network-first: rete fallita per ${pathname}`, err);
+      return null;
+    });
+
+  const respondWith = (async () => {
+    const res = await networkFetch;
+    if (res) {
+      if (res.ok) {
+        // Cachea copia fresca (anche se poi updateCache lo rifarà, ma così non perdiamo l'attimo)
+        const cloned = res.clone();
+        caches.open(CACHE_NAME).then(c => c.put(request, cloned)).catch(() => {});
+      }
+      return res; // Restituiamo anche eventuali errori (404, 500) per trasparenza
+    }
+
+    // Rete fallita → cache
+    const cached = await caches.match(request);
+    if (cached) {
+      console.info(`[SW] Network-first: offline, restituita cache per ${pathname}`);
+      return cached;
+    }
+
+    return new Response(JSON.stringify({ error: 'offline' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  })();
+
+  const updateCache = (async () => {
+    const res = await networkFetch;
+    if (res && res.ok) {
+      const cloned = res.clone();
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, cloned);
+      } catch (err) {
+        console.warn('[SW] Errore scrittura cache per', request.url, err);
+      }
+    }
+  })();
+
+  return { respondWith, updateCache };
+}
+
+// Nota: cacheFirst non è più usata, è stata rimossa.
 
 // ── Push Notifications ───────────────────────────────────────
 
 self.addEventListener('push', async (event) => {
-  let title, options, notification;
+  let title, options;
   try {
-    const payload = event.data?.json?.() ?? null;
-    notification = payload?.notification ?? null;
+    const payload = event.data?.json() ?? null;
+    const notification = payload?.notification ?? null;
     options = notification || {};
     title = options.title;
   } catch (e) {
     console.error('[SW] push parse error:', e);
+    return;
   }
+
+  if (!title) {
+    console.warn('[SW] push senza titolo, ignorata');
+    return;
+  }
+
   try {
-    if (options?.tag) {
-      await self.registration.showNotification(title, {
-        ...options,
-        data: { navigate: notification?.navigate }
-      });
+    // Mostra la notifica sempre, anche senza tag. Il tag è opzionale.
+    // Mantiene eventuali dati extra già presenti, aggiungendo navigate.
+    const notificationOptions = {
+      ...options,
+      data: {
+        ...(options.data || {}),
+        navigate: options.navigate || '/'
+      }
+    };
+    if (options.tag) {
+      notificationOptions.tag = options.tag;
     }
+
+    await self.registration.showNotification(title, notificationOptions);
   } catch (e) {
     console.error('[SW] showNotification error:', e);
   }
@@ -159,9 +257,27 @@ self.addEventListener('push', async (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  if (!event.action || event.action === 'cancel') {
-    if (!event.action) clients.openWindow(event.notification.data?.navigate || '/');
-    return;
+
+  let targetUrl = '/';
+
+  if (event.action) {
+    // Cerca l'URL definito per l'azione specifica
+    const action = event.notification.actions?.find(a => a.action === event.action);
+    targetUrl = action?.url || event.notification.data?.navigate || '/';
+  } else {
+    // Click sul corpo della notifica
+    targetUrl = event.notification.data?.navigate || '/';
   }
-  clients.openWindow(event.action.url || '/');
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(windowClients => {
+        for (const client of windowClients) {
+          if (client.url === targetUrl && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        return clients.openWindow(targetUrl);
+      })
+  );
 });

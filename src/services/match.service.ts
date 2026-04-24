@@ -2,6 +2,7 @@ import { computeMatch } from '@/utils/update-elo.util';
 import { IMatch, IMatchDTO, ITeam } from '../models/match.interface';
 import { computeEloDayStart, computeRanks, getAllPlayers, getPlayerRanges, updateAllPlayerRecords } from './player.service';
 import { fetchMatches, parseMatchDTO } from './repository.service';
+import { CACHE_HASH_MATCHES_KEY } from './repository.supabase';
 
 let matches: IMatch[] = [];
 
@@ -80,4 +81,10 @@ function isToday(ts: number): boolean {
     && d.getMonth() === now.getMonth()
     && d.getDate() === now.getDate()
   );
+}
+
+export async function reloadMatchesAndRecompute(): Promise<void> {
+  localStorage.removeItem(CACHE_HASH_MATCHES_KEY);
+  await loadAllMatches();
+  computeMatches();
 }

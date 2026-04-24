@@ -2,6 +2,7 @@ import { IMatch, ITeam } from '@/models/match.interface';
 import { IPlayer, IPlayerDTO, PlayerRadarStats } from '@/models/player.interface';
 import { DerankTreshold, FinalK, FirstRankUp, MatchesToRank, MatchesToTransition, RankTreshold, StartK } from './elo.service';
 import { fetchPlayers } from './repository.service';
+import { CACHE_HASH_PLAYERS_KEY } from './repository.supabase';
 
 type Ranges = { sigma: MinMax; mu: MinMax; winRate: MinMax; elo: MinMax; form: MinMax; opponentElo: MinMax; goalRatio: MinMax };
 type Consistency = { sigma: number; mu: number };
@@ -470,4 +471,9 @@ function normClamp(value: number, min: number, max: number): number {
 
 function norm(value: number, min: number, max: number): number {
   return (value - min) / (max - min);
+}
+
+export async function reloadPlayers(): Promise<void> {
+  localStorage.removeItem(CACHE_HASH_PLAYERS_KEY);
+  await loadPlayers();
 }
