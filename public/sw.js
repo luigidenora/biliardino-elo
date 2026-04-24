@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Updated automatically by scripts/generate-sw-version.js
-const VERSION = '2.1.2604241127+20260424112451';
+const VERSION = '2.1.2604241212+20260424120952';
 const CACHE_NAME = `calcio-balilla-${VERSION}`;
 
 // self.__WB_MANIFEST è iniettato da vite-plugin-pwa a build time con tutti i chunk Vite
