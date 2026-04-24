@@ -49,8 +49,14 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       title: rawTitle,
       body: rawBody,
       match: rawMatch,
-      durationSeconds: rawDurationSeconds
+      durationSeconds: rawDurationSeconds,
+      playerIds: rawPlayerIds
     } = req.body;
+
+    const playerIdFilter: number[] | null =
+      Array.isArray(rawPlayerIds) && rawPlayerIds.length > 0
+        ? rawPlayerIds.map(Number).filter(n => Number.isFinite(n) && n > 0)
+        : null;
 
     const LOBBY_TTL_DEFAULT = 5400;
     const parsedDuration = rawDurationSeconds !== undefined ? parseInt(String(rawDurationSeconds), 10) : NaN;
@@ -89,10 +95,22 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
       return res.status(404).json({ error: 'Nessuna subscription valida' });
     }
 
+    const targetSubscriptions = playerIdFilter
+      ? validSubscriptions.filter(s => playerIdFilter.includes(s.playerId))
+      : validSubscriptions;
+
+    if (targetSubscriptions.length === 0) {
+      return res.status(404).json({
+        error: playerIdFilter
+          ? 'Nessun giocatore selezionato ha notifiche attive'
+          : 'Nessuna subscription trovata'
+      });
+    }
+
     const url = process.env.BASE_URL || '.';
 
     const results = await Promise.allSettled(
-      validSubscriptions.map(async (data) => {
+      targetSubscriptions.map(async (data) => {
         const playerName = data.playerName || 'Giocatore';
         const _randomMessage = getRandomMessage(playerName.split(' ')[0]);
         const title = customTitle || _randomMessage.title;
@@ -134,12 +152,12 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
 
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        const playerName = validSubscriptions[index]?.playerName || String(validSubscriptions[index]?.playerId) || 'Unknown';
+        const playerName = targetSubscriptions[index]?.playerName || String(targetSubscriptions[index]?.playerId) || 'Unknown';
         console.warn('Errore invio a:', playerName, (result.reason as Error)?.message || result.reason);
       }
     });
 
-    console.log(`✅ Broadcast completato: ${sent}/${validSubscriptions.length} inviati`);
+    console.log(`✅ ${playerIdFilter ? 'Notifiche selezionate' : 'Broadcast'} completato: ${sent}/${targetSubscriptions.length} inviati`);
 
     // Crea lobby su Supabase (Supabase Realtime notifica automaticamente tutti i subscriber)
     const expiresAt = new Date(Date.now() + lobbyTtl * 1000).toISOString();
@@ -162,7 +180,7 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<VercelR
     return res.status(200).json({
       sent,
       failed,
-      total: validSubscriptions.length,
+      total: targetSubscriptions.length,
       lobbyActive: true,
       durationSeconds: lobbyTtl
     });

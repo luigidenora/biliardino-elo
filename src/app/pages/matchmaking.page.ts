@@ -275,6 +275,22 @@ class MatchmakingPage extends Component {
           </button>
           <p id="admin-broadcast-feedback" class="font-ui text-center"
              style="font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:0.08em; min-height:14px"></p>
+          <button id="admin-notify-selected-btn"
+                  class="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-ui transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                  style="background:linear-gradient(135deg,rgba(74,222,128,0.12),rgba(34,197,94,0.08));
+                         border:1px solid rgba(74,222,128,0.3); font-size:13px;
+                         letter-spacing:0.12em; color:#4ADE80"
+                  ${this.getSelectedCount() < MIN_PLAYERS ? 'disabled' : ''}>
+            <i data-lucide="user-check" style="width:14px;height:14px"></i>
+            NOTIFICA SELEZIONATI
+            <span id="notify-selected-badge"
+                  style="background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);
+                         border-radius:9999px;padding:0 6px;font-size:11px">
+              ${this.getSelectedCount()}
+            </span>
+          </button>
+          <p id="admin-notify-selected-feedback" class="font-ui text-center"
+             style="font-size:11px;color:rgba(255,255,255,0.3);letter-spacing:0.08em;min-height:14px"></p>
         </div>
       </div>
     `;
@@ -766,6 +782,7 @@ class MatchmakingPage extends Component {
     }
 
     this.bindBroadcastButton();
+    this.bindNotifySelectedButton();
   }
 
   private bindBroadcastButton(): void {
@@ -853,6 +870,8 @@ class MatchmakingPage extends Component {
     }
     refreshIcons();
     this.bindBroadcastButton();
+    this.bindNotifySelectedButton();
+    this.updateNotifySelectedBtn();
   }
 
   private bindSearchFilter(): void {
@@ -863,6 +882,100 @@ class MatchmakingPage extends Component {
       this.searchQuery = searchInput.value.trim().toLowerCase();
       this.filterPlayerRows();
     });
+  }
+
+  private bindNotifySelectedButton(): void {
+    for (const btn of this.$$('#admin-notify-selected-btn') as HTMLButtonElement[]) {
+      btn.addEventListener('click', e => this.handleNotifySelected(e as PointerEvent));
+    }
+  }
+
+  private updateNotifySelectedBtn(): void {
+    const count = this.getSelectedCount();
+    const canNotify = count >= MIN_PLAYERS;
+
+    for (const btn of this.$$('#admin-notify-selected-btn') as HTMLButtonElement[]) {
+      btn.disabled = !canNotify;
+    }
+    for (const badge of this.$$('#notify-selected-badge')) {
+      badge.textContent = String(count);
+    }
+  }
+
+  private async handleNotifySelected(e: PointerEvent): Promise<void> {
+    const selectedIds = this.getSelectedPlayerIds();
+    if (selectedIds.length < MIN_PLAYERS) return;
+
+    const feedback = this.$$('#admin-notify-selected-feedback');
+    const durationSelects = this.$$('#lobby-duration-select') as HTMLSelectElement[];
+    const btns = this.$$('#admin-notify-selected-btn') as HTMLButtonElement[];
+    const token = localStorage.getItem('biliardino_admin_token');
+
+    if (!token) {
+      for (const f of feedback) {
+        f.textContent = 'TOKEN ADMIN MANCANTE';
+        (f as HTMLElement).style.color = '#F87171';
+      }
+      return;
+    }
+
+    createParticles(e.clientX, e.clientY, [
+      { emoji: '🔔', canFlip: true },
+      { emoji: '👤', canFlip: true }
+    ], 1000);
+    haptics.trigger('buzz');
+
+    const durationSeconds = durationSelects[0] ? parseInt(durationSelects[0].value, 10) : LOBBY_TTL_DEFAULT;
+
+    for (const btn of btns) {
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" style="width:14px;height:14px;animation:_spin 0.6s linear infinite"></i> INVIO...`;
+    }
+    refreshIcons();
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/send-broadcast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          durationSeconds,
+          playerIds: selectedIds
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Errore ${res.status}`);
+      }
+
+      const result = await res.json();
+      for (const f of feedback) {
+        f.textContent = `${result.sent}/${selectedIds.length} NOTIFICHE INVIATE`;
+        (f as HTMLElement).style.color = '#4ADE80';
+      }
+
+      appState.lobbyActive = true;
+      appState.emit('lobby-change');
+
+      this.lobbyExists = true;
+      this.patchLobbyPanels();
+
+      await LobbyService.refreshNow();
+    } catch (err: any) {
+      console.error('[Matchmaking] Notify selected error:', err);
+      for (const f of feedback) {
+        f.textContent = err.message || 'ERRORE INVIO';
+        (f as HTMLElement).style.color = '#F87171';
+      }
+      for (const btn of btns) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="user-check" style="width:14px;height:14px"></i> NOTIFICA SELEZIONATI <span style="background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);border-radius:9999px;padding:0 6px;font-size:11px">${selectedIds.length}</span>`;
+      }
+      refreshIcons();
+    }
   }
 
   // ── State Cycling ─────────────────────────────────────────────
@@ -945,6 +1058,8 @@ class MatchmakingPage extends Component {
       btn.style.color = canGenerate ? 'var(--color-bg-deep)' : 'rgba(255,215,0,0.5)';
       btn.style.boxShadow = canGenerate ? '0 0 30px rgba(255,215,0,0.25)' : 'none';
     }
+
+    this.updateNotifySelectedBtn();
   }
 
   private setGenerateButtonLoading(loading: boolean): void {
